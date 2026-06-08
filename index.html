@@ -1,0 +1,2198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ListenLog</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+/* ── AUTH SCREEN ── */
+#auth-screen{
+  display:none;position:fixed;inset:0;background:#14181c;
+  align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:24px;
+}
+#auth-screen.visible{display:flex}
+.auth-box{
+  background:#1f2328;border:1px solid #3a4048;border-radius:10px;
+  padding:36px 40px;width:340px;max-width:90vw;text-align:center;
+}
+.auth-logo{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;letter-spacing:-1.5px;margin-bottom:4px}
+.auth-logo em{color:#00c030;font-style:italic}
+.auth-sub{font-size:11px;color:#738a9a;text-transform:uppercase;letter-spacing:.12em;margin-bottom:28px}
+.auth-input{
+  width:100%;background:#14181c;border:1px solid #3a4048;color:#c8d0d8;
+  font-family:'DM Mono',monospace;font-size:13px;padding:9px 12px;
+  border-radius:6px;outline:none;margin-bottom:10px;box-sizing:border-box;
+  transition:border-color .15s;
+}
+.auth-input:focus{border-color:#00c030}
+.auth-btn{
+  width:100%;background:#00c030;color:#0d1117;font-family:'DM Mono',monospace;
+  font-size:13px;font-weight:600;border:none;border-radius:6px;padding:10px;
+  cursor:pointer;margin-top:4px;transition:background .15s;
+}
+.auth-btn:hover{background:#00e03a}
+.auth-msg{font-size:12px;color:#738a9a;margin-top:12px;min-height:18px}
+.auth-msg.ok{color:#00c030}.auth-msg.err{color:#c97a7a}
+#app-wrap{display:none}
+#app-wrap.visible{display:block}
+#sync-indicator{
+  position:fixed;bottom:8px;right:12px;font-size:10px;color:#738a9a;
+  font-family:'DM Mono',monospace;z-index:20;display:flex;align-items:center;gap:5px;
+}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#738a9a;flex-shrink:0}
+.sync-dot.ok{background:#00c030}.sync-dot.err{background:#c97a7a}.sync-dot.busy{background:#e8c97a;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+:root {
+  --bg:#14181c; --surface:#1f2328; --surface2:#272c33; --border:#3a4048;
+  --accent:#00c030; --accent-dim:#00c03022;
+  --text:#c8d0d8; --text-hi:#e8edf2;
+  --muted:#738a9a;
+  --danger:#c97a7a; --want:#7ab0c9; --hard:#c9997a;
+  --good:#00c030; --radius:4px;
+  --star:#00e54b; --star-empty:#2c353d;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;min-height:100vh}
+
+/* ── HEADER ── */
+header{padding:28px 40px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:24px;flex-wrap:wrap;background:linear-gradient(180deg,#0d1117 0%,var(--bg) 100%)}
+.header-title h1{font-family:'Playfair Display',serif;font-size:40px;font-weight:700;letter-spacing:-2px;line-height:1;color:var(--text-hi)}
+.header-title h1 em{color:var(--accent);font-style:italic}
+.header-stats{margin-left:auto;display:flex;gap:32px}
+.stat{text-align:right}
+.stat-num{font-size:28px;font-weight:500;color:var(--accent);font-family:'Playfair Display',serif;line-height:1}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-top:3px}
+
+/* ── TOOLBAR ── */
+.toolbar{padding:9px 40px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10}
+input[type="text"],select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 9px;border-radius:var(--radius);outline:none;transition:border-color .15s}
+input[type="text"]:focus,select:focus{border-color:var(--accent)}
+select option{background:#1f2328}
+.search-wrap{position:relative}
+.search-wrap input{padding-left:26px;width:190px}
+.search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+.toolbar-sep{width:1px;height:22px;background:var(--border);margin:0 2px}
+button{font-family:'DM Mono',monospace;font-size:12px;border:none;cursor:pointer;border-radius:var(--radius);padding:5px 11px;transition:all .15s}
+.btn-primary{background:var(--accent);color:#0d1117;font-weight:600;letter-spacing:.02em}
+.btn-primary:hover{background:#00e03a}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-ghost:disabled{opacity:.35;cursor:default;pointer-events:none}
+.btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid var(--border)}
+.btn-danger-ghost:hover{border-color:var(--danger)}
+.btn-sm{padding:2px 7px;font-size:11px}
+
+/* ── PANELS ── */
+.panel{display:none;padding:18px 40px;background:var(--surface);border-bottom:1px solid var(--border);animation:slideDown .18s ease}
+.panel.open{display:block}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.panel-title{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);margin-bottom:10px}
+.form-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.lookup-status{font-size:11px;color:var(--muted);padding:5px 0;display:flex;align-items:center;gap:6px}
+.lookup-status.found{color:var(--good)}.lookup-status.error{color:var(--danger)}
+.art-preview{width:56px;height:56px;border-radius:var(--radius);object-fit:cover;border:1px solid var(--border);display:none}
+.form-actions{display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+
+/* ── HALF-STAR INPUT (form) ── */
+.star-input{display:flex;gap:0;align-items:center;padding-top:2px;user-select:none}
+.star-half{display:inline-block;height:22px;line-height:22px;font-size:22px;cursor:pointer;overflow:hidden;color:var(--star-empty);transition:color .08s;position:relative}
+.star-half.left{width:11px;text-align:left}
+.star-half.right{width:12px;text-align:right;direction:rtl;margin-right:3px}
+.star-half.lit{color:var(--star)}
+.star-val-display{font-size:11px;color:var(--muted);margin-left:6px}
+
+/* ── TAG TOGGLES ── */
+.tag-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding-top:2px}
+.tag-toggle{font-size:11px;border-radius:20px;padding:3px 10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;font-family:'DM Mono',monospace}
+.tag-toggle.want.on{background:var(--want);color:#0d1117;border-color:var(--want)}
+.tag-toggle.hard.on{background:var(--hard);color:#0d1117;border-color:var(--hard)}
+
+/* ── IMPORT PANEL ── */
+.import-instructions{font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:12px}
+.import-instructions code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:10px}
+.import-box{border:1px dashed var(--border);border-radius:var(--radius);padding:18px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;transition:border-color .15s}
+.import-box:hover{border-color:var(--accent);color:var(--accent)}
+.import-col-map{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.import-col-map label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.import-col-map select{font-size:11px;padding:4px 8px}
+.import-preview table{width:100%;border-collapse:collapse;margin-top:6px}
+.import-preview th,.import-preview td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-size:11px}
+.import-preview th{color:var(--muted);font-weight:400}
+.import-actions{display:flex;gap:8px;margin-top:12px;align-items:center}
+#import-status{font-size:11px;color:var(--muted)}
+#import-status.ok{color:var(--good)}#import-status.err{color:var(--danger)}
+
+/* ── PROGRESS BAR ── */
+.progress-wrap{display:none;margin-top:12px}
+.progress-wrap.visible{display:block}
+.progress-header{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);margin-bottom:5px}
+.progress-header strong{color:var(--text)}
+.progress-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s ease;width:0%}
+.progress-detail{font-size:10px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between}
+.btn-pause{font-size:11px;padding:3px 8px;margin-left:6px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:var(--radius);cursor:pointer;font-family:'DM Mono',monospace;transition:all .15s}
+.btn-pause:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── GLOBAL PROGRESS BAR ── */
+#global-progress{display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:var(--surface);border-top:1px solid var(--border);padding:10px 40px;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
+
+/* ── TABLE — Letterboxd style ── */
+.table-wrap{overflow-x:auto;padding:0 40px 100px}
+table{width:100%;border-collapse:collapse;margin-top:4px}
+thead tr{border-bottom:1px solid var(--border)}
+th{text-align:left;padding:10px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:400;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s}
+th:hover{color:var(--accent)}th.sorted{color:var(--accent)}
+th .sa{margin-left:3px;opacity:.4}th.sorted .sa{opacity:1}
+th.th-check{cursor:default;width:32px}
+
+/* ── ALBUM ROW ── */
+tr.album-row{border-bottom:1px solid #1c2128;transition:background .12s}
+tr.album-row:hover{background:var(--surface)}
+tr.album-row:hover .row-actions{opacity:1}
+tr.album-row.selected{background:#1a2518}
+td{padding:7px 10px;vertical-align:middle}
+
+/* ── ART CELL ── bigger, rounded like Letterboxd ── */
+.td-art{width:52px;padding-right:4px}
+.art-thumb{
+  width:44px;height:44px;border-radius:3px;object-fit:cover;
+  display:block;box-shadow:0 1px 4px rgba(0,0,0,.5);
+  border:1px solid rgba(255,255,255,.05);
+}
+.art-placeholder{
+  width:44px;height:44px;border-radius:3px;background:var(--surface2);
+  border:1px solid var(--border);display:flex;align-items:center;
+  justify-content:center;font-size:16px;color:var(--border);
+}
+
+/* ── TEXT CELLS ── */
+.td-artist{font-weight:500;color:var(--text-hi);max-width:180px;font-size:13px}
+.td-album{font-family:'Playfair Display',serif;font-style:italic;font-size:15px;color:var(--muted);max-width:220px}
+.td-date{color:var(--muted);white-space:nowrap;font-size:12px}
+.td-genre{color:var(--muted);font-size:11px}
+.td-notes{color:var(--muted);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── RATING DISPLAY — SVG half-stars, Letterboxd green ── */
+.stars-display{display:inline-flex;align-items:center;gap:1px;vertical-align:middle}
+.stars-display svg{display:block;flex-shrink:0}
+
+/* ── TAGS ── */
+.row-tags{display:flex;gap:4px;flex-wrap:wrap}
+.badge{font-size:9px;text-transform:uppercase;letter-spacing:.1em;border-radius:20px;padding:2px 7px;white-space:nowrap;font-family:'DM Mono',monospace}
+.badge-want{background:rgba(122,176,201,.12);color:var(--want);border:1px solid rgba(122,176,201,.25)}
+.badge-hard{background:rgba(201,153,122,.12);color:var(--hard);border:1px solid rgba(201,153,122,.25)}
+.badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
+
+/* ── ROW ACTIONS — fade in on hover ── */
+.row-actions{opacity:0;transition:opacity .15s;white-space:nowrap}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:80px 40px;color:var(--muted)}
+.empty-state .ei{font-size:48px;margin-bottom:16px;opacity:.25}
+
+/* ── FILTER COUNT ── */
+.filter-count{font-size:11px;color:var(--muted);padding:10px 40px 0;display:flex;align-items:center;gap:8px}
+.pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:10px}
+.clear-btn{color:var(--accent);cursor:pointer;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;padding:0;text-decoration:underline}
+
+/* ── BULK BAR ── */
+#bulk-bar{display:none;position:sticky;top:44px;z-index:9;background:var(--surface2);border-bottom:1px solid var(--border);padding:7px 40px;align-items:center;gap:10px;font-size:11px;color:var(--muted)}
+#bulk-bar.visible{display:flex}
+input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:400px;max-width:95vw;animation:fadeUp .18s ease;max-height:90vh;overflow-y:auto}
+.modal.wide{width:860px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.modal h3{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:6px;color:var(--text-hi)}
+.modal p{color:var(--muted);font-size:12px;margin-bottom:16px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+
+/* ── RESCAN MODAL — card review ── */
+.rescan-summary{display:flex;gap:10px;margin-bottom:14px;font-size:11px;flex-wrap:wrap}
+.rescan-summary span{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 10px}
+.rescan-summary span b{color:var(--accent)}
+.rescan-section-head{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:8px;flex-wrap:wrap}
+.rescan-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:400}
+.auto-label{color:var(--good)}
+.rescan-cards{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto;padding:2px 0 4px}
+.rescan-card{display:grid;grid-template-columns:1fr 1fr auto;background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.rescan-card.decided-up{border-color:var(--good);background:#0d1f10}
+.rescan-card.decided-down{border-color:var(--danger);background:#1f0d0d}
+.rescan-col{padding:9px 12px}
+.rescan-col-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px}
+.rescan-artist{font-weight:500;color:var(--text-hi);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rescan-album-name{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rescan-meta{font-size:10px;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rescan-divider{width:1px;background:var(--border);align-self:stretch}
+.rescan-actions{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 10px;gap:5px;min-width:56px}
+.thumb-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.thumb-btn.up:hover{background:#0d2a12;border-color:var(--good)}
+.thumb-btn.down:hover{background:#2a0d0d;border-color:var(--danger)}
+.thumb-btn.active.up{background:var(--good);border-color:var(--good);color:#0d1117}
+.thumb-btn.active.down{background:var(--danger);border-color:var(--danger);color:#fff}
+.conf-pill{font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-radius:20px;padding:2px 6px;font-family:'DM Mono',monospace;white-space:nowrap}
+.conf-high-pill{background:rgba(0,192,48,.15);color:var(--good);border:1px solid rgba(0,192,48,.3)}
+.conf-med-pill{background:rgba(232,201,122,.12);color:var(--accent);border:1px solid rgba(232,201,122,.25)}
+.conf-low-pill{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
+.src-badge{font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:1px 5px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+.src-mb{border-color:rgba(122,176,201,.4);color:var(--want)}
+.rescan-no-changes{text-align:center;padding:30px;color:var(--muted);font-size:12px}
+.field-old{color:var(--muted)}.field-new{color:var(--text-hi);font-weight:500}
+.change-arrow{color:var(--muted);margin:0 3px;font-size:10px}
+
+/* ── SPINNER ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+
+/* ── MULTI-SELECT FILTER DROPDOWNS ── */
+.ms-wrap{position:relative;display:inline-block}
+.ms-btn{
+  background:var(--bg);border:1px solid var(--border);color:var(--muted);
+  font-family:'DM Mono',monospace;font-size:12px;padding:5px 10px;
+  border-radius:var(--radius);cursor:pointer;white-space:nowrap;
+  transition:border-color .15s,color .15s;display:flex;align-items:center;gap:5px;
+}
+.ms-btn:hover,.ms-btn.active{border-color:var(--accent);color:var(--text)}
+.ms-btn.has-selection{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.ms-arrow{font-size:9px;opacity:.6}
+.ms-count{
+  background:var(--accent);color:#0d1117;border-radius:20px;
+  font-size:10px;font-weight:600;padding:1px 6px;margin-left:2px;
+}
+.ms-dropdown{
+  position:absolute;top:calc(100% + 4px);left:0;z-index:200;
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  min-width:200px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.5);
+  display:none;flex-direction:column;overflow:hidden;
+}
+.ms-dropdown.open{display:flex}
+.ms-search-wrap{padding:8px 8px 4px;border-bottom:1px solid var(--border)}
+.ms-search{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);font-family:'DM Mono',monospace;font-size:11px;
+  padding:4px 8px;border-radius:var(--radius);outline:none;
+}
+.ms-search:focus{border-color:var(--accent)}
+.ms-list{overflow-y:auto;max-height:220px;padding:4px 0}
+.ms-item{
+  display:flex;align-items:center;gap:8px;padding:5px 10px;
+  font-size:12px;color:var(--text);cursor:pointer;transition:background .1s;
+}
+.ms-item:hover{background:var(--surface2)}
+.ms-item input[type=checkbox]{accent-color:var(--accent);flex-shrink:0}
+.ms-item.selected{color:var(--accent)}
+.ms-footer{
+  border-top:1px solid var(--border);padding:6px 10px;
+  display:flex;justify-content:space-between;align-items:center;font-size:11px;
+}
+.ms-clear{color:var(--danger);cursor:pointer;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;padding:0}
+.ms-clear:hover{text-decoration:underline}
+.ms-done{color:var(--accent);cursor:pointer;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;padding:0}
+
+/* ── ACTIVE FILTER PILLS (below toolbar) ── */
+#filter-pills{
+  display:none;padding:6px 40px;gap:6px;flex-wrap:wrap;align-items:center;
+  background:var(--surface);border-bottom:1px solid var(--border);
+}
+#filter-pills.visible{display:flex}
+.filter-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--accent-dim);border:1px solid rgba(0,192,48,.3);
+  color:var(--accent);border-radius:20px;padding:2px 8px 2px 10px;
+  font-size:11px;font-family:'DM Mono',monospace;
+}
+.filter-pill button{
+  background:none;border:none;color:var(--accent);cursor:pointer;
+  padding:0;font-size:12px;line-height:1;opacity:.7;
+}
+.filter-pill button:hover{opacity:1}
+.pill-clear-all{
+  font-size:11px;color:var(--muted);cursor:pointer;background:none;border:none;
+  font-family:'DM Mono',monospace;text-decoration:underline;padding:0;margin-left:4px;
+}
+
+.io-row{display:flex;gap:6px}
+
+/* ── MOBILE ── */
+@media(max-width:700px){
+  header,.panel,.filter-count,#bulk-bar,#filter-pills{padding-left:12px;padding-right:12px}
+  .toolbar{gap:4px;padding:7px 12px;flex-wrap:wrap}
+  .table-wrap{padding:0 0 80px}
+  header{padding:12px 12px 10px}
+  .header-title h1{font-size:26px}
+  .header-stats{display:none}
+  .ms-btn{font-size:11px;padding:4px 7px}
+  .search-wrap input{width:130px;font-size:11px}
+  /* Card layout for table rows */
+  table thead{display:none}
+  table,tbody,tr.album-row,td{display:block;width:100%}
+  tr.album-row{
+    display:grid;
+    grid-template-columns:48px 1fr auto;
+    grid-template-rows:auto auto;
+    padding:9px 12px;gap:1px 10px;
+    border-bottom:1px solid var(--border);
+    align-items:start;
+  }
+  tr.album-row td{padding:0;border:none}
+  /* art: col 1, rows 1-2 */
+  tr.album-row td:nth-child(1){grid-column:1;grid-row:1/3;align-self:center}
+  /* artist: col 2, row 1 */
+  tr.album-row td:nth-child(2){grid-column:2;grid-row:1}
+  /* album: col 2, row 2 */
+  tr.album-row td:nth-child(3){grid-column:2;grid-row:2}
+  /* date: hide (shown via data attr) */
+  tr.album-row td:nth-child(4){display:none}
+  /* rating: col 3, row 1 */
+  tr.album-row td:nth-child(5){grid-column:3;grid-row:1}
+  /* tags: col 3, row 2 */
+  tr.album-row td:nth-child(6){grid-column:3;grid-row:2}
+  /* notes + actions: hide */
+  tr.album-row td:nth-child(7),tr.album-row td:nth-child(8){display:none}
+  /* Rescan card stack */
+  .rescan-card{grid-template-columns:1fr}
+  .rescan-divider{width:100%;height:1px}
+  .rescan-actions{flex-direction:row;justify-content:flex-end;padding:8px 12px;border-top:1px solid var(--border)}
+  .modal.wide{width:98vw;padding:16px}
+  #filter-pills{padding:5px 12px}
+  .filter-pill{font-size:10px}
+  #bulk-bar{top:0}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">Listen<em>Log</em></div>
+    <div class="auth-sub">Sign in to continue</div>
+    <input class="auth-input" id="auth-email" type="email" placeholder="your@email.com" autocomplete="email">
+    <input class="auth-input" id="auth-password" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="auth-btn" id="auth-signin-btn">Sign in</button>
+    <div class="auth-msg" id="auth-msg"></div>
+    <div style="margin-top:16px;font-size:11px;color:#738a9a">
+      No account? <a href="#" id="auth-switch-link" style="color:#00c030;text-decoration:none">Sign up</a>
+    </div>
+  </div>
+</div>
+
+<!-- SYNC INDICATOR -->
+<div id="sync-indicator" style="display:none">
+  <div class="sync-dot" id="sync-dot"></div>
+  <span id="sync-label">synced</span>
+  <span style="color:#3a4048">·</span>
+  <a href="#" id="sign-out-link" style="color:#738a9a;text-decoration:none;font-size:10px">sign out</a>
+</div>
+
+<!-- MAIN APP -->
+<div id="app-wrap">
+
+<header>
+  <div class="header-title"><h1>Listen<em>Log</em></h1></div>
+  <div class="header-stats">
+    <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Albums</div></div>
+    <div class="stat"><div class="stat-num" id="stat-want">0</div><div class="stat-label">Want to Hear</div></div>
+    <div class="stat"><div class="stat-num" id="stat-avg">—</div><div class="stat-label">Avg Rating</div></div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn-primary" id="btn-toggle-add">+ Add Album</button>
+  <button class="btn-ghost" id="btn-toggle-import">⬆ Import CSV</button>
+  <div class="toolbar-sep"></div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="filter-search" placeholder="Search artist or album…">
+  </div>
+  <!-- Multi-select filter dropdowns -->
+  <div class="ms-wrap" id="ms-artist"><button class="ms-btn" data-field="artist">Artist <span class="ms-arrow">▾</span></button></div>
+  <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year">Year <span class="ms-arrow">▾</span></button></div>
+  <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating">Rating <span class="ms-arrow">▾</span></button></div>
+  <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
+  <div class="toolbar-sep"></div>
+  <button class="btn-ghost" id="btn-rescan" title="Re-scan all albums against original source data to fix artist/album swaps and look up missing dates">⟳ Re-scan Library</button>
+  <div class="toolbar-sep"></div>
+  <div class="io-row">
+    <button class="btn-ghost" id="btn-export">Export</button>
+    <button class="btn-ghost" id="btn-json-import-trigger">Import JSON</button>
+    <input type="file" id="btn-json-import" accept=".json" style="display:none">
+    <button class="btn-danger-ghost" id="btn-bulk-mode">☐ Select</button>
+  </div>
+</div>
+
+<!-- BULK ACTION BAR -->
+<div id="bulk-bar">
+  <input type="checkbox" id="select-all-cb" title="Select all visible">
+  <span id="bulk-count">0 selected</span>
+  <button class="btn-ghost btn-sm" id="btn-bulk-delete" style="color:var(--danger);border-color:var(--border)">Delete selected</button>
+  <button class="btn-danger-ghost btn-sm" id="btn-nuke" style="margin-left:auto">🗑 Delete entire library…</button>
+  <button class="btn-ghost btn-sm" id="btn-bulk-cancel">Cancel</button>
+</div>
+
+<!-- ACTIVE FILTER PILLS -->
+<div id="filter-pills"></div>
+
+<!-- GLOBAL PROGRESS BAR -->
+<div id="global-progress">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+    <span style="font-size:11px;color:var(--muted)" id="gprogress-label">Scanning library…
+      <button class="btn-pause" id="btn-pause-global">Pause</button>
+      <button class="btn-pause" id="btn-stop-global" style="color:var(--danger);margin-left:4px">Stop</button>
+    </span>
+    <strong style="font-size:11px" id="gprogress-pct">0%</strong>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="gprogress-fill"></div></div>
+  <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--muted)">
+    <span><span style="color:var(--good)" id="gprog-found">0</span> matched &nbsp;
+          <span id="gprog-skipped">0</span> unchanged &nbsp;
+          <span style="color:var(--danger)" id="gprog-failed">0</span> not found</span>
+    <span id="gprog-eta"></span>
+  </div>
+</div>
+
+<!-- ADD/EDIT PANEL -->
+<div class="panel" id="add-panel">
+  <div class="panel-title" id="add-panel-title">— New Entry</div>
+  <div class="form-row">
+    <div class="form-group"><label>Artist *</label><input type="text" id="f-artist" placeholder="e.g. Radiohead" autocomplete="off" style="min-width:190px"></div>
+    <div class="form-group"><label>Album *</label><input type="text" id="f-album" placeholder="e.g. OK Computer" autocomplete="off" style="min-width:230px"></div>
+    <div class="form-group" style="justify-content:flex-end"><button class="btn-ghost" id="btn-lookup">🔍 Auto-fill</button></div>
+    <img class="art-preview" id="art-preview" alt="">
+  </div>
+  <div id="lookup-status" class="lookup-status" style="display:none"></div>
+  <div class="form-row" style="margin-top:10px">
+    <div class="form-group"><label>Release Date</label><input type="text" id="f-date" placeholder="YYYY-MM-DD" style="min-width:130px"></div>
+    <div class="form-group">
+      <label>My Rating</label>
+      <div class="star-input" id="star-input"></div>
+    </div>
+    <div class="form-group">
+      <label>Tags</label>
+      <div class="tag-row">
+        <button class="tag-toggle want" id="want-toggle">🎧 Want to listen</button>
+        <span id="hard-toggle-wrap" style="display:none"><button class="tag-toggle hard" id="hard-toggle">📦 Hard to find</button></span>
+      </div>
+    </div>
+    <div class="form-group" style="flex:1;min-width:180px"><label>Notes</label><input type="text" id="f-notes" placeholder="Optional…"></div>
+  </div>
+  <div class="form-actions">
+    <button class="btn-primary" id="btn-save">Save Entry</button>
+    <button class="btn-ghost" id="btn-cancel">Cancel</button>
+    <span id="form-error" style="font-size:11px;color:var(--danger)"></span>
+  </div>
+</div>
+
+<!-- CSV IMPORT PANEL -->
+<div class="panel" id="import-panel">
+  <div class="panel-title">— Import from Google Sheets / CSV</div>
+  <p class="import-instructions">
+    Export each tab as <code>File → Download → CSV</code>. Drop multiple files at once — duplicates are skipped, existing entries are updated.<br>
+    Map your column headers below. Ratings like <code>4</code> or <code>4.5</code> are supported. After import, use <strong>Re-scan Library</strong> to look up full dates and fix any field issues.
+  </p>
+  <div style="margin-top:12px">
+    <div class="import-box" id="csv-drop-zone">Click to select CSV file(s), or drag &amp; drop here</div>
+    <input type="file" id="csv-file-input" accept=".csv,.tsv,.txt" multiple style="display:none">
+  </div>
+  <div id="import-mapping" style="display:none;margin-top:12px">
+    <div class="panel-title" style="margin-bottom:6px">— Map columns</div>
+    <div class="import-col-map" id="col-map-row"></div>
+    <div id="import-preview" class="import-preview"></div>
+    <div class="import-actions">
+      <button class="btn-primary" id="btn-do-import">Import Albums</button>
+      <button class="btn-ghost" id="btn-cancel-import">Cancel</button>
+      <span id="import-status"></span>
+    </div>
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-header">
+        <span>Processing… <button class="btn-pause" id="btn-pause">Pause</button></span>
+        <strong id="progress-pct">0%</strong>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-detail">
+        <span><span class="upgraded" id="prog-upgraded">0</span> matched &nbsp;<span id="prog-failed">0</span> not found</span>
+        <span id="prog-eta"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FILTER COUNT -->
+<div class="filter-count" id="filter-count" style="display:none"></div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <table id="album-table">
+    <thead>
+      <tr>
+        <th class="th-check" id="th-check" style="display:none"><input type="checkbox" id="th-check-cb"></th>
+        <th class="td-art"></th>
+        <th data-sort="artist">Artist <span class="sa">↕</span></th>
+        <th data-sort="album">Album <span class="sa">↕</span></th>
+        <th data-sort="date">Release <span class="sa">↕</span></th>
+        <th data-sort="rating">Rating <span class="sa">↕</span></th>
+        <th>Tags</th>
+        <th data-sort="notes">Notes <span class="sa">↕</span></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="album-tbody"></tbody>
+  </table>
+  <div id="empty-state" class="empty-state">
+    <div class="ei">🎵</div>
+    <p style="font-size:13px">No albums logged yet.</p>
+    <p style="font-size:11px;color:#4a4a4a;margin-top:4px">Click "Add Album" or import a CSV to start.</p>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <h3>Remove album?</h3>
+    <p id="delete-desc"></p>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="delete-cancel">Keep it</button>
+      <button class="btn-primary" id="delete-confirm" style="background:var(--danger);color:#fff">Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- NUKE MODAL -->
+<div class="modal-overlay" id="nuke-modal">
+  <div class="modal">
+    <h3>Delete entire library?</h3>
+    <p>This will permanently erase all <span id="nuke-count"></span> albums. Export a backup first if you might want this data later.</p>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="nuke-cancel">Cancel</button>
+      <button class="btn-primary" id="nuke-confirm" style="background:var(--danger);color:#fff">Yes, delete everything</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESCAN REVIEW MODAL -->
+<div class="modal-overlay" id="rescan-modal">
+  <div class="modal wide">
+    <h3>Re-scan Results</h3>
+    <p id="rescan-modal-desc"></p>
+    <div class="rescan-summary" id="rescan-summary"></div>
+
+    <!-- Auto-approved section -->
+    <div id="rescan-auto-section" style="display:none">
+      <div class="rescan-section-head">
+        <span class="rescan-section-label auto-label">✓ Auto-approved <span id="rescan-auto-count"></span></span>
+        <span style="font-size:11px;color:var(--muted)">High confidence matches applied automatically</span>
+      </div>
+    </div>
+
+    <!-- Manual review section -->
+    <div id="rescan-review-section" style="display:none">
+      <div class="rescan-section-head" style="margin-top:16px">
+        <span class="rescan-section-label">Needs review <span id="rescan-pending-count"></span></span>
+        <span style="font-size:11px;color:var(--muted)">👍 accept match &nbsp;·&nbsp; 👎 revert to original sheet data</span>
+      </div>
+      <div id="rescan-cards"></div>
+    </div>
+
+    <div id="rescan-no-changes" class="rescan-no-changes" style="display:none">✓ All matches were high-confidence and have been applied automatically.</div>
+
+    <div class="modal-actions">
+      <span id="rescan-review-progress" style="font-size:11px;color:var(--muted);margin-right:auto"></span>
+      <button class="btn-ghost" id="rescan-cancel">Close</button>
+      <button class="btn-primary" id="rescan-apply">Apply decisions</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
+let albums    = JSON.parse(localStorage.getItem('listenLog')    || '[]');
+// originalData: keyed by "artist|||album" (lowercased), stores {artist,album,date,rating} from CSV
+let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
+
+let editingId = null, pendingDeleteId = null;
+let currentRating = 0, pendingArtUrl = '';
+let formWant = false, formHard = false;
+let sortKey = 'date', sortDir = -1;
+let bulkMode = false;
+let selectedIds = new Set();
+
+// CSV parse state
+let csvRows = [], csvHeaders = [], csvColMap = {artist:'',album:'',date:'',rating:''};
+
+// Rescan state
+let rescanResults = []; // array of {album, match, score, proposedChanges, accepted}
+
+function save() {
+  localStorage.setItem('listenLog', JSON.stringify(albums));
+}
+function saveOriginals() {
+  localStorage.setItem('listenLogOrig', JSON.stringify(originals));
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function origKey(artist, album) {
+  return `${String(artist).toLowerCase().trim()}|||${String(album).toLowerCase().trim()}`;
+}
+
+// ════════════════════════════════════════════════════════════
+// HALF-STAR WIDGET
+// ════════════════════════════════════════════════════════════
+(function() {
+  const wrap = document.getElementById('star-input');
+  for (let i = 1; i <= 5; i++) {
+    const L = document.createElement('span');
+    L.className = 'star-half left'; L.dataset.val = (i-.5).toString(); L.textContent = '★';
+    const R = document.createElement('span');
+    R.className = 'star-half right'; R.dataset.val = i.toString(); R.textContent = '★';
+    wrap.appendChild(L); wrap.appendChild(R);
+  }
+  const d = document.createElement('span');
+  d.className = 'star-val-display'; d.id = 'star-val-display';
+  wrap.appendChild(d);
+})();
+
+function setRating(val) {
+  currentRating = val;
+  document.querySelectorAll('.star-half').forEach(s => s.classList.toggle('lit', parseFloat(s.dataset.val) <= val));
+  document.getElementById('star-val-display').textContent = val ? `${val}/5` : '';
+}
+document.getElementById('star-input').addEventListener('mousemove', e => {
+  const s = e.target.closest('.star-half'); if (!s) return;
+  const v = parseFloat(s.dataset.val);
+  document.querySelectorAll('.star-half').forEach(x => x.classList.toggle('lit', parseFloat(x.dataset.val) <= v));
+});
+document.getElementById('star-input').addEventListener('mouseleave', () => setRating(currentRating));
+document.getElementById('star-input').addEventListener('click', e => {
+  const s = e.target.closest('.star-half'); if (!s) return;
+  const v = parseFloat(s.dataset.val);
+  setRating(currentRating === v ? 0 : v);
+  if (currentRating > 0 && formWant) { formWant = false; formHard = false; syncTagToggles(); }
+});
+
+// ════════════════════════════════════════════════════════════
+// TAG TOGGLES
+// ════════════════════════════════════════════════════════════
+function syncTagToggles() {
+  document.getElementById('want-toggle').classList.toggle('on', formWant);
+  document.getElementById('hard-toggle').classList.toggle('on', formHard);
+  document.getElementById('hard-toggle-wrap').style.display = formWant ? 'inline' : 'none';
+  if (!formWant) formHard = false;
+}
+document.getElementById('want-toggle').addEventListener('click', () => {
+  formWant = !formWant; if (!formWant) formHard = false; syncTagToggles();
+  if (formWant) setRating(0);
+});
+document.getElementById('hard-toggle').addEventListener('click', () => { formHard = !formHard; syncTagToggles(); });
+
+// ════════════════════════════════════════════════════════════
+// STARS DISPLAY — SVG, 16px, pixel-perfect half-stars
+// ════════════════════════════════════════════════════════════
+function starsHTML(n) {
+  if (!n) return '';
+  const S = 16; // px per star
+  const filled = '#00e54b', empty = '#2c353d';
+
+  // Build one SVG containing all 5 stars
+  // Each star is 16×16; half-stars use a clipPath
+  let svg = `<svg width="${S*5}" height="${S}" viewBox="0 0 ${S*5} ${S}" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+
+  // Star polygon points (scaled to S×S grid, centred)
+  function starPath(cx, cy, r_out=7, r_in=2.8, pts=5) {
+    let d='';
+    for(let i=0;i<pts*2;i++){
+      const r=i%2===0?r_out:r_in;
+      const a=Math.PI/pts*i - Math.PI/2;
+      d+=(i===0?'M':'L')+(cx+r*Math.cos(a)).toFixed(2)+','+(cy+r*Math.sin(a)).toFixed(2);
+    }
+    return d+'Z';
+  }
+
+  const half = (n%1)>=0.5;
+  const full = Math.floor(n);
+
+  for(let i=0;i<5;i++){
+    const cx = i*S + S/2;
+    const cy = S/2;
+    const path = starPath(cx, cy);
+
+    if(i < full){
+      // fully filled
+      svg += `<path d="${path}" fill="${filled}"/>`;
+    } else if(i === full && half){
+      // half-star: filled left, empty right
+      const clipId = `hc${i}`;
+      svg += `<defs><clipPath id="${clipId}"><rect x="${i*S}" y="0" width="${S/2}" height="${S}"/></clipPath></defs>`;
+      svg += `<path d="${path}" fill="${empty}"/>`;
+      svg += `<path d="${path}" fill="${filled}" clip-path="url(#${clipId})"/>`;
+    } else {
+      // empty
+      svg += `<path d="${path}" fill="${empty}"/>`;
+    }
+  }
+  svg += '</svg>';
+  return `<span class="stars-display" title="${n}/5">${svg}</span>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// MULTI-SELECT FILTER SYSTEM
+// ════════════════════════════════════════════════════════════
+// activeFilters: { artist: Set, year: Set, genre: Set, rating: Set, tags: Set }
+const activeFilters = { artist: new Set(), year: new Set(), genre: new Set(), rating: new Set(), tags: new Set() };
+
+const RATING_OPTIONS = [
+  { value:'5',      label:'★★★★★ (5)' },
+  { value:'4.5',    label:'★★★★½+' },
+  { value:'4',      label:'★★★★+' },
+  { value:'3',      label:'★★★+' },
+  { value:'unrated',label:'Unrated' },
+];
+const TAG_OPTIONS = [
+  { value:'want',      label:'🎧 Want to listen' },
+  { value:'hard',      label:'📦 Hard to find' },
+  { value:'listened',  label:'✓ Listened' },
+  { value:'unmatched', label:'⚠ Unmatched' },
+];
+
+function extractYear(d) { const m = String(d||'').match(/\d{4}/); return m ? m[0] : ''; }
+
+function getFiltered() {
+  const q = document.getElementById('filter-search').value.trim().toLowerCase();
+  return albums.filter(a => {
+    if (q && !(a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))) return false;
+    if (activeFilters.artist.size && !activeFilters.artist.has(a.artist)) return false;
+    if (activeFilters.year.size   && !activeFilters.year.has(extractYear(a.date))) return false;
+    if (activeFilters.genre.size  && !activeFilters.genre.has(a.genre||'')) return false;
+    if (activeFilters.rating.size) {
+      const matched = [...activeFilters.rating].some(rat => {
+        if (rat === 'unrated') return !a.rating;
+        return (a.rating||0) >= parseFloat(rat);
+      });
+      if (!matched) return false;
+    }
+    if (activeFilters.tags.size) {
+      const matched = [...activeFilters.tags].some(tag => {
+        if (tag === 'want')      return !!a.wantToListen;
+        if (tag === 'hard')      return !!a.hardToFind;
+        if (tag === 'listened')  return !a.wantToListen && !a.unmatched;
+        if (tag === 'unmatched') return !!a.unmatched;
+        return false;
+      });
+      if (!matched) return false;
+    }
+    return true;
+  });
+}
+
+// Build options lists for each field
+function getOptions(field) {
+  if (field === 'artist') return [...new Set(albums.map(a=>a.artist).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  if (field === 'year')   return [...new Set(albums.map(a=>extractYear(a.date)).filter(Boolean))].sort().reverse();
+  if (field === 'rating') return RATING_OPTIONS.map(o=>o.value);
+  if (field === 'tags')   return TAG_OPTIONS.map(o=>o.value);
+  return [];
+}
+function getLabel(field, value) {
+  if (field === 'rating') return RATING_OPTIONS.find(o=>o.value===value)?.label || value;
+  if (field === 'tags')   return TAG_OPTIONS.find(o=>o.value===value)?.label || value;
+  return value;
+}
+
+// ── Dropdown builder ─────────────────────────────────────────
+let openDropdown = null;
+
+function buildDropdown(field, wrap) {
+  // Remove existing
+  const existing = wrap.querySelector('.ms-dropdown');
+  if (existing) existing.remove();
+
+  const opts = getOptions(field);
+  const sel  = activeFilters[field];
+  const hasSearch = opts.length > 10;
+
+  const dd = document.createElement('div');
+  dd.className = 'ms-dropdown open';
+
+  if (hasSearch) {
+    dd.innerHTML = `<div class="ms-search-wrap"><input class="ms-search" placeholder="Search…" type="text"></div>`;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'ms-list';
+
+  function renderItems(filter='') {
+    list.innerHTML = '';
+    const filtered = field === 'artist'
+      ? opts.filter(o => o.toLowerCase().includes(filter.toLowerCase()))
+      : opts;
+    filtered.forEach(val => {
+      const label = getLabel(field, val);
+      const item = document.createElement('label');
+      item.className = 'ms-item' + (sel.has(val) ? ' selected' : '');
+      item.innerHTML = `<input type="checkbox" ${sel.has(val)?'checked':''}><span>${esc(label)}</span>`;
+      item.querySelector('input').addEventListener('change', e => {
+        if (e.target.checked) sel.add(val); else sel.delete(val);
+        item.classList.toggle('selected', sel.has(val));
+        updateFilterButton(field, wrap);
+        updateFilterPills();
+        render();
+      });
+      list.appendChild(item);
+    });
+  }
+
+  renderItems();
+  dd.appendChild(list);
+
+  if (hasSearch) {
+    dd.querySelector('.ms-search').addEventListener('input', e => renderItems(e.target.value));
+  }
+
+  const footer = document.createElement('div');
+  footer.className = 'ms-footer';
+  footer.innerHTML = `<button class="ms-clear">Clear</button><button class="ms-done">Done</button>`;
+  footer.querySelector('.ms-clear').addEventListener('click', () => {
+    sel.clear(); updateFilterButton(field, wrap); updateFilterPills(); render(); closeDropdown();
+  });
+  footer.querySelector('.ms-done').addEventListener('click', closeDropdown);
+  dd.appendChild(footer);
+
+  wrap.appendChild(dd);
+  openDropdown = dd;
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', onOutsideClick, { once: true });
+  }, 0);
+}
+
+function onOutsideClick(e) {
+  if (openDropdown && !openDropdown.closest('.ms-wrap').contains(e.target)) {
+    closeDropdown();
+  } else if (openDropdown) {
+    document.addEventListener('click', onOutsideClick, { once: true });
+  }
+}
+
+function closeDropdown() {
+  if (openDropdown) { openDropdown.classList.remove('open'); openDropdown.remove(); openDropdown = null; }
+}
+
+function updateFilterButton(field, wrap) {
+  const btn = wrap.querySelector('.ms-btn');
+  const sel = activeFilters[field];
+  btn.classList.toggle('has-selection', sel.size > 0);
+  // Update button label
+  const fieldLabel = { artist:'Artist', year:'Year', genre:'Genre', rating:'Rating', tags:'Tags' }[field];
+  const countBadge = sel.size ? `<span class="ms-count">${sel.size}</span>` : '';
+  btn.innerHTML = `${fieldLabel} ${countBadge}<span class="ms-arrow">▾</span>`;
+}
+
+// ── Wire up all filter buttons ────────────────────────────────
+document.querySelectorAll('.ms-wrap').forEach(wrap => {
+  const btn   = wrap.querySelector('.ms-btn');
+  const field = btn.dataset.field;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const dd = wrap.querySelector('.ms-dropdown');
+    if (dd) { closeDropdown(); return; }
+    // Close any other open dropdown first
+    closeDropdown();
+    buildDropdown(field, wrap);
+    btn.classList.add('active');
+  });
+});
+
+// ── Filter pills ──────────────────────────────────────────────
+function updateFilterPills() {
+  const container = document.getElementById('filter-pills');
+  container.innerHTML = '';
+  let any = false;
+  Object.entries(activeFilters).forEach(([field, sel]) => {
+    sel.forEach(val => {
+      any = true;
+      const label = getLabel(field, val);
+      const pill = document.createElement('span');
+      pill.className = 'filter-pill';
+      pill.innerHTML = `<span>${esc(label)}</span><button title="Remove">×</button>`;
+      pill.querySelector('button').addEventListener('click', () => {
+        sel.delete(val);
+        const wrap = document.getElementById(`ms-${field}`);
+        if (wrap) updateFilterButton(field, wrap);
+        updateFilterPills(); render();
+      });
+      container.appendChild(pill);
+    });
+  });
+  if (any) {
+    const clearAll = document.createElement('button');
+    clearAll.className = 'pill-clear-all';
+    clearAll.textContent = 'Clear all';
+    clearAll.addEventListener('click', clearFilters);
+    container.appendChild(clearAll);
+  }
+  container.classList.toggle('visible', any);
+}
+
+function clearFilters() {
+  document.getElementById('filter-search').value = '';
+  Object.values(activeFilters).forEach(s => s.clear());
+  document.querySelectorAll('.ms-wrap').forEach(wrap => {
+    const btn = wrap.querySelector('.ms-btn');
+    const field = btn.dataset.field;
+    updateFilterButton(field, wrap);
+  });
+  updateFilterPills(); render();
+}
+
+function updateDropdowns() {
+  // Refresh artist dropdown options if open (no-op otherwise — built on demand)
+  // Also update button counts in case albums changed
+  document.querySelectorAll('.ms-wrap').forEach(wrap => {
+    const field = wrap.querySelector('.ms-btn').dataset.field;
+    updateFilterButton(field, wrap);
+  });
+}
+
+function getSorted(list) {
+  return [...list].sort((a,b) => {
+    let av=a[sortKey]||'', bv=b[sortKey]||'';
+    if (sortKey==='rating'){av=a.rating||0;bv=b.rating||0;}
+    if (typeof av==='number') return (av-bv)*sortDir;
+    return String(av).localeCompare(String(bv))*sortDir;
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════════════
+function render() {
+  const list  = getSorted(getFiltered());
+  const tbody = document.getElementById('album-tbody');
+  tbody.innerHTML = '';
+
+  const rated = albums.filter(a=>a.rating);
+  const avg   = rated.length ? (rated.reduce((s,a)=>s+a.rating,0)/rated.length).toFixed(1) : '—';
+  document.getElementById('stat-total').textContent = albums.length;
+  document.getElementById('stat-want').textContent  = albums.filter(a=>a.wantToListen).length;
+  document.getElementById('stat-avg').textContent   = avg;
+
+  const fc = document.getElementById('filter-count');
+  const isFiltered = list.length !== albums.length;
+  fc.style.display = isFiltered ? 'flex' : 'none';
+  if (isFiltered) fc.innerHTML = `Showing <span class="pill">${list.length} of ${albums.length}</span> albums &nbsp;<button class="clear-btn" onclick="clearFilters()">Clear filters</button>`;
+
+  document.getElementById('empty-state').style.display = list.length ? 'none' : 'block';
+
+  // Update bulk count
+  if (bulkMode) {
+    const vis = list.filter(a=>selectedIds.has(a.id)).length;
+    document.getElementById('bulk-count').textContent = `${selectedIds.size} selected`;
+    document.getElementById('th-check-cb').indeterminate = vis > 0 && vis < list.length;
+    document.getElementById('th-check-cb').checked = list.length > 0 && vis === list.length;
+  }
+
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.sort===sortKey);
+    const arr=th.querySelector('.sa');
+    if (arr) arr.textContent = th.dataset.sort===sortKey ? (sortDir===1?'↑':'↓') : '↕';
+  });
+
+  list.forEach(a => {
+    const tr = document.createElement('tr');
+    tr.className = 'album-row' + (selectedIds.has(a.id) ? ' selected' : '');
+    const tags = [
+      a.wantToListen ? '<span class="badge badge-want">🎧 want</span>' : '',
+      a.hardToFind   ? '<span class="badge badge-hard">📦 hard</span>' : '',
+      a.unmatched    ? '<span class="badge badge-unmatch">⚠ unmatched</span>' : '',
+    ].filter(Boolean).join(' ');
+
+    const origRec = originals[`id:${a.id}`]
+                 || originals[origKey(a.artist, a.album)]
+                 || originals[origKey(a.album, a.artist)];
+    const origLine = origRec
+      ? `<div style="font-size:10px;color:var(--muted);opacity:.55;margin-top:2px;font-style:normal;font-family:'DM Mono',monospace">` +
+        `sheet: ${esc(origRec.artist)} / <em style="font-family:'Playfair Display',serif">${esc(origRec.album)}</em>` +
+        (origRec.date ? ` · ${esc(origRec.date)}` : '') +
+        `</div>`
+      : '';
+
+    const checkCell = bulkMode
+      ? `<td><input type="checkbox" class="row-cb" data-id="${a.id}" ${selectedIds.has(a.id)?'checked':''}></td>`
+      : '';
+
+    tr.innerHTML = `${checkCell}
+      <td class="td-art">${a.artUrl
+        ? `<img class="art-thumb" src="${esc(a.artUrl)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
+        : `<div class="art-placeholder">♪</div>`}</td>
+      <td class="td-artist">${esc(a.artist)}${origLine}</td>
+      <td class="td-album" data-year="${esc(extractYear(a.date))}"><em>${esc(a.album)}</em></td>
+      <td class="td-date">${esc(a.date||'—')}</td>
+      <td>${a.rating ? starsHTML(a.rating) : '<span style="color:var(--border);font-size:11px">—</span>'}</td>
+      <td><div class="row-tags">${tags||'<span style="color:var(--border);font-size:11px">—</span>'}</div></td>
+      <td class="td-notes" title="${esc(a.notes||'')}">${esc(a.notes||'—')}</td>
+      <td class="row-actions">
+        <button class="btn-ghost btn-sm" onclick="editAlbum('${a.id}')">Edit</button>
+        <button class="btn-ghost btn-sm" style="color:var(--danger);border-color:transparent" onclick="confirmDelete('${a.id}','${esc(a.artist)} – ${esc(a.album)}')">✕</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Checkbox listeners
+  if (bulkMode) {
+    tbody.querySelectorAll('.row-cb').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = cb.dataset.id;
+        if (cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+        updateBulkBar();
+        cb.closest('tr').classList.toggle('selected', cb.checked);
+      });
+    });
+  }
+
+  updateDropdowns();
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ════════════════════════════════════════════════════════════
+// BULK SELECT MODE
+// ════════════════════════════════════════════════════════════
+function enterBulkMode() {
+  bulkMode = true; selectedIds.clear();
+  document.getElementById('bulk-bar').classList.add('visible');
+  document.getElementById('th-check').style.display = '';
+  document.getElementById('btn-bulk-mode').textContent = '☑ Selecting';
+  document.getElementById('btn-bulk-mode').classList.add('btn-primary');
+  document.getElementById('btn-bulk-mode').classList.remove('btn-danger-ghost');
+  render();
+}
+function exitBulkMode() {
+  bulkMode = false; selectedIds.clear();
+  document.getElementById('bulk-bar').classList.remove('visible');
+  document.getElementById('th-check').style.display = 'none';
+  document.getElementById('btn-bulk-mode').textContent = '☐ Select';
+  document.getElementById('btn-bulk-mode').classList.remove('btn-primary');
+  document.getElementById('btn-bulk-mode').classList.add('btn-danger-ghost');
+  render();
+}
+function updateBulkBar() {
+  document.getElementById('bulk-count').textContent = `${selectedIds.size} selected`;
+  document.getElementById('btn-bulk-delete').disabled = selectedIds.size === 0;
+}
+document.getElementById('btn-bulk-mode').addEventListener('click', () => bulkMode ? exitBulkMode() : enterBulkMode());
+document.getElementById('btn-bulk-cancel').addEventListener('click', exitBulkMode);
+document.getElementById('th-check-cb').addEventListener('change', e => {
+  const list = getSorted(getFiltered());
+  if (e.target.checked) list.forEach(a => selectedIds.add(a.id));
+  else selectedIds.clear();
+  updateBulkBar(); render();
+});
+document.getElementById('select-all-cb').addEventListener('change', e => {
+  const list = getSorted(getFiltered());
+  if (e.target.checked) list.forEach(a => selectedIds.add(a.id));
+  else selectedIds.clear();
+  updateBulkBar(); render();
+});
+document.getElementById('btn-bulk-delete').addEventListener('click', () => {
+  if (!selectedIds.size) return;
+  if (!confirm(`Delete ${selectedIds.size} selected album${selectedIds.size>1?'s':''}?`)) return;
+  albums = albums.filter(a => !selectedIds.has(a.id));
+  save(); exitBulkMode();
+});
+document.getElementById('btn-nuke').addEventListener('click', () => {
+  document.getElementById('nuke-count').textContent = albums.length;
+  document.getElementById('nuke-modal').classList.add('open');
+});
+document.getElementById('nuke-cancel').addEventListener('click', () => document.getElementById('nuke-modal').classList.remove('open'));
+document.getElementById('nuke-confirm').addEventListener('click', () => {
+  albums = []; originals = {};
+  save(); saveOriginals();
+  document.getElementById('nuke-modal').classList.remove('open');
+  exitBulkMode();
+});
+
+// ════════════════════════════════════════════════════════════
+// FORM
+// ════════════════════════════════════════════════════════════
+function openPanel(mode) {
+  closeImportPanel();
+  document.getElementById('add-panel').classList.add('open');
+  document.getElementById('add-panel-title').textContent = mode==='edit' ? '— Edit Entry' : '— New Entry';
+  document.getElementById('btn-save').textContent = mode==='edit' ? 'Update Entry' : 'Save Entry';
+}
+function closePanel() { document.getElementById('add-panel').classList.remove('open'); resetForm(); editingId=null; }
+function resetForm() {
+  ['f-artist','f-album','f-date','f-notes'].forEach(id => document.getElementById(id).value='');
+  setRating(0); formWant=false; formHard=false; syncTagToggles();
+  pendingArtUrl=''; document.getElementById('art-preview').style.display='none'; document.getElementById('art-preview').src='';
+  hideLookupStatus(); document.getElementById('form-error').textContent='';
+}
+
+// ════════════════════════════════════════════════════════════
+// LOOKUP ENGINE
+// ════════════════════════════════════════════════════════════
+function showLookupStatus(msg,cls) {
+  const el=document.getElementById('lookup-status'); el.style.display='flex'; el.className='lookup-status '+(cls||''); el.innerHTML=msg;
+}
+function hideLookupStatus() { document.getElementById('lookup-status').style.display='none'; }
+
+function norm(s) {
+  return String(s||'').toLowerCase()
+    .replace(/[\(\[（【][^\)\]）】]{0,60}[\)\]）】]/g,'')
+    .replace(/\b(deluxe|expanded|remaster(ed)?|reissue|anniversary|edition|version|ep|ost|soundtrack|vol\.?\s*\d+)\b/gi,'')
+    .replace(/^the\s+/,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function similarity(a,b) {
+  const na=norm(a), nb=norm(b);
+  if (!na&&!nb) return 1; if (!na||!nb) return 0; if (na===nb) return 1;
+  if (na.includes(nb)||nb.includes(na)) return 0.85;
+  const bigrams=s=>{const m=new Map();for(let i=0;i<s.length-1;i++){const bg=s.slice(i,i+2);m.set(bg,(m.get(bg)||0)+1);}return m;};
+  const ba=bigrams(na),bb=bigrams(nb); let x=0;
+  for(const[k,v]of ba)x+=Math.min(v,bb.get(k)||0);
+  return(2*x)/(na.length+nb.length-2);
+}
+function scoreResult(result, tArtist, tAlbum) {
+  const as=similarity(result.artistName||'',tArtist);
+  const al=similarity(result.collectionName||'',tAlbum);
+  if (similarity(result.artistName||'',tAlbum) > al+0.2) return -1;
+  if (similarity(result.collectionName||'',tArtist) > as+0.2) return -1;
+  if (as<0.15 && al<0.2) return -1;
+  return Math.min(as,0.55)*0.35 + al*0.65;
+}
+
+// ── Source 1: Last.fm — largest music-specific catalog ───────
+async function lastfmLookup(artist, album) {
+  try {
+    // Last.fm public API — no key required for album.getinfo
+    const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo`+
+      `&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}`+
+      `&autocorrect=1&format=json&api_key=d8bc1f03ef025f5833d88fd19d603883`;
+    const r = await rateLimitedFetch(url);
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (data.error || !data.album) return null;
+    const al = data.album;
+    const artistSim = similarity(al.artist||'', artist);
+    const albumSim  = similarity(al.name||'', album);
+    // Reject swaps / bad matches
+    if (similarity(al.artist||'', album) > albumSim+0.2) return null;
+    if (artistSim < 0.15 && albumSim < 0.2) return null;
+    // Parse date from wiki.published: "12 Jun 1997, 00:00"
+    let date = null;
+    const pub = al.wiki?.published||'';
+    const dm = pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
+    if (dm) {
+      const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+      date = `${dm[3]}-${mo[dm[2]]||'01'}-${dm[1].padStart(2,'0')}`;
+    }
+    // Also try tags for the year if no wiki date
+    if (!date) {
+      const ym = pub.match(/\d{4}/);
+      if (ym) date = ym[0];
+    }
+    const genre = al.tags?.tag?.[0]?.name || null;
+    const art   = al.image?.find(i=>i.size==='extralarge')?.['#text'] || null;
+    const score = Math.min(artistSim,0.55)*0.35 + albumSim*0.65;
+    return { date, genre, art: (art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
+             matchedArtist:al.artist, matchedAlbum:al.name, score };
+  } catch(e) { return null; }
+}
+
+// ── Source 2: iTunes ─────────────────────────────────────────
+async function itunesSearch(q, limit=12) {
+  for (let attempt=0; attempt<=MAX_RETRIES; attempt++) {
+    try {
+      const r = await rateLimitedFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=album&limit=${limit}`);
+      const data = await r.json();
+      const results = data.results||[];
+      if (results.length===0 && attempt<MAX_RETRIES) { await delay(RETRY_DELAY_MS*(attempt+1)); continue; }
+      return results;
+    } catch(e) {
+      if (e.message==='aborted') throw e;
+      if (attempt<MAX_RETRIES) await delay(RETRY_DELAY_MS);
+    }
+  }
+  return [];
+}
+async function itunesLookupBest(artist, album) {
+  const na=norm(artist), nb=norm(album);
+  const queries=[...new Set([`${artist} ${album}`,`${na} ${nb}`,nb,na])].filter(q=>q.trim().length>1);
+  let bestResult=null, bestScore=-Infinity;
+  for (const q of queries) {
+    try {
+      const results = await itunesSearch(q);
+      for (const r of results) {
+        const s = scoreResult(r, artist, album);
+        if (s>bestScore) { bestScore=s; bestResult=r; }
+      }
+      if (bestScore>=0.72) break;
+    } catch(e) { if(e.message==='aborted') return null; }
+  }
+  if (bestScore>=0.28 && bestResult) return {
+    date: bestResult.releaseDate ? bestResult.releaseDate.split('T')[0] : null,
+    genre: bestResult.primaryGenreName||null,
+    art: bestResult.artworkUrl100 ? bestResult.artworkUrl100.replace('100x100','600x600') : null,
+    matchedArtist: bestResult.artistName, matchedAlbum: bestResult.collectionName, score: bestScore,
+  };
+  return null;
+}
+
+// ── Source 3: MusicBrainz ─────────────────────────────────────
+async function musicBrainzLookup(artist, album) {
+  try {
+    const q = `release:"${norm(album).replace(/"/g,'')}" AND artist:"${norm(artist).replace(/"/g,'')}"`;
+    const r = await rateLimitedFetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=8&fmt=json`,{headers:{'User-Agent':'ListenLog/1.0'}});
+    if (!r.ok) return null;
+    const data = await r.json();
+    let best=null, bestScore=-Infinity;
+    for (const rel of (data.releases||[])) {
+      const s = scoreResult({artistName:rel['artist-credit']?.[0]?.artist?.name||'',collectionName:rel.title},artist,album);
+      if (s>bestScore) { bestScore=s; best=rel; }
+    }
+    if (!best||bestScore<0.25) return null;
+    return { date:best['first-release-date']||best.date||null, genre:best.genres?.[0]?.name||best.tags?.[0]?.name||null,
+             art:null, matchedArtist:best['artist-credit']?.[0]?.artist?.name||artist, matchedAlbum:best.title||album, score:bestScore };
+  } catch(e) { return null; }
+}
+
+// ── Source 4: Discogs (public, no auth needed for search) ─────
+async function discogsLookup(artist, album) {
+  try {
+    const q = encodeURIComponent(`${norm(artist)} ${norm(album)}`);
+    const r = await rateLimitedFetch(`https://api.discogs.com/database/search?q=${q}&type=release&format=Album&per_page=8`,{headers:{'User-Agent':'ListenLog/1.0'}});
+    if (!r.ok) return null;
+    const data = await r.json();
+    let best=null, bestScore=-Infinity;
+    for (const res of (data.results||[])) {
+      const parts = String(res.title||'').split(' - ');
+      const rArtist=parts[0]||'', rAlbum=parts.slice(1).join(' - ')||res.title;
+      const s = scoreResult({artistName:rArtist,collectionName:rAlbum},artist,album);
+      if (s>bestScore) { bestScore=s; best={...res,_rArtist:rArtist,_rAlbum:rAlbum}; }
+    }
+    if (!best||bestScore<0.25) return null;
+    return { date:best.year?String(best.year):null, genre:best.genre?.[0]||best.style?.[0]||null,
+             art:best.cover_image&&!best.cover_image.includes('spacer.gif')?best.cover_image:null,
+             matchedArtist:best._rArtist, matchedAlbum:best._rAlbum, score:bestScore };
+  } catch(e) { return null; }
+}
+
+// ── Master: all 4 sources, best wins ─────────────────────────
+async function lookupBest(artist, album) {
+  const sources = [
+    { fn:()=>lastfmLookup(artist,album),       name:'lastfm'       },
+    { fn:()=>itunesLookupBest(artist,album),    name:'itunes'       },
+    { fn:()=>musicBrainzLookup(artist,album),   name:'musicbrainz'  },
+    { fn:()=>discogsLookup(artist,album),       name:'discogs'      },
+  ];
+  let bestResult=null, bestScore=-Infinity, bestSource=null;
+  for (const {fn, name} of sources) {
+    try {
+      const res = await fn();
+      if (res && res.score > bestScore) { bestScore=res.score; bestResult=res; bestSource=name; }
+      if (bestScore>=0.75) break;
+    } catch(e) { if(e?.message==='aborted') return null; }
+  }
+  if (!bestResult || bestScore<0.22) return null;
+  return {
+    result: {
+      releaseDate:      bestResult.date&&bestResult.date.length>4 ? bestResult.date : null,
+      _mbDate:          bestResult.date,
+      primaryGenreName: bestResult.genre||'',
+      artworkUrl100:    bestResult.art||null,
+      collectionName:   bestResult.matchedAlbum||album,
+      artistName:       bestResult.matchedArtist||artist,
+    },
+    score:  bestScore,
+    source: bestSource,
+  };
+}
+
+// Shim used by manual auto-fill button
+async function itunesLookup(artist,album) {
+  const found = await lookupBest(artist,album);
+  return found ? found.result : null;
+}
+
+async function lookupAlbum() {
+  const artist=document.getElementById('f-artist').value.trim(), album=document.getElementById('f-album').value.trim();
+  if(!artist||!album){showLookupStatus('Enter both artist and album first.','error');return;}
+  showLookupStatus('<div class="spinner"></div> Looking up…','');
+  try{
+    const found=await lookupBest(artist,album);
+    if(found){
+      const al=found.result;
+      const date=al.releaseDate||al._mbDate||'';
+      const art=al.artworkUrl100||'';
+      const srcLabels={lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MusicBrainz',discogs:'Discogs'};
+      const srcClass=found.source==='musicbrainz'?' src-mb':'';
+      const src=found.source?` <span class="src-badge${srcClass}">${srcLabels[found.source]||found.source}</span>`:'';
+      if(date&&!document.getElementById('f-date').value) document.getElementById('f-date').value=date;
+      if(art){pendingArtUrl=art;const p=document.getElementById('art-preview');p.src=art;p.style.display='block';}
+      showLookupStatus(`✓ ${esc(al.collectionName||album)} (${(date||'').slice(0,4)||'?'})${src}`,'found');
+    }else{
+      showLookupStatus('No match found on Last.fm, iTunes, MusicBrainz, or Discogs. Fill in manually.','error');
+    }
+  }catch(e){showLookupStatus('Lookup failed (network error).','error');}
+}
+
+// ════════════════════════════════════════════════════════════
+// CRUD
+// ════════════════════════════════════════════════════════════
+function addOrUpdateAlbum() {
+  const artist=document.getElementById('f-artist').value.trim(), album=document.getElementById('f-album').value.trim();
+  const ferr=document.getElementById('form-error');
+  if(!artist||!album){ferr.textContent='Artist and Album are required.';return;}
+  ferr.textContent='';
+  const entry={
+    id:editingId||uid(), artist, album,
+    date:document.getElementById('f-date').value.trim(),
+    rating:currentRating||null,
+    notes:document.getElementById('f-notes').value.trim(),
+    wantToListen:formWant, hardToFind:formWant&&formHard,
+    unmatched: editingId ? (albums.find(a=>a.id===editingId)||{}).unmatched||false : false,
+    artUrl:pendingArtUrl||(editingId?(albums.find(a=>a.id===editingId)||{}).artUrl||'':''),
+    added:editingId?(albums.find(a=>a.id===editingId)||{}).added:Date.now(),
+  };
+  if(!entry.wantToListen) entry.hardToFind=false;
+  if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
+  else albums.unshift(entry);
+  save(); closePanel(); render();
+}
+function editAlbum(id) {
+  const a=albums.find(x=>x.id===id); if(!a)return;
+  editingId=id;
+  document.getElementById('f-artist').value=a.artist; document.getElementById('f-album').value=a.album;
+  document.getElementById('f-date').value=a.date||'';
+  document.getElementById('f-notes').value=a.notes||'';
+  setRating(a.rating||0); formWant=!!a.wantToListen; formHard=!!a.hardToFind; syncTagToggles();
+  pendingArtUrl=a.artUrl||'';
+  if(a.artUrl){const p=document.getElementById('art-preview');p.src=a.artUrl;p.style.display='block';}
+  hideLookupStatus(); openPanel('edit'); window.scrollTo({top:0,behavior:'smooth'});
+}
+function confirmDelete(id,label) {
+  pendingDeleteId=id; document.getElementById('delete-desc').textContent=`Remove "${label}"?`;
+  document.getElementById('delete-modal').classList.add('open');
+}
+function doDelete() {
+  if(pendingDeleteId){albums=albums.filter(a=>a.id!==pendingDeleteId);save();render();}
+  document.getElementById('delete-modal').classList.remove('open'); pendingDeleteId=null;
+}
+
+// ════════════════════════════════════════════════════════════
+// RATE-LIMITED REQUEST QUEUE
+// — iTunes 429s silently (returns 0 results). We serialize all
+//   HTTP requests through one queue with a minimum gap + jitter.
+// ════════════════════════════════════════════════════════════
+let scanRunning=false, scanPaused=false, scanAbort=false;
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+const REQ_INTERVAL_MS = 120;   // min ms between any two HTTP requests
+const RETRY_DELAY_MS  = 2000;  // back-off when we get 0 results (likely throttled)
+const MAX_RETRIES     = 2;
+let   lastReqTime     = 0;
+
+async function rateLimitedFetch(url, opts) {
+  // honour pause
+  while (scanPaused && !scanAbort) await delay(200);
+  if (scanAbort) throw new Error('aborted');
+
+  const now  = Date.now();
+  const wait = REQ_INTERVAL_MS - (now - lastReqTime);
+  if (wait > 0) await delay(wait + Math.random() * 40); // small jitter
+  lastReqTime = Date.now();
+
+  return fetch(url, opts);
+}
+
+async function itunesSearch(q, limit=12) {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const r    = await rateLimitedFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=album&limit=${limit}`);
+      const data = await r.json();
+      const results = data.results || [];
+      // 0 results from a query that should have results = likely throttled → retry
+      if (results.length === 0 && attempt < MAX_RETRIES) {
+        await delay(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      return results;
+    } catch(e) {
+      if (e.message === 'aborted') throw e;
+      if (attempt < MAX_RETRIES) await delay(RETRY_DELAY_MS);
+    }
+  }
+  return [];
+}
+
+async function musicBrainzLookup(artist, album) {
+  try {
+    const q = `release:"${norm(album).replace(/"/g,'')}" AND artist:"${norm(artist).replace(/"/g,'')}"`;
+    const r = await rateLimitedFetch(
+      `https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=8&fmt=json`,
+      { headers: {'User-Agent':'ListenLog/1.0'} }
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    let best=null, bestScore=-Infinity;
+    for (const rel of (data.releases||[])) {
+      const s = scoreResult({artistName:rel['artist-credit']?.[0]?.artist?.name||'', collectionName:rel.title}, artist, album);
+      if (s > bestScore) { bestScore=s; best=rel; }
+    }
+    if (!best || bestScore < 0.25) return null;
+    return { date: best['first-release-date']||best.date||null, genre: best.genres?.[0]?.name||best.tags?.[0]?.name||null };
+  } catch(e) { return null; }
+}
+
+// Full lookup — sequential queries (no parallel), stops at first confident hit
+async function lookupBest(artist, album) {
+  const na=norm(artist), nb=norm(album);
+  // Deduplicated query list — we run these ONE AT A TIME through the rate-limited queue
+  const queries = [...new Set([
+    `${artist} ${album}`,
+    `${na} ${nb}`,
+    nb,           // album only
+    na,           // artist only
+  ])].filter(q => q.trim().length > 1);
+
+  let bestResult=null, bestScore=-Infinity;
+
+  for (const q of queries) {
+    try {
+      const results = await itunesSearch(q);
+      for (const r of results) {
+        const s = scoreResult(r, artist, album);
+        if (s > bestScore) { bestScore=s; bestResult=r; }
+      }
+      if (bestScore >= 0.72) break; // confident — skip remaining queries
+    } catch(e) {
+      if (e.message === 'aborted') return null;
+    }
+  }
+
+  if (bestScore >= 0.30 && bestResult) return { result:bestResult, score:bestScore, source:'itunes' };
+
+  // MusicBrainz fallback
+  try {
+    const mb = await musicBrainzLookup(artist, album);
+    if (mb?.date) return {
+      result: { releaseDate:mb.date.length>4?mb.date:null, _mbDate:mb.date, primaryGenreName:mb.genre||'', artworkUrl100:null, collectionName:album, artistName:artist },
+      score: 0.5, source: 'musicbrainz'
+    };
+  } catch(e) {}
+  return null;
+}
+
+// ── Serial worker — processes one album at a time ────────────
+// (Parallel workers each fire multiple requests = rate limiting death)
+async function serialMap(items, fn, { onProgress } = {}) {
+  const results = [];
+  for (let i = 0; i < items.length; i++) {
+    while (scanPaused && !scanAbort) await delay(200);
+    if (scanAbort) break;
+    try { results.push(await fn(items[i], i)); }
+    catch(e) { results.push(null); }
+    if (onProgress) onProgress(i+1, items.length);
+  }
+  return results;
+}
+
+// Keep batchedMap as alias for import compat (now just calls serialMap)
+async function batchedMap(items, fn, opts={}) {
+  return serialMap(items, fn, opts);
+}
+
+// ════════════════════════════════════════════════════════════
+// RE-SCAN LIBRARY  — with resume support
+// ════════════════════════════════════════════════════════════
+
+// Scan progress is stored in localStorage so Stop → Resume works across page loads.
+// Schema: { scannedIds: Set<id>, results: rescanResult[] }
+const SCAN_PROGRESS_KEY = 'listenLogScanProgress';
+
+function loadScanProgress() {
+  try {
+    const raw = localStorage.getItem(SCAN_PROGRESS_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    p.scannedIds = new Set(p.scannedIds);
+    return p;
+  } catch(e) { return null; }
+}
+function saveScanProgress(scannedIds, results) {
+  localStorage.setItem(SCAN_PROGRESS_KEY, JSON.stringify({
+    scannedIds: [...scannedIds],
+    results,
+    savedAt: Date.now(),
+  }));
+}
+function clearScanProgress() {
+  localStorage.removeItem(SCAN_PROGRESS_KEY);
+}
+
+function updateRescanButton() {
+  const prog = loadScanProgress();
+  const btn  = document.getElementById('btn-rescan');
+  if (prog && prog.scannedIds.size > 0 && prog.scannedIds.size < albums.length) {
+    btn.textContent = `⟳ Resume Scan (${prog.scannedIds.size}/${albums.length})`;
+    btn.title = `${prog.scannedIds.size} albums already scanned — click to continue from where you left off`;
+  } else {
+    btn.textContent = '⟳ Re-scan Library';
+    btn.title = 'Re-scan all albums against original source data';
+  }
+}
+
+async function startRescan() {
+  if (scanRunning) return;
+  if (!albums.length) { alert('No albums to scan.'); return; }
+
+  // Check for existing partial progress
+  const existingProgress = loadScanProgress();
+  const hasPartial = existingProgress && existingProgress.scannedIds.size > 0
+                  && existingProgress.scannedIds.size < albums.length;
+
+  let scannedIds   = new Set();
+  let partialResults = [];
+
+  if (hasPartial) {
+    const resume = confirm(
+      `Resume previous scan?\n\n` +
+      `${existingProgress.scannedIds.size} of ${albums.length} albums already scanned.\n\n` +
+      `OK = Resume from where you left off\nCancel = Start fresh`
+    );
+    if (resume) {
+      scannedIds     = existingProgress.scannedIds;
+      partialResults = existingProgress.results || [];
+    } else {
+      clearScanProgress();
+    }
+  }
+
+  const bar     = document.getElementById('global-progress');
+  const fillEl  = document.getElementById('gprogress-fill');
+  const pctEl   = document.getElementById('gprogress-pct');
+  const foundEl = document.getElementById('gprog-found');
+  const skipEl  = document.getElementById('gprog-skipped');
+  const failEl  = document.getElementById('gprog-failed');
+  const etaEl   = document.getElementById('gprog-eta');
+  const labelEl = document.getElementById('gprogress-label');
+
+  labelEl.innerHTML = 'Scanning library… <button class="btn-pause" id="btn-pause-global">Pause</button><button class="btn-pause" id="btn-stop-global" style="color:var(--danger);margin-left:4px">Stop</button>';
+  document.getElementById('btn-pause-global').addEventListener('click', togglePause);
+  document.getElementById('btn-stop-global').addEventListener('click', () => { scanAbort=true; scanPaused=false; });
+
+  bar.style.display = 'block';
+  document.getElementById('btn-rescan').disabled = true;
+  document.getElementById('btn-rescan').textContent = '⟳ Scanning…';
+
+  scanAbort=false; scanPaused=false; scanRunning=true;
+
+  // Seed counts from already-completed results
+  rescanResults = [...partialResults];
+  let countFound   = rescanResults.filter(r=>r.changes?.length>0).length;
+  let countSkipped = rescanResults.filter(r=>!r.changes?.length&&!r.notFound).length;
+  let countFailed  = rescanResults.filter(r=>r.notFound).length;
+
+  // Only scan albums not yet covered
+  const toScan = albums.filter(a => !scannedIds.has(a.id));
+  const totalAlbums = albums.length;
+
+  const updateProgress = () => {
+    const pct = Math.min(100, Math.round(scannedIds.size / totalAlbums * 100));
+    fillEl.style.width = pct+'%'; pctEl.textContent = pct+'%';
+    foundEl.textContent = countFound; skipEl.textContent = countSkipped; failEl.textContent = countFailed;
+  };
+  updateProgress();
+
+  const startTime = Date.now();
+
+  await serialMap(toScan, async (a) => {
+    if (scanAbort) return;
+
+    const origRec = originals[`id:${a.id}`]
+                 || originals[origKey(a.artist, a.album)]
+                 || originals[origKey(a.album, a.artist)];
+    const searchArtist = origRec ? origRec.artist : a.artist;
+    const searchAlbum  = origRec ? origRec.album  : a.album;
+
+    const found = await lookupBest(searchArtist, searchAlbum);
+
+    if (found) {
+      const r = found.result;
+      const newDate  = r.releaseDate ? r.releaseDate.split('T')[0] : (r._mbDate||null);
+      const newArt   = r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null;
+      const newGenre = r.primaryGenreName||null;
+
+      const changes = [];
+      if (origRec && (a.artist !== origRec.artist || a.album !== origRec.album)) {
+        changes.push({ field:'artist/album', old:`${a.artist} / ${a.album}`, newVal:`${origRec.artist} / ${origRec.album}`, action:'restore_fields' });
+      }
+      if (newDate && newDate !== a.date) changes.push({field:'date', old:a.date||'', newVal:newDate, action:'set_date'});
+      if (newArt && !a.artUrl)           changes.push({field:'art',  old:'',         newVal:newArt,  action:'set_art'});
+
+      rescanResults.push({albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
+        matchedArtist:r.artistName||null, matchedAlbum:r.collectionName||null,
+        score:found.score, source:found.source, changes, accepted:changes.length>0});
+      if (changes.length>0) countFound++; else countSkipped++;
+    } else {
+      rescanResults.push({albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
+        matchedArtist:null, matchedAlbum:null, score:0, source:null, changes:[], accepted:false, notFound:true});
+      countFailed++;
+    }
+
+    scannedIds.add(a.id);
+
+    // Save progress every 10 albums so resume is granular
+    if (scannedIds.size % 10 === 0) saveScanProgress(scannedIds, rescanResults);
+
+  }, {
+    onProgress(doneSoFar, total) {
+      if (scanAbort) return;
+      updateProgress();
+      const elapsed = (Date.now()-startTime)/1000, rate = doneSoFar/elapsed, remain = (total-doneSoFar);
+      if (rate>0 && remain>0) {
+        const s = Math.round(remain/rate);
+        etaEl.textContent = `~${Math.floor(s/60)>0?Math.floor(s/60)+'m ':''}${s%60}s · ${rate.toFixed(1)}/s`;
+      }
+    }
+  });
+
+  scanRunning = false;
+  bar.style.display = 'none';
+  document.getElementById('btn-rescan').disabled = false;
+
+  if (scanAbort) {
+    // Save partial progress for later resume
+    saveScanProgress(scannedIds, rescanResults);
+    updateRescanButton();
+    // Still show modal for whatever was scanned
+    if (rescanResults.length > 0) {
+      const doReview = confirm(`Scan stopped at ${scannedIds.size}/${totalAlbums} albums.\nProgress saved — you can resume later.\n\nReview results so far?`);
+      if (doReview) showRescanModal();
+    }
+  } else {
+    // Completed fully — clear saved progress
+    clearScanProgress();
+    updateRescanButton();
+    showRescanModal();
+  }
+}
+
+function togglePause() {
+  if (!scanRunning) return;
+  scanPaused = !scanPaused;
+  document.getElementById('btn-pause-global').textContent = scanPaused ? 'Resume' : 'Pause';
+}
+
+// ── RESCAN REVIEW MODAL ──────────────────────────────────────
+const HIGH_CONF = 0.78; // threshold for auto-approval
+
+function confPill(score) {
+  if (score >= HIGH_CONF) return `<span class="conf-pill conf-high-pill">${Math.round(score*100)}%</span>`;
+  if (score >= 0.5)       return `<span class="conf-pill conf-med-pill">${Math.round(score*100)}%</span>`;
+  return                         `<span class="conf-pill conf-low-pill">${Math.round(score*100)}%</span>`;
+}
+function srcBadge(source) {
+  const labels = {lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'};
+  const cls = source==='musicbrainz' ? ' src-mb' : '';
+  return source ? `<span class="src-badge${cls}">${labels[source]||source}</span>` : '';
+}
+
+function showRescanModal() {
+  // Partition results
+  const autoApproved = rescanResults.filter(r => r.changes.length>0 && r.score>=HIGH_CONF);
+  const needsReview  = rescanResults.filter(r => r.changes.length>0 && r.score<HIGH_CONF);
+  const notFound     = rescanResults.filter(r => r.notFound);
+  const unchanged    = rescanResults.filter(r => !r.changes.length && !r.notFound);
+
+  // Auto-apply high-confidence matches immediately
+  let autoAppliedCount = 0;
+  autoApproved.forEach(res => {
+    const a = albums.find(x=>x.id===res.albumId); if(!a) return;
+    res.changes.forEach(c => applyChange(a, res, c));
+    autoAppliedCount++;
+  });
+  if (autoAppliedCount) { save(); render(); }
+
+  document.getElementById('rescan-modal-desc').textContent =
+    `Scanned ${rescanResults.length} albums.`;
+
+  document.getElementById('rescan-summary').innerHTML = `
+    <span><b>${autoAppliedCount}</b> auto-approved</span>
+    <span><b>${needsReview.length}</b> need review</span>
+    <span><b>${unchanged.length}</b> already correct</span>
+    <span><b>${notFound.length}</b> not found</span>`;
+
+  // Auto-approved section
+  const autoSec = document.getElementById('rescan-auto-section');
+  document.getElementById('rescan-auto-count').textContent = `(${autoAppliedCount})`;
+  autoSec.style.display = autoAppliedCount ? 'block' : 'none';
+
+  // Manual review section — thumbs cards
+  const reviewSec = document.getElementById('rescan-review-section');
+  const cardsWrap = document.getElementById('rescan-cards');
+  cardsWrap.innerHTML = '';
+  document.getElementById('rescan-pending-count').textContent = `(${needsReview.length})`;
+  reviewSec.style.display = needsReview.length ? 'block' : 'none';
+
+  needsReview.forEach(res => {
+    res.decision = null; // 'up' | 'down' | null
+    const card = document.createElement('div');
+    card.className = 'rescan-card';
+    card.dataset.albumId = res.albumId;
+
+    const changesHTML = res.changes
+      .filter(c=>c.field!=='art')
+      .map(c=>`<span class="field-old">${esc(c.old||'—')}</span><span class="change-arrow">→</span><span class="field-new">${esc(c.newVal)}</span>`)
+      .join(' &nbsp; ');
+    const hasArt = res.changes.some(c=>c.field==='art');
+
+    card.innerHTML = `
+      <div class="rescan-col">
+        <div class="rescan-col-label">Your sheet</div>
+        <div class="rescan-artist">${esc(res.origArtist)}</div>
+        <div class="rescan-album-name">${esc(res.origAlbum)}</div>
+      </div>
+      <div class="rescan-divider"></div>
+      <div class="rescan-col">
+        <div class="rescan-col-label">Match found</div>
+        <div class="rescan-artist">${esc(res.matchedArtist||res.origArtist)}</div>
+        <div class="rescan-album-name">${esc(res.matchedAlbum||res.origAlbum)}</div>
+        <div class="rescan-meta">
+          ${changesHTML ? `<span>${changesHTML}</span>` : ''}
+          ${hasArt ? '<span style="color:var(--good)">+ art</span>' : ''}
+          ${confPill(res.score)}
+          ${srcBadge(res.source)}
+        </div>
+      </div>
+      <div class="rescan-divider"></div>
+      <div class="rescan-actions">
+        <button class="thumb-btn up" title="Accept match">👍</button>
+        <button class="thumb-btn down" title="Revert to sheet data">👎</button>
+      </div>`;
+
+    card.querySelector('.thumb-btn.up').addEventListener('click', () => {
+      res.decision = res.decision === 'up' ? null : 'up';
+      card.className = 'rescan-card' + (res.decision==='up' ? ' decided-up' : res.decision==='down' ? ' decided-down' : '');
+      card.querySelector('.thumb-btn.up').classList.toggle('active', res.decision==='up');
+      card.querySelector('.thumb-btn.down').classList.toggle('active', false);
+      updateReviewProgress(needsReview);
+    });
+    card.querySelector('.thumb-btn.down').addEventListener('click', () => {
+      res.decision = res.decision === 'down' ? null : 'down';
+      card.className = 'rescan-card' + (res.decision==='up' ? ' decided-up' : res.decision==='down' ? ' decided-down' : '');
+      card.querySelector('.thumb-btn.down').classList.toggle('active', res.decision==='down');
+      card.querySelector('.thumb-btn.up').classList.toggle('active', false);
+      updateReviewProgress(needsReview);
+    });
+
+    cardsWrap.appendChild(card);
+  });
+
+  document.getElementById('rescan-no-changes').style.display =
+    (needsReview.length===0 && autoAppliedCount===0) ? 'block' : 'none';
+
+  updateReviewProgress(needsReview);
+  document.getElementById('rescan-modal').classList.add('open');
+}
+
+function updateReviewProgress(needsReview) {
+  const decided = needsReview.filter(r=>r.decision!==null).length;
+  const total   = needsReview.length;
+  document.getElementById('rescan-review-progress').textContent =
+    total ? `${decided} / ${total} reviewed` : '';
+}
+
+function applyChange(a, res, c) {
+  if (c.action==='restore_fields') { a.artist=res.origArtist; a.album=res.origAlbum; }
+  if (c.action==='set_date')  a.date   = c.newVal;
+  if (c.action==='set_art')   a.artUrl = c.newVal;
+}
+
+document.getElementById('rescan-cancel').addEventListener('click', () => {
+  document.getElementById('rescan-modal').classList.remove('open');
+  rescanResults = [];
+});
+
+document.getElementById('rescan-apply').addEventListener('click', () => {
+  let accepted=0, reverted=0;
+  // Get needsReview slice from rescanResults
+  const needsReview = rescanResults.filter(r=>r.changes.length>0 && r.score<HIGH_CONF);
+  needsReview.forEach(res => {
+    const a = albums.find(x=>x.id===res.albumId); if(!a) return;
+    if (res.decision==='up') {
+      res.changes.forEach(c => applyChange(a, res, c));
+      accepted++;
+    } else if (res.decision==='down') {
+      // Revert to original sheet data and mark as unmatched
+      if (originals[`id:${a.id}`]) {
+        const orig = originals[`id:${a.id}`];
+        a.artist = orig.artist;
+        a.album  = orig.album;
+        if (orig.date) a.date = orig.date;
+      }
+      a.unmatched = true;
+      reverted++;
+    }
+    // undecided = leave as-is
+  });
+  save(); render();
+  document.getElementById('rescan-modal').classList.remove('open');
+  rescanResults = [];
+  const msg = [
+    accepted ? `${accepted} match${accepted>1?'es':''} accepted` : '',
+    reverted ? `${reverted} reverted to sheet data` : '',
+  ].filter(Boolean).join(', ');
+  if (msg) alert(`✓ ${msg}.`);
+});
+
+// ════════════════════════════════════════════════════════════
+// CSV IMPORT
+// ════════════════════════════════════════════════════════════
+function openImportPanel()  { closePanel(); document.getElementById('import-panel').classList.add('open'); }
+function closeImportPanel() {
+  if(scanRunning){scanAbort=true;scanRunning=false;}
+  document.getElementById('import-panel').classList.remove('open');
+  document.getElementById('import-mapping').style.display='none';
+  document.getElementById('progress-wrap').classList.remove('visible');
+  document.getElementById('import-status').textContent='';
+  csvRows=[];csvHeaders=[];csvColMap={artist:'',album:'',date:'',rating:''};
+}
+
+function parseCSV(text) {
+  return text.split(/\r?\n/).filter(l=>l.trim()).map(line=>{
+    const cells=[]; let cur='',inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'&&!inQ){inQ=true;continue;}
+      if(c==='"'&&inQ){if(line[i+1]==='"'){cur+='"';i++;}else inQ=false;continue;}
+      if((c===','||c==='\t')&&!inQ){cells.push(cur.trim());cur='';continue;}
+      cur+=c;
+    }
+    cells.push(cur.trim()); return cells;
+  });
+}
+function guessColMap(headers) {
+  const h=headers.map(x=>x.toLowerCase().replace(/[^a-z0-9]/g,''));
+  const find=(...cc)=>{for(const c of cc){const i=h.findIndex(x=>x.includes(c));if(i!==-1)return headers[i];}return '';};
+  return {artist:find('artist','band','performer'),album:find('album','title','record'),date:find('year','date','release'),rating:find('rating','score','stars')};
+}
+
+function handleCSVFiles(files) {
+  if(!files.length)return;
+  Promise.all([...files].map(f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsText(f);})))
+  .then(texts=>{
+    let allRows=[],sharedHeaders=null;
+    texts.forEach(text=>{
+      const rows=parseCSV(text);if(rows.length<2)return;
+      const hdrs=rows[0];const data=rows.slice(1).filter(r=>r.some(c=>c.trim()));
+      if(!sharedHeaders)sharedHeaders=hdrs;
+      allRows=allRows.concat(data.map(row=>{const m={};hdrs.forEach((h,i)=>{m[h]=row[i]||'';});return m;}));
+    });
+    if(!sharedHeaders||!allRows.length){
+      document.getElementById('import-status').textContent='No data found.';
+      document.getElementById('import-status').className='err'; return;
+    }
+    csvHeaders=sharedHeaders; csvRows=allRows; csvColMap=guessColMap(sharedHeaders);
+    buildColMapUI(); buildPreview();
+    document.getElementById('import-mapping').style.display='block';
+  });
+}
+function buildColMapUI() {
+  const wrap=document.getElementById('col-map-row'); wrap.innerHTML='';
+  [{key:'artist',label:'Artist'},{key:'album',label:'Album'},{key:'date',label:'Year/Date'},{key:'rating',label:'Rating (opt)'}].forEach(f=>{
+    const g=document.createElement('div');g.className='form-group';
+    const lbl=document.createElement('label');lbl.textContent=f.label;
+    const sel=document.createElement('select');
+    sel.innerHTML='<option value="">(none)</option>'+csvHeaders.map(h=>`<option value="${esc(h)}"${csvColMap[f.key]===h?' selected':''}>${esc(h)}</option>`).join('');
+    sel.addEventListener('change',()=>{csvColMap[f.key]=sel.value;buildPreview();});
+    g.appendChild(lbl);g.appendChild(sel);wrap.appendChild(g);
+  });
+}
+function buildPreview() {
+  let html='<p style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin:8px 0 4px">Preview</p><table>';
+  html+='<tr><th>Artist</th><th>Album</th><th>Date</th><th>Rating</th></tr>';
+  csvRows.slice(0,5).forEach(r=>{
+    html+=`<tr><td>${esc(csvColMap.artist?r[csvColMap.artist]||'':'')}</td><td>${esc(csvColMap.album?r[csvColMap.album]||'':'')}</td><td>${esc(csvColMap.date?r[csvColMap.date]||'':'')}</td><td>${esc(csvColMap.rating?r[csvColMap.rating]||'':'')}</td></tr>`;
+  });
+  html+='</table>';
+  document.getElementById('import-preview').innerHTML=html;
+}
+
+async function doImport() {
+  if(!csvColMap.artist||!csvColMap.album){
+    document.getElementById('import-status').textContent='Map Artist and Album columns.';
+    document.getElementById('import-status').className='err'; return;
+  }
+  const statusEl=document.getElementById('import-status');
+  statusEl.textContent='Processing…'; statusEl.className='';
+  const keyOf=a=>`${a.artist.toLowerCase().trim()}|||${a.album.toLowerCase().trim()}`;
+  const existingMap=new Map(albums.map(a=>[keyOf(a),a]));
+  const parsed=csvRows.map(r=>({
+    rawArtist:(r[csvColMap.artist]||'').trim(),
+    rawAlbum:(r[csvColMap.album]||'').trim(),
+    rawDate:csvColMap.date?(r[csvColMap.date]||'').trim():'',
+    rawRating:csvColMap.rating?(r[csvColMap.rating]||'').trim():'',
+  })).filter(r=>r.rawArtist&&r.rawAlbum);
+
+  let added=0,updated=0;
+  parsed.forEach(r=>{
+    const k=`${r.rawArtist.toLowerCase()}|||${r.rawAlbum.toLowerCase()}`;
+    let rating=null;
+    if(r.rawRating){const p=parseFloat(r.rawRating);if(!isNaN(p)&&p>=0&&p<=5)rating=p;}
+    const origRec={artist:r.rawArtist,album:r.rawAlbum,date:r.rawDate,rating:r.rawRating};
+    // Index by both directions so swapped entries are still found
+    originals[k]=origRec;
+    originals[`${r.rawAlbum.toLowerCase()}|||${r.rawArtist.toLowerCase()}`]=origRec;
+    if(existingMap.has(k)){
+      const ex=existingMap.get(k); let changed=false;
+      // Also index by album ID for fast reliable lookup
+      originals[`id:${ex.id}`]=origRec;
+      if(r.rawDate&&!ex.date){ex.date=r.rawDate;changed=true;}
+      if(rating!==null&&!ex.rating){ex.rating=rating;ex.wantToListen=false;changed=true;}
+      if(changed)updated++;
+    }else{
+      const newId=uid();
+      originals[`id:${newId}`]=origRec;
+      albums.push({id:newId,artist:r.rawArtist,album:r.rawAlbum,date:r.rawDate,genre:'',rating,notes:'',wantToListen:!rating,hardToFind:false,artUrl:'',added:Date.now()});
+      added++;
+    }
+  });
+  save(); saveOriginals(); render();
+  const summary=[added?`${added} added`:'',updated?`${updated} updated`:''].filter(Boolean).join(', ');
+  if(!added&&!updated){statusEl.textContent='Nothing new to import.';statusEl.className='err';return;}
+  statusEl.textContent=`✓ ${summary}. Use "Re-scan Library" to look up full dates and fix any issues.`;
+  statusEl.className='ok';
+}
+
+// ════════════════════════════════════════════════════════════
+// SORT & EVENTS
+// ════════════════════════════════════════════════════════════
+document.querySelectorAll('th[data-sort]').forEach(th=>{
+  th.addEventListener('click',()=>{const k=th.dataset.sort;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
+});
+document.getElementById('btn-toggle-add').addEventListener('click',()=>{
+  const p=document.getElementById('add-panel');
+  if(p.classList.contains('open')){closePanel();return;}
+  editingId=null;resetForm();openPanel('add');
+});
+document.getElementById('btn-toggle-import').addEventListener('click',()=>{
+  const p=document.getElementById('import-panel');
+  if(p.classList.contains('open')){closeImportPanel();return;}
+  openImportPanel();
+});
+document.getElementById('btn-cancel').addEventListener('click',closePanel);
+document.getElementById('btn-save').addEventListener('click',addOrUpdateAlbum);
+document.getElementById('btn-lookup').addEventListener('click',lookupAlbum);
+document.getElementById('f-album').addEventListener('keydown',e=>{if(e.key==='Enter')lookupAlbum();});
+document.getElementById('filter-search').addEventListener('input', render);
+document.getElementById('delete-confirm').addEventListener('click',doDelete);
+document.getElementById('delete-cancel').addEventListener('click',()=>{document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;});
+document.getElementById('delete-modal').addEventListener('click',e=>{if(e.target.id==='delete-modal'){document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;}});
+document.getElementById('rescan-modal').addEventListener('click',e=>{if(e.target.id==='rescan-modal')document.getElementById('rescan-modal').classList.remove('open');});
+const dropZone=document.getElementById('csv-drop-zone');
+dropZone.addEventListener('click',()=>document.getElementById('csv-file-input').click());
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.style.borderColor='var(--accent)';});
+dropZone.addEventListener('dragleave',()=>{dropZone.style.borderColor='';});
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.style.borderColor='';handleCSVFiles(e.dataTransfer.files);});
+document.getElementById('csv-file-input').addEventListener('change',e=>{handleCSVFiles(e.target.files);e.target.value='';});
+document.getElementById('btn-do-import').addEventListener('click',doImport);
+document.getElementById('btn-cancel-import').addEventListener('click',closeImportPanel);
+document.getElementById('btn-rescan').addEventListener('click',startRescan);
+document.getElementById('btn-pause-global').addEventListener('click',togglePause);
+document.getElementById('btn-stop-global').addEventListener('click',()=>{scanAbort=true;scanPaused=false;});
+document.getElementById('btn-export').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify(albums,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ListenLog-${new Date().toISOString().slice(0,10)}.json`;a.click();
+});
+document.getElementById('btn-json-import-trigger').addEventListener('click',()=>document.getElementById('btn-json-import').click());
+document.getElementById('btn-json-import').addEventListener('change',e=>{
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(Array.isArray(data)){
+        if(confirm(`Merge ${data.length} albums?`)){
+          const ids=new Set(albums.map(a=>a.id));
+          data.forEach(a=>{if(!ids.has(a.id))albums.push(a);});
+          save();render();
+        }
+      }else alert('Invalid file.');
+    }catch{alert('Could not read file.');}
+  };
+  r.readAsText(file);e.target.value='';
+});
+
+render();
+updateRescanButton();
+
+// Retroactively add id: keys to originals for albums imported before this index existed.
+function rebuildOriginalIdIndex() {
+  let changed = false;
+  albums.forEach(a => {
+    if (originals[`id:${a.id}`]) return;
+    const rec = originals[origKey(a.artist, a.album)]
+             || originals[origKey(a.album, a.artist)];
+    if (rec) { originals[`id:${a.id}`] = rec; changed = true; }
+  });
+  if (changed) saveOriginals();
+}
+rebuildOriginalIdIndex();
+
+// ════════════════════════════════════════════════════════════
+// SUPABASE — auth + cloud sync
+// Fill in your project URL and anon key below.
+// ════════════════════════════════════════════════════════════
+const https://jzyyhqudynpezkddhjhf.supabase.co  = 'YOUR_SUPABASE_URL';   // e.g. https://xyzxyz.supabase.co
+const sb_publishable_sdrLgh-9xgPZxCFsA56ZSw_SG0MSBxW = 'YOUR_SUPABASE_ANON_KEY';
+
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let _syncTimeout = null;
+let _userId = null;
+
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + (state||'');
+  lbl.textContent = label||'';
+}
+
+// Override save() to also push to Supabase
+const _localSave = save;
+function save() {
+  // Always write to localStorage as cache
+  localStorage.setItem('listenLog', JSON.stringify(albums));
+  // Debounce cloud push by 1.5s to batch rapid changes
+  clearTimeout(_syncTimeout);
+  _syncTimeout = setTimeout(pushToCloud, 1500);
+}
+function saveOriginals() {
+  localStorage.setItem('listenLogOrig', JSON.stringify(originals));
+  clearTimeout(_syncTimeout);
+  _syncTimeout = setTimeout(pushToCloud, 1500);
+}
+
+async function pushToCloud() {
+  if (!_userId) return;
+  setSyncStatus('busy', 'saving…');
+  try {
+    const payload = {
+      user_id:   _userId,
+      albums:    albums,
+      originals: originals,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await _sb.from('listenlog_data')
+      .upsert(payload, { onConflict: 'user_id' });
+    if (error) throw error;
+    setSyncStatus('ok', 'synced');
+  } catch(e) {
+    console.error('Sync error:', e);
+    setSyncStatus('err', 'sync failed');
+  }
+}
+
+async function pullFromCloud() {
+  if (!_userId) return;
+  setSyncStatus('busy', 'loading…');
+  try {
+    const { data, error } = await _sb.from('listenlog_data')
+      .select('albums, originals')
+      .eq('user_id', _userId)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no row yet
+    if (data) {
+      albums    = data.albums    || [];
+      originals = data.originals || {};
+      localStorage.setItem('listenLog',     JSON.stringify(albums));
+      localStorage.setItem('listenLogOrig', JSON.stringify(originals));
+    }
+    setSyncStatus('ok', 'synced');
+    render();
+    updateRescanButton();
+    rebuildOriginalIdIndex();
+  } catch(e) {
+    console.error('Pull error:', e);
+    setSyncStatus('err', 'load failed');
+  }
+}
+
+// ── Auth UI ───────────────────────────────────────────────────
+let _authMode = 'signin'; // 'signin' | 'signup'
+
+document.getElementById('auth-switch-link').addEventListener('click', e => {
+  e.preventDefault();
+  _authMode = _authMode === 'signin' ? 'signup' : 'signin';
+  document.getElementById('auth-signin-btn').textContent = _authMode === 'signin' ? 'Sign in' : 'Create account';
+  document.getElementById('auth-switch-link').textContent = _authMode === 'signin' ? 'Sign up' : 'Sign in';
+  document.getElementById('auth-msg').textContent = '';
+});
+
+document.getElementById('auth-signin-btn').addEventListener('click', async () => {
+  const email    = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const msgEl    = document.getElementById('auth-msg');
+  if (!email || !password) { msgEl.textContent='Enter email and password.'; msgEl.className='auth-msg err'; return; }
+  msgEl.textContent='…'; msgEl.className='auth-msg';
+
+  const fn = _authMode === 'signin'
+    ? _sb.auth.signInWithPassword({ email, password })
+    : _sb.auth.signUp({ email, password });
+
+  const { data, error } = await fn;
+  if (error) { msgEl.textContent=error.message; msgEl.className='auth-msg err'; return; }
+  if (_authMode === 'signup' && !data.session) {
+    msgEl.textContent='Check your email to confirm your account, then sign in.';
+    msgEl.className='auth-msg ok'; return;
+  }
+  // session established — onAuthStateChange will handle the rest
+});
+
+document.getElementById('auth-password').addEventListener('keydown', e => {
+  if (e.key==='Enter') document.getElementById('auth-signin-btn').click();
+});
+
+document.getElementById('sign-out-link').addEventListener('click', async e => {
+  e.preventDefault();
+  await _sb.auth.signOut();
+});
+
+// ── Session management ────────────────────────────────────────
+function showApp(user) {
+  _userId = user.id;
+  document.getElementById('auth-screen').classList.remove('visible');
+  document.getElementById('app-wrap').classList.add('visible');
+  document.getElementById('sync-indicator').style.display = 'flex';
+  pullFromCloud();
+}
+function showAuth() {
+  _userId = null;
+  document.getElementById('auth-screen').classList.add('visible');
+  document.getElementById('app-wrap').classList.remove('visible');
+  document.getElementById('sync-indicator').style.display = 'none';
+}
+
+_sb.auth.onAuthStateChange((event, session) => {
+  if (session?.user) showApp(session.user);
+  else showAuth();
+});
+
+// Show auth screen while we wait for session check
+showAuth();
+</script>
+</div><!-- /app-wrap -->
+</body>
+</html>
