@@ -2158,7 +2158,7 @@ document.getElementById('filter-search').addEventListener('input', render);
 document.getElementById('delete-confirm').addEventListener('click',doDelete);
 document.getElementById('delete-cancel').addEventListener('click',()=>{document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;});
 document.getElementById('delete-modal').addEventListener('click',e=>{if(e.target.id==='delete-modal'){document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;}});
-document.getElementById('rescan-modal').addEventListener('click',e=>{if(e.target.id==='rescan-modal')document.getElementById('rescan-modal').classList.remove('open');});
+// Rescan modal: no click-outside-to-close (would lose review decisions)
 const dropZone=document.getElementById('csv-drop-zone');
 dropZone.addEventListener('click',()=>document.getElementById('csv-file-input').click());
 dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.style.borderColor='var(--accent)';});
