@@ -633,7 +633,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="modal-actions">
       <span id="rescan-review-progress" style="font-size:11px;color:var(--muted);margin-right:auto"></span>
       <button class="btn-ghost" id="rescan-cancel">Close</button>
-      <button class="btn-primary" id="rescan-apply">Apply decisions</button>
+      <button class="btn-primary" id="rescan-apply">Done</button>
     </div>
   </div>
 </div>
@@ -1189,22 +1189,40 @@ function similarity(a,b) {
   for(const[k,v]of ba)x+=Math.min(v,bb.get(k)||0);
   return(2*x)/(na.length+nb.length-2);
 }
-function scoreResult(result, tArtist, tAlbum) {
-  const as=similarity(result.artistName||'',tArtist);
-  const al=similarity(result.collectionName||'',tAlbum);
-  if (similarity(result.artistName||'',tAlbum) > al+0.2) return -1;
-  if (similarity(result.collectionName||'',tArtist) > as+0.2) return -1;
-  // Require artist to be at least somewhat plausible — prevents cast recordings
-  // winning purely on album title match
-  if (as < 0.18) return -1;
-  if (as<0.15 && al<0.2) return -1;
-  return Math.min(as,0.55)*0.35 + al*0.65;
+// ── Scoring: album name first, artist second, year tiebreaker ─
+// hintYear: the year from the user's sheet (used as soft tiebreaker)
+function scoreResult(result, tArtist, tAlbum, hintYear) {
+  const rArtist = result.artistName||'';
+  const rAlbum  = result.collectionName||'';
+
+  const albumSim  = similarity(rAlbum,  tAlbum);
+  const artistSim = similarity(rArtist, tArtist);
+
+  // Hard reject: swap detection
+  if (similarity(rArtist, tAlbum)  > albumSim  + 0.25) return -1;
+  if (similarity(rAlbum,  tArtist) > artistSim + 0.25) return -1;
+
+  // Hard reject: artist must be at least minimally plausible
+  // (prevents cast recordings, covers, tribute albums winning on album title alone)
+  if (artistSim < 0.20) return -1;
+
+  // Base score: album name carries most weight, artist second
+  let score = albumSim * 0.65 + Math.min(artistSim, 0.55) * 0.30;
+
+  // Year tiebreaker: small bonus (max 0.05) when release year matches hint
+  if (hintYear && result._releaseYear) {
+    const yearDiff = Math.abs(parseInt(hintYear) - parseInt(result._releaseYear));
+    if (yearDiff === 0)      score += 0.05;
+    else if (yearDiff <= 1)  score += 0.02;
+    else if (yearDiff >= 5)  score -= 0.02; // slight penalty for very different year
+  }
+
+  return score;
 }
 
 // ── Source 1: Last.fm — largest music-specific catalog ───────
-async function lastfmLookup(artist, album) {
+async function lastfmLookup(artist, album, hintYear) {
   try {
-    // Last.fm public API — no key required for album.getinfo
     const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo`+
       `&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}`+
       `&autocorrect=1&format=json&api_key=d8bc1f03ef025f5833d88fd19d603883`;
@@ -1215,10 +1233,8 @@ async function lastfmLookup(artist, album) {
     const al = data.album;
     const artistSim = similarity(al.artist||'', artist);
     const albumSim  = similarity(al.name||'', album);
-    // Reject swaps / bad matches
     if (similarity(al.artist||'', album) > albumSim+0.2) return null;
-    if (artistSim < 0.15 && albumSim < 0.2) return null;
-    // Parse date from wiki.published: "12 Jun 1997, 00:00"
+    if (artistSim < 0.18) return null;
     let date = null;
     const pub = al.wiki?.published||'';
     const dm = pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
@@ -1226,16 +1242,14 @@ async function lastfmLookup(artist, album) {
       const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
       date = `${dm[3]}-${mo[dm[2]]||'01'}-${dm[1].padStart(2,'0')}`;
     }
-    // Also try tags for the year if no wiki date
-    if (!date) {
-      const ym = pub.match(/\d{4}/);
-      if (ym) date = ym[0];
-    }
-    const genre = al.tags?.tag?.[0]?.name || null;
-    const art   = al.image?.find(i=>i.size==='extralarge')?.['#text'] || null;
-    const score = Math.min(artistSim,0.55)*0.35 + albumSim*0.65;
-    return { date, genre, art: (art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
-             matchedArtist:al.artist, matchedAlbum:al.name, score };
+    if (!date) { const ym = pub.match(/\d{4}/); if (ym) date = ym[0]; }
+    const releaseYear = date ? date.slice(0,4) : null;
+    const art = al.image?.find(i=>i.size==='extralarge')?.['#text'] || null;
+    const fakeResult = { artistName: al.artist, collectionName: al.name, _releaseYear: releaseYear };
+    const score = scoreResult(fakeResult, artist, album, hintYear);
+    if (score < 0) return null;
+    return { date, art: (art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
+             matchedArtist:al.artist, matchedAlbum:al.name, score, _releaseYear:releaseYear };
   } catch(e) { return null; }
 }
 
@@ -1255,7 +1269,7 @@ async function itunesSearch(q, limit=12) {
   }
   return [];
 }
-async function itunesLookupBest(artist, album) {
+async function itunesLookupBest(artist, album, hintYear) {
   const na=norm(artist), nb=norm(album);
   const queries=[...new Set([`${artist} ${album}`,`${na} ${nb}`,nb,na])].filter(q=>q.trim().length>1);
   let bestResult=null, bestScore=-Infinity;
@@ -1263,23 +1277,24 @@ async function itunesLookupBest(artist, album) {
     try {
       const results = await itunesSearch(q);
       for (const r of results) {
-        const s = scoreResult(r, artist, album);
-        if (s>bestScore) { bestScore=s; bestResult=r; }
+        const yr = r.releaseDate ? r.releaseDate.slice(0,4) : null;
+        const s = scoreResult({...r, _releaseYear:yr}, artist, album, hintYear);
+        if (s>bestScore) { bestScore=s; bestResult={...r, _releaseYear:yr}; }
       }
       if (bestScore>=0.72) break;
     } catch(e) { if(e.message==='aborted') return null; }
   }
   if (bestScore>=0.28 && bestResult) return {
     date: bestResult.releaseDate ? bestResult.releaseDate.split('T')[0] : null,
-    genre: bestResult.primaryGenreName||null,
     art: bestResult.artworkUrl100 ? bestResult.artworkUrl100.replace('100x100','600x600') : null,
-    matchedArtist: bestResult.artistName, matchedAlbum: bestResult.collectionName, score: bestScore,
+    matchedArtist: bestResult.artistName, matchedAlbum: bestResult.collectionName,
+    score: bestScore, _releaseYear: bestResult._releaseYear,
   };
   return null;
 }
 
 // ── Source 3: MusicBrainz ─────────────────────────────────────
-async function musicBrainzLookup(artist, album) {
+async function musicBrainzLookup(artist, album, hintYear) {
   try {
     const q = `release:"${norm(album).replace(/"/g,'')}" AND artist:"${norm(artist).replace(/"/g,'')}"`;
     const r = await rateLimitedFetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=8&fmt=json`,{headers:{'User-Agent':'ListenLog/1.0'}});
@@ -1287,17 +1302,20 @@ async function musicBrainzLookup(artist, album) {
     const data = await r.json();
     let best=null, bestScore=-Infinity;
     for (const rel of (data.releases||[])) {
-      const s = scoreResult({artistName:rel['artist-credit']?.[0]?.artist?.name||'',collectionName:rel.title},artist,album);
-      if (s>bestScore) { bestScore=s; best=rel; }
+      const relDate = rel['first-release-date']||rel.date||'';
+      const yr = relDate.slice(0,4)||null;
+      const s = scoreResult({artistName:rel['artist-credit']?.[0]?.artist?.name||'',collectionName:rel.title,_releaseYear:yr},artist,album,hintYear);
+      if (s>bestScore) { bestScore=s; best={...rel,_yr:yr}; }
     }
     if (!best||bestScore<0.25) return null;
-    return { date:best['first-release-date']||best.date||null, genre:best.genres?.[0]?.name||best.tags?.[0]?.name||null,
-             art:null, matchedArtist:best['artist-credit']?.[0]?.artist?.name||artist, matchedAlbum:best.title||album, score:bestScore };
+    const date = best['first-release-date']||best.date||null;
+    return { date, art:null, matchedArtist:best['artist-credit']?.[0]?.artist?.name||artist,
+             matchedAlbum:best.title||album, score:bestScore, _releaseYear:best._yr };
   } catch(e) { return null; }
 }
 
-// ── Source 4: Discogs (public, no auth needed for search) ─────
-async function discogsLookup(artist, album) {
+// ── Source 4: Discogs ─────────────────────────────────────────
+async function discogsLookup(artist, album, hintYear) {
   try {
     const q = encodeURIComponent(`${norm(artist)} ${norm(album)}`);
     const r = await rateLimitedFetch(`https://api.discogs.com/database/search?q=${q}&type=release&format=Album&per_page=8`,{headers:{'User-Agent':'ListenLog/1.0'}});
@@ -1307,23 +1325,23 @@ async function discogsLookup(artist, album) {
     for (const res of (data.results||[])) {
       const parts = String(res.title||'').split(' - ');
       const rArtist=parts[0]||'', rAlbum=parts.slice(1).join(' - ')||res.title;
-      const s = scoreResult({artistName:rArtist,collectionName:rAlbum},artist,album);
-      if (s>bestScore) { bestScore=s; best={...res,_rArtist:rArtist,_rAlbum:rAlbum}; }
+      const yr = res.year ? String(res.year) : null;
+      const s = scoreResult({artistName:rArtist,collectionName:rAlbum,_releaseYear:yr},artist,album,hintYear);
+      if (s>bestScore) { bestScore=s; best={...res,_rArtist:rArtist,_rAlbum:rAlbum,_yr:yr}; }
     }
     if (!best||bestScore<0.25) return null;
-    return { date:best.year?String(best.year):null, genre:best.genre?.[0]||best.style?.[0]||null,
-             art:best.cover_image&&!best.cover_image.includes('spacer.gif')?best.cover_image:null,
-             matchedArtist:best._rArtist, matchedAlbum:best._rAlbum, score:bestScore };
+    return { date:best._yr, art:best.cover_image&&!best.cover_image.includes('spacer.gif')?best.cover_image:null,
+             matchedArtist:best._rArtist, matchedAlbum:best._rAlbum, score:bestScore, _releaseYear:best._yr };
   } catch(e) { return null; }
 }
 
 // ── Master: all 4 sources, best wins ─────────────────────────
-async function lookupBest(artist, album) {
+async function lookupBest(artist, album, hintYear) {
   const sources = [
-    { fn:()=>lastfmLookup(artist,album),       name:'lastfm'       },
-    { fn:()=>itunesLookupBest(artist,album),    name:'itunes'       },
-    { fn:()=>musicBrainzLookup(artist,album),   name:'musicbrainz'  },
-    { fn:()=>discogsLookup(artist,album),       name:'discogs'      },
+    { fn:()=>lastfmLookup(artist,album,hintYear),      name:'lastfm'      },
+    { fn:()=>itunesLookupBest(artist,album,hintYear),   name:'itunes'      },
+    { fn:()=>musicBrainzLookup(artist,album,hintYear),  name:'musicbrainz' },
+    { fn:()=>discogsLookup(artist,album,hintYear),      name:'discogs'     },
   ];
   let bestResult=null, bestScore=-Infinity, bestSource=null;
   const allCandidates = [];
@@ -1342,14 +1360,14 @@ async function lookupBest(artist, album) {
     result: {
       releaseDate:      bestResult.date&&bestResult.date.length>4 ? bestResult.date : null,
       _mbDate:          bestResult.date,
-      primaryGenreName: bestResult.genre||'',
+      primaryGenreName: '',
       artworkUrl100:    bestResult.art||null,
       collectionName:   bestResult.matchedAlbum||album,
       artistName:       bestResult.matchedArtist||artist,
     },
     score:      bestScore,
     source:     bestSource,
-    candidates: allCandidates, // all results for alternatives panel
+    candidates: allCandidates,
   };
 }
 
@@ -1659,8 +1677,9 @@ async function startRescan() {
                  || originals[origKey(a.album, a.artist)];
     const searchArtist = origRec ? origRec.artist : a.artist;
     const searchAlbum  = origRec ? origRec.album  : a.album;
+    const hintYear     = origRec ? extractYear(origRec.date||'') : extractYear(a.date||'');
 
-    const found = await lookupBest(searchArtist, searchAlbum);
+    const found = await lookupBest(searchArtist, searchAlbum, hintYear||null);
 
     if (found) {
       const r = found.result;
@@ -1745,7 +1764,6 @@ function srcBadge(source) {
 }
 
 function showRescanModal() {
-  // Partition results
   const autoApproved = rescanResults.filter(r => r.changes.length>0 && r.score>=HIGH_CONF);
   const needsReview  = rescanResults.filter(r => r.changes.length>0 && r.score<HIGH_CONF);
   const notFound     = rescanResults.filter(r => r.notFound);
@@ -1756,41 +1774,56 @@ function showRescanModal() {
   autoApproved.forEach(res => {
     const a = albums.find(x=>x.id===res.albumId); if(!a) return;
     res.changes.forEach(c => applyChange(a, res, c));
+    a.unmatched = false;
     autoAppliedCount++;
   });
   if (autoAppliedCount) { save(); render(); }
 
-  document.getElementById('rescan-modal-desc').textContent =
-    `Scanned ${rescanResults.length} albums.`;
-
+  document.getElementById('rescan-modal-desc').textContent = `Scanned ${rescanResults.length} albums.`;
   document.getElementById('rescan-summary').innerHTML = `
     <span><b>${autoAppliedCount}</b> auto-approved</span>
     <span><b>${needsReview.length}</b> need review</span>
     <span><b>${unchanged.length}</b> already correct</span>
     <span><b>${notFound.length}</b> not found</span>`;
 
-  // Auto-approved section
-  const autoSec = document.getElementById('rescan-auto-section');
+  document.getElementById('rescan-auto-section').style.display = autoAppliedCount ? 'block' : 'none';
   document.getElementById('rescan-auto-count').textContent = `(${autoAppliedCount})`;
-  autoSec.style.display = autoAppliedCount ? 'block' : 'none';
 
-  // Manual review section — thumbs cards
-  const reviewSec = document.getElementById('rescan-review-section');
-  const cardsWrap = document.getElementById('rescan-cards');
+  const reviewSec  = document.getElementById('rescan-review-section');
+  const cardsWrap  = document.getElementById('rescan-cards');
   cardsWrap.innerHTML = '';
-  document.getElementById('rescan-pending-count').textContent = `(${needsReview.length})`;
-  reviewSec.style.display = needsReview.length ? 'block' : 'none';
-
-  needsReview.forEach(res => {
-    res.decision = null;
-    const card = buildReviewCard(res, needsReview);
-    cardsWrap.appendChild(card);
-  });
 
   document.getElementById('rescan-no-changes').style.display =
     (needsReview.length===0 && autoAppliedCount===0) ? 'block' : 'none';
 
-  updateReviewProgress(needsReview);
+  if (needsReview.length > 0) {
+    reviewSec.style.display = 'block';
+    needsReview.forEach(r => { r.decision = null; });
+    // Queue-based: show one card at a time
+    let queueIdx = 0;
+    function showNext() {
+      cardsWrap.innerHTML = '';
+      if (queueIdx >= needsReview.length) {
+        reviewSec.style.display = 'none';
+        document.getElementById('rescan-pending-count').textContent = '';
+        updateReviewProgress(needsReview);
+        return;
+      }
+      const res = needsReview[queueIdx];
+      document.getElementById('rescan-pending-count').textContent =
+        `(${queueIdx+1} / ${needsReview.length})`;
+      updateReviewProgress(needsReview);
+      const card = buildReviewCard(res, needsReview, () => {
+        queueIdx++;
+        showNext();
+      });
+      cardsWrap.appendChild(card);
+    }
+    showNext();
+  } else {
+    reviewSec.style.display = 'none';
+  }
+
   document.getElementById('rescan-modal').classList.add('open');
 }
 
@@ -1801,15 +1834,19 @@ function updateReviewProgress(needsReview) {
     total ? `${decided} / ${total} reviewed` : '';
 }
 
-function buildReviewCard(res, needsReview) {
+function buildReviewCard(res, needsReview, onAdvance) {
   const card = document.createElement('div');
   card.className = 'rescan-card';
   card.dataset.albumId = res.albumId;
 
+  // Get original year from originals store
+  const origRec = originals[`id:${res.albumId}`];
+  const sheetYear = origRec ? extractYear(origRec.date||'') : '';
+
   const changesHTML = res.changes
     .filter(c=>c.field!=='art')
     .map(c=>`<span class="field-old">${esc(c.old||'—')}</span><span class="change-arrow">→</span><span class="field-new">${esc(c.newVal)}</span>`)
-    .join(' &nbsp; ');
+    .join('<br>');
   const hasArt = res.changes.some(c=>c.field==='art');
 
   card.innerHTML = `
@@ -1817,6 +1854,7 @@ function buildReviewCard(res, needsReview) {
       <div class="rescan-col-label">Your sheet</div>
       <div class="rescan-artist">${esc(res.origArtist)}</div>
       <div class="rescan-album-name">${esc(res.origAlbum)}</div>
+      ${sheetYear ? `<div class="rescan-meta"><span style="color:var(--muted)">${esc(sheetYear)}</span></div>` : ''}
     </div>
     <div class="rescan-divider"></div>
     <div class="rescan-col">
@@ -1825,7 +1863,7 @@ function buildReviewCard(res, needsReview) {
       <div class="rescan-album-name">${esc(res.matchedAlbum||res.origAlbum)}</div>
       <div class="rescan-meta">
         ${changesHTML ? `<span>${changesHTML}</span>` : ''}
-        ${hasArt ? '<span style="color:var(--good)">+ art</span>' : ''}
+        ${hasArt ? '<span style="color:var(--good);font-size:10px">+ art</span>' : ''}
         ${confPill(res.score)}
         ${srcBadge(res.source)}
       </div>
@@ -1833,7 +1871,7 @@ function buildReviewCard(res, needsReview) {
     <div class="rescan-divider"></div>
     <div class="rescan-actions">
       <button class="thumb-btn up" title="Accept match">👍</button>
-      <button class="thumb-btn down" title="Wrong match — search for alternatives">👎</button>
+      <button class="thumb-btn down" title="Wrong match — search alternatives">👎</button>
     </div>
     <div class="rescan-search-panel">
       <div class="rescan-search-row">
@@ -1850,17 +1888,32 @@ function buildReviewCard(res, needsReview) {
   const altsEl  = card.querySelector('.rescan-alts');
   const searchInput = card.querySelector('.rescan-search-input');
 
-  function setDecision(d) {
-    res.decision = d;
-    card.className = 'rescan-card' + (d==='up' ? ' decided-up' : d==='down' ? ' decided-down' : '');
-    upBtn.classList.toggle('active', d==='up');
-    downBtn.classList.toggle('active', d==='down'||d==='skip');
+  function commit(decision, overrideChanges) {
+    res.decision = decision;
+    const a = albums.find(x=>x.id===res.albumId);
+    if (a) {
+      if (decision === 'up') {
+        const changes = overrideChanges || res.changes;
+        changes.forEach(c => applyChange(a, res, c));
+        a.unmatched = false;
+      } else if (decision === 'down' || decision === 'skip') {
+        const orig = originals[`id:${a.id}`];
+        if (orig) { a.artist=orig.artist; a.album=orig.album; if(orig.date) a.date=orig.date; }
+        a.unmatched = true;
+      }
+      save();
+    }
     updateReviewProgress(needsReview);
+    // Animate out then advance
+    card.style.transition = 'opacity .2s, transform .2s';
+    card.style.opacity = '0';
+    card.style.transform = decision==='up' ? 'translateX(20px)' : 'translateX(-20px)';
+    setTimeout(onAdvance, 200);
   }
 
   function renderAlts(candidates) {
     altsEl.innerHTML = '';
-    const sorted = [...candidates].sort((a,b)=>b.score-a.score).slice(0,6);
+    const sorted = [...candidates].filter(c=>c.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
     if (!sorted.length) {
       altsEl.innerHTML = '<div class="rescan-search-empty">No alternatives found.</div>';
       return;
@@ -1874,39 +1927,33 @@ function buildReviewCard(res, needsReview) {
           <div class="rescan-alt-album">${esc(cand.matchedAlbum||'')}</div>
         </div>
         <div class="rescan-alt-meta">
-          ${cand.date ? `<span style="font-size:10px;color:var(--muted)">${esc(cand.date.slice(0,4))}</span>` : ''}
+          ${cand.date||cand._releaseYear ? `<span style="font-size:10px;color:var(--muted)">${esc((cand.date||cand._releaseYear||'').slice(0,4))}</span>` : ''}
           ${confPill(cand.score)}
-          <span class="src-badge${cand.sourceName==='musicbrainz'?' src-mb':''}">${{lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'}[cand.sourceName]||cand.sourceName}</span>
+          <span class="src-badge${cand.sourceName==='musicbrainz'?' src-mb':''}">${{lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'}[cand.sourceName]||cand.sourceName||'?'}</span>
           <button class="thumb-btn up" style="width:26px;height:26px;font-size:12px" title="Use this match">👍</button>
         </div>`;
       row.querySelector('.thumb-btn.up').addEventListener('click', () => {
-        // Apply this alternative as the chosen match
-        res.matchedArtist  = cand.matchedArtist;
-        res.matchedAlbum   = cand.matchedAlbum;
-        res.score          = cand.score;
-        res.source         = cand.sourceName;
-        // Rebuild changes for this candidate
-        res.changes = [];
-        if (res.origArtist !== cand.matchedArtist || res.origAlbum !== cand.matchedAlbum) {
-          res.changes.push({field:'artist/album', old:`${res.origArtist} / ${res.origAlbum}`, newVal:`${res.origArtist} / ${res.origAlbum}`, action:'restore_fields'});
-        }
-        if (cand.date) res.changes.push({field:'date', old:'', newVal:cand.date.length>4?cand.date:cand.date, action:'set_date'});
-        if (cand.art)  res.changes.push({field:'art', old:'', newVal:cand.art, action:'set_art'});
-        res.decision = 'up';
-        panel.classList.remove('open');
-        setDecision('up');
+        // Build changes from this candidate
+        const newChanges = [];
+        if (cand.date) newChanges.push({field:'date', old:'', newVal:cand.date.length>4?cand.date:cand.date, action:'set_date'});
+        if (cand.art)  newChanges.push({field:'art',  old:'', newVal:cand.art,  action:'set_art'});
+        // Update res so applyChange uses the right data
+        res.origArtist    = res.origArtist;
+        res.origAlbum     = res.origAlbum;
+        res.matchedArtist = cand.matchedArtist;
+        res.matchedAlbum  = cand.matchedAlbum;
+        commit('up', newChanges);
       });
       altsEl.appendChild(row);
     });
   }
 
-  // Show known candidates immediately when panel opens
   async function openPanel() {
     panel.classList.add('open');
     if (res.candidates && res.candidates.length) {
       renderAlts(res.candidates);
     } else {
-      altsEl.innerHTML = '<div class="rescan-search-empty">No alternatives stored — use search below.</div>';
+      altsEl.innerHTML = '<div class="rescan-search-empty">No stored alternatives — use search below.</div>';
     }
   }
 
@@ -1915,62 +1962,50 @@ function buildReviewCard(res, needsReview) {
     if (!q) return;
     altsEl.innerHTML = '<div class="rescan-search-empty"><span class="spinner"></span> Searching…</div>';
     try {
-      // Run a fresh lookupBest with the user's custom query as both artist and album
-      // Split on first space-cluster to guess artist / album
-      const parts = q.split(/\s{2,}|\t/);
-      const artist = parts.length > 1 ? parts[0] : res.origArtist;
-      const album  = parts.length > 1 ? parts.slice(1).join(' ') : q;
-
-      // Also try iTunes search directly with the raw query
+      const parts = q.match(/^(.+?)\s{2,}(.+)$/) || q.match(/^(.+?)\t(.+)$/);
+      const sArtist = parts ? parts[1] : res.origArtist;
+      const sAlbum  = parts ? parts[2] : q;
       const [bestFound, rawResults] = await Promise.all([
-        lookupBest(artist, album),
+        lookupBest(sArtist, sAlbum, sheetYear||null),
         itunesSearch(q, 12),
       ]);
-
       const candidates = [];
       if (bestFound) candidates.push(...(bestFound.candidates||[]));
       rawResults.forEach(r => {
-        candidates.push({
-          matchedArtist: r.artistName, matchedAlbum: r.collectionName,
+        const yr = r.releaseDate ? r.releaseDate.slice(0,4) : null;
+        const s  = scoreResult({...r, _releaseYear:yr}, sArtist, sAlbum, sheetYear||null);
+        if (s > 0) candidates.push({
+          matchedArtist:r.artistName, matchedAlbum:r.collectionName,
           date: r.releaseDate ? r.releaseDate.split('T')[0] : null,
-          art: r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null,
-          score: Math.max(0, scoreResult(r, artist, album)),
-          sourceName: 'itunes',
+          art:  r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null,
+          score: s, sourceName:'itunes', _releaseYear: yr,
         });
       });
-      // Dedupe by artist+album
       const seen = new Set();
-      const deduped = candidates.filter(c => {
-        const k = `${c.matchedArtist}|||${c.matchedAlbum}`;
-        if (seen.has(k)) return false; seen.add(k); return true;
-      });
-      renderAlts(deduped);
+      renderAlts(candidates.filter(c => {
+        const k=`${c.matchedArtist}|||${c.matchedAlbum}`;
+        if(seen.has(k))return false;seen.add(k);return true;
+      }));
     } catch(e) {
       altsEl.innerHTML = '<div class="rescan-search-empty">Search failed.</div>';
     }
   }
 
   upBtn.addEventListener('click', () => {
-    if (res.decision === 'up') { setDecision(null); return; }
     panel.classList.remove('open');
-    setDecision('up');
+    commit('up');
   });
 
   downBtn.addEventListener('click', () => {
-    if (panel.classList.contains('open') && res.decision !== 'up') {
-      panel.classList.remove('open');
-      setDecision(null);
-      return;
-    }
+    if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
     openPanel();
-    setDecision('down');
   });
 
   card.querySelector('[data-action="search"]').addEventListener('click', doSearch);
   searchInput.addEventListener('keydown', e => { if (e.key==='Enter') doSearch(); });
   card.querySelector('[data-action="skip"]').addEventListener('click', () => {
     panel.classList.remove('open');
-    setDecision('skip');
+    commit('skip');
   });
 
   return card;
@@ -1988,31 +2023,9 @@ document.getElementById('rescan-cancel').addEventListener('click', () => {
 });
 
 document.getElementById('rescan-apply').addEventListener('click', () => {
-  let accepted=0, reverted=0;
-  const needsReview = rescanResults.filter(r=>r.changes.length>0 && r.score<HIGH_CONF);
-  needsReview.forEach(res => {
-    const a = albums.find(x=>x.id===res.albumId); if(!a) return;
-    if (res.decision==='up') {
-      res.changes.forEach(c => applyChange(a, res, c));
-      a.unmatched = false;
-      accepted++;
-    } else if (res.decision==='down' || res.decision==='skip') {
-      // Revert to original sheet data and mark as unmatched
-      const orig = originals[`id:${a.id}`];
-      if (orig) { a.artist=orig.artist; a.album=orig.album; if(orig.date) a.date=orig.date; }
-      a.unmatched = true;
-      reverted++;
-    }
-    // undecided = leave as-is
-  });
-  save(); render();
   document.getElementById('rescan-modal').classList.remove('open');
   rescanResults = [];
-  const msg = [
-    accepted ? `${accepted} accepted` : '',
-    reverted ? `${reverted} marked unmatched` : '',
-  ].filter(Boolean).join(', ');
-  if (msg) alert(`✓ ${msg}.`);
+  render();
 });
 
 // ════════════════════════════════════════════════════════════
