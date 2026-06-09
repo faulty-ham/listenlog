@@ -227,6 +227,32 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .rescan-card{display:grid;grid-template-columns:1fr 1fr auto;background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden}
 .rescan-card.decided-up{border-color:var(--good);background:#0d1f10}
 .rescan-card.decided-down{border-color:var(--danger);background:#1f0d0d}
+/* Inline search panel shown after thumbs-down */
+.rescan-search-panel{
+  grid-column:1/-1;border-top:1px solid var(--border);
+  padding:10px 12px;display:none;flex-direction:column;gap:8px;
+  background:var(--surface);
+}
+.rescan-search-panel.open{display:flex}
+.rescan-search-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.rescan-search-input{
+  flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);
+  color:var(--text);font-family:'DM Mono',monospace;font-size:12px;
+  padding:5px 9px;border-radius:var(--radius);outline:none;
+}
+.rescan-search-input:focus{border-color:var(--accent)}
+.rescan-alts{display:flex;flex-direction:column;gap:4px}
+.rescan-alt{
+  display:flex;align-items:center;gap:8px;padding:6px 8px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:4px;
+  font-size:11px;cursor:pointer;transition:border-color .15s;
+}
+.rescan-alt:hover{border-color:var(--accent)}
+.rescan-alt-info{flex:1;min-width:0}
+.rescan-alt-artist{font-weight:500;color:var(--text-hi);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rescan-alt-album{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rescan-alt-meta{display:flex;gap:5px;align-items:center;flex-shrink:0}
+.rescan-search-empty{font-size:11px;color:var(--muted);padding:4px 0}
 .rescan-col{padding:9px 12px}
 .rescan-col-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px}
 .rescan-artist{font-weight:500;color:var(--text-hi);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1168,6 +1194,9 @@ function scoreResult(result, tArtist, tAlbum) {
   const al=similarity(result.collectionName||'',tAlbum);
   if (similarity(result.artistName||'',tAlbum) > al+0.2) return -1;
   if (similarity(result.collectionName||'',tArtist) > as+0.2) return -1;
+  // Require artist to be at least somewhat plausible — prevents cast recordings
+  // winning purely on album title match
+  if (as < 0.18) return -1;
   if (as<0.15 && al<0.2) return -1;
   return Math.min(as,0.55)*0.35 + al*0.65;
 }
@@ -1297,10 +1326,14 @@ async function lookupBest(artist, album) {
     { fn:()=>discogsLookup(artist,album),       name:'discogs'      },
   ];
   let bestResult=null, bestScore=-Infinity, bestSource=null;
+  const allCandidates = [];
   for (const {fn, name} of sources) {
     try {
       const res = await fn();
-      if (res && res.score > bestScore) { bestScore=res.score; bestResult=res; bestSource=name; }
+      if (res) {
+        allCandidates.push({...res, sourceName:name});
+        if (res.score > bestScore) { bestScore=res.score; bestResult=res; bestSource=name; }
+      }
       if (bestScore>=0.75) break;
     } catch(e) { if(e?.message==='aborted') return null; }
   }
@@ -1314,8 +1347,9 @@ async function lookupBest(artist, album) {
       collectionName:   bestResult.matchedAlbum||album,
       artistName:       bestResult.matchedArtist||artist,
     },
-    score:  bestScore,
-    source: bestSource,
+    score:      bestScore,
+    source:     bestSource,
+    candidates: allCandidates, // all results for alternatives panel
   };
 }
 
@@ -1643,7 +1677,8 @@ async function startRescan() {
 
       rescanResults.push({albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
         matchedArtist:r.artistName||null, matchedAlbum:r.collectionName||null,
-        score:found.score, source:found.source, changes, accepted:changes.length>0});
+        score:found.score, source:found.source, changes, accepted:changes.length>0,
+        candidates: found.candidates||[]});
       if (changes.length>0) countFound++; else countSkipped++;
     } else {
       rescanResults.push({albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
@@ -1747,56 +1782,8 @@ function showRescanModal() {
   reviewSec.style.display = needsReview.length ? 'block' : 'none';
 
   needsReview.forEach(res => {
-    res.decision = null; // 'up' | 'down' | null
-    const card = document.createElement('div');
-    card.className = 'rescan-card';
-    card.dataset.albumId = res.albumId;
-
-    const changesHTML = res.changes
-      .filter(c=>c.field!=='art')
-      .map(c=>`<span class="field-old">${esc(c.old||'—')}</span><span class="change-arrow">→</span><span class="field-new">${esc(c.newVal)}</span>`)
-      .join(' &nbsp; ');
-    const hasArt = res.changes.some(c=>c.field==='art');
-
-    card.innerHTML = `
-      <div class="rescan-col">
-        <div class="rescan-col-label">Your sheet</div>
-        <div class="rescan-artist">${esc(res.origArtist)}</div>
-        <div class="rescan-album-name">${esc(res.origAlbum)}</div>
-      </div>
-      <div class="rescan-divider"></div>
-      <div class="rescan-col">
-        <div class="rescan-col-label">Match found</div>
-        <div class="rescan-artist">${esc(res.matchedArtist||res.origArtist)}</div>
-        <div class="rescan-album-name">${esc(res.matchedAlbum||res.origAlbum)}</div>
-        <div class="rescan-meta">
-          ${changesHTML ? `<span>${changesHTML}</span>` : ''}
-          ${hasArt ? '<span style="color:var(--good)">+ art</span>' : ''}
-          ${confPill(res.score)}
-          ${srcBadge(res.source)}
-        </div>
-      </div>
-      <div class="rescan-divider"></div>
-      <div class="rescan-actions">
-        <button class="thumb-btn up" title="Accept match">👍</button>
-        <button class="thumb-btn down" title="Revert to sheet data">👎</button>
-      </div>`;
-
-    card.querySelector('.thumb-btn.up').addEventListener('click', () => {
-      res.decision = res.decision === 'up' ? null : 'up';
-      card.className = 'rescan-card' + (res.decision==='up' ? ' decided-up' : res.decision==='down' ? ' decided-down' : '');
-      card.querySelector('.thumb-btn.up').classList.toggle('active', res.decision==='up');
-      card.querySelector('.thumb-btn.down').classList.toggle('active', false);
-      updateReviewProgress(needsReview);
-    });
-    card.querySelector('.thumb-btn.down').addEventListener('click', () => {
-      res.decision = res.decision === 'down' ? null : 'down';
-      card.className = 'rescan-card' + (res.decision==='up' ? ' decided-up' : res.decision==='down' ? ' decided-down' : '');
-      card.querySelector('.thumb-btn.down').classList.toggle('active', res.decision==='down');
-      card.querySelector('.thumb-btn.up').classList.toggle('active', false);
-      updateReviewProgress(needsReview);
-    });
-
+    res.decision = null;
+    const card = buildReviewCard(res, needsReview);
     cardsWrap.appendChild(card);
   });
 
@@ -1814,6 +1801,181 @@ function updateReviewProgress(needsReview) {
     total ? `${decided} / ${total} reviewed` : '';
 }
 
+function buildReviewCard(res, needsReview) {
+  const card = document.createElement('div');
+  card.className = 'rescan-card';
+  card.dataset.albumId = res.albumId;
+
+  const changesHTML = res.changes
+    .filter(c=>c.field!=='art')
+    .map(c=>`<span class="field-old">${esc(c.old||'—')}</span><span class="change-arrow">→</span><span class="field-new">${esc(c.newVal)}</span>`)
+    .join(' &nbsp; ');
+  const hasArt = res.changes.some(c=>c.field==='art');
+
+  card.innerHTML = `
+    <div class="rescan-col">
+      <div class="rescan-col-label">Your sheet</div>
+      <div class="rescan-artist">${esc(res.origArtist)}</div>
+      <div class="rescan-album-name">${esc(res.origAlbum)}</div>
+    </div>
+    <div class="rescan-divider"></div>
+    <div class="rescan-col">
+      <div class="rescan-col-label">Match found</div>
+      <div class="rescan-artist">${esc(res.matchedArtist||res.origArtist)}</div>
+      <div class="rescan-album-name">${esc(res.matchedAlbum||res.origAlbum)}</div>
+      <div class="rescan-meta">
+        ${changesHTML ? `<span>${changesHTML}</span>` : ''}
+        ${hasArt ? '<span style="color:var(--good)">+ art</span>' : ''}
+        ${confPill(res.score)}
+        ${srcBadge(res.source)}
+      </div>
+    </div>
+    <div class="rescan-divider"></div>
+    <div class="rescan-actions">
+      <button class="thumb-btn up" title="Accept match">👍</button>
+      <button class="thumb-btn down" title="Wrong match — search for alternatives">👎</button>
+    </div>
+    <div class="rescan-search-panel">
+      <div class="rescan-search-row">
+        <input class="rescan-search-input" placeholder="Search e.g. Alanis Morissette Jagged Little Pill" value="${esc(res.origArtist+' '+res.origAlbum)}">
+        <button class="btn-ghost btn-sm" style="white-space:nowrap" data-action="search">Search</button>
+        <button class="btn-ghost btn-sm" style="color:var(--muted)" data-action="skip">Mark unmatched</button>
+      </div>
+      <div class="rescan-alts"></div>
+    </div>`;
+
+  const upBtn   = card.querySelector('.thumb-btn.up');
+  const downBtn = card.querySelector('.thumb-btn.down');
+  const panel   = card.querySelector('.rescan-search-panel');
+  const altsEl  = card.querySelector('.rescan-alts');
+  const searchInput = card.querySelector('.rescan-search-input');
+
+  function setDecision(d) {
+    res.decision = d;
+    card.className = 'rescan-card' + (d==='up' ? ' decided-up' : d==='down' ? ' decided-down' : '');
+    upBtn.classList.toggle('active', d==='up');
+    downBtn.classList.toggle('active', d==='down'||d==='skip');
+    updateReviewProgress(needsReview);
+  }
+
+  function renderAlts(candidates) {
+    altsEl.innerHTML = '';
+    const sorted = [...candidates].sort((a,b)=>b.score-a.score).slice(0,6);
+    if (!sorted.length) {
+      altsEl.innerHTML = '<div class="rescan-search-empty">No alternatives found.</div>';
+      return;
+    }
+    sorted.forEach(cand => {
+      const row = document.createElement('div');
+      row.className = 'rescan-alt';
+      row.innerHTML = `
+        <div class="rescan-alt-info">
+          <div class="rescan-alt-artist">${esc(cand.matchedArtist||'')}</div>
+          <div class="rescan-alt-album">${esc(cand.matchedAlbum||'')}</div>
+        </div>
+        <div class="rescan-alt-meta">
+          ${cand.date ? `<span style="font-size:10px;color:var(--muted)">${esc(cand.date.slice(0,4))}</span>` : ''}
+          ${confPill(cand.score)}
+          <span class="src-badge${cand.sourceName==='musicbrainz'?' src-mb':''}">${{lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'}[cand.sourceName]||cand.sourceName}</span>
+          <button class="thumb-btn up" style="width:26px;height:26px;font-size:12px" title="Use this match">👍</button>
+        </div>`;
+      row.querySelector('.thumb-btn.up').addEventListener('click', () => {
+        // Apply this alternative as the chosen match
+        res.matchedArtist  = cand.matchedArtist;
+        res.matchedAlbum   = cand.matchedAlbum;
+        res.score          = cand.score;
+        res.source         = cand.sourceName;
+        // Rebuild changes for this candidate
+        res.changes = [];
+        if (res.origArtist !== cand.matchedArtist || res.origAlbum !== cand.matchedAlbum) {
+          res.changes.push({field:'artist/album', old:`${res.origArtist} / ${res.origAlbum}`, newVal:`${res.origArtist} / ${res.origAlbum}`, action:'restore_fields'});
+        }
+        if (cand.date) res.changes.push({field:'date', old:'', newVal:cand.date.length>4?cand.date:cand.date, action:'set_date'});
+        if (cand.art)  res.changes.push({field:'art', old:'', newVal:cand.art, action:'set_art'});
+        res.decision = 'up';
+        panel.classList.remove('open');
+        setDecision('up');
+      });
+      altsEl.appendChild(row);
+    });
+  }
+
+  // Show known candidates immediately when panel opens
+  async function openPanel() {
+    panel.classList.add('open');
+    if (res.candidates && res.candidates.length) {
+      renderAlts(res.candidates);
+    } else {
+      altsEl.innerHTML = '<div class="rescan-search-empty">No alternatives stored — use search below.</div>';
+    }
+  }
+
+  async function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    altsEl.innerHTML = '<div class="rescan-search-empty"><span class="spinner"></span> Searching…</div>';
+    try {
+      // Run a fresh lookupBest with the user's custom query as both artist and album
+      // Split on first space-cluster to guess artist / album
+      const parts = q.split(/\s{2,}|\t/);
+      const artist = parts.length > 1 ? parts[0] : res.origArtist;
+      const album  = parts.length > 1 ? parts.slice(1).join(' ') : q;
+
+      // Also try iTunes search directly with the raw query
+      const [bestFound, rawResults] = await Promise.all([
+        lookupBest(artist, album),
+        itunesSearch(q, 12),
+      ]);
+
+      const candidates = [];
+      if (bestFound) candidates.push(...(bestFound.candidates||[]));
+      rawResults.forEach(r => {
+        candidates.push({
+          matchedArtist: r.artistName, matchedAlbum: r.collectionName,
+          date: r.releaseDate ? r.releaseDate.split('T')[0] : null,
+          art: r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null,
+          score: Math.max(0, scoreResult(r, artist, album)),
+          sourceName: 'itunes',
+        });
+      });
+      // Dedupe by artist+album
+      const seen = new Set();
+      const deduped = candidates.filter(c => {
+        const k = `${c.matchedArtist}|||${c.matchedAlbum}`;
+        if (seen.has(k)) return false; seen.add(k); return true;
+      });
+      renderAlts(deduped);
+    } catch(e) {
+      altsEl.innerHTML = '<div class="rescan-search-empty">Search failed.</div>';
+    }
+  }
+
+  upBtn.addEventListener('click', () => {
+    if (res.decision === 'up') { setDecision(null); return; }
+    panel.classList.remove('open');
+    setDecision('up');
+  });
+
+  downBtn.addEventListener('click', () => {
+    if (panel.classList.contains('open') && res.decision !== 'up') {
+      panel.classList.remove('open');
+      setDecision(null);
+      return;
+    }
+    openPanel();
+    setDecision('down');
+  });
+
+  card.querySelector('[data-action="search"]').addEventListener('click', doSearch);
+  searchInput.addEventListener('keydown', e => { if (e.key==='Enter') doSearch(); });
+  card.querySelector('[data-action="skip"]').addEventListener('click', () => {
+    panel.classList.remove('open');
+    setDecision('skip');
+  });
+
+  return card;
+}
+
 function applyChange(a, res, c) {
   if (c.action==='restore_fields') { a.artist=res.origArtist; a.album=res.origAlbum; }
   if (c.action==='set_date')  a.date   = c.newVal;
@@ -1827,21 +1989,17 @@ document.getElementById('rescan-cancel').addEventListener('click', () => {
 
 document.getElementById('rescan-apply').addEventListener('click', () => {
   let accepted=0, reverted=0;
-  // Get needsReview slice from rescanResults
   const needsReview = rescanResults.filter(r=>r.changes.length>0 && r.score<HIGH_CONF);
   needsReview.forEach(res => {
     const a = albums.find(x=>x.id===res.albumId); if(!a) return;
     if (res.decision==='up') {
       res.changes.forEach(c => applyChange(a, res, c));
+      a.unmatched = false;
       accepted++;
-    } else if (res.decision==='down') {
+    } else if (res.decision==='down' || res.decision==='skip') {
       // Revert to original sheet data and mark as unmatched
-      if (originals[`id:${a.id}`]) {
-        const orig = originals[`id:${a.id}`];
-        a.artist = orig.artist;
-        a.album  = orig.album;
-        if (orig.date) a.date = orig.date;
-      }
+      const orig = originals[`id:${a.id}`];
+      if (orig) { a.artist=orig.artist; a.album=orig.album; if(orig.date) a.date=orig.date; }
       a.unmatched = true;
       reverted++;
     }
@@ -1851,8 +2009,8 @@ document.getElementById('rescan-apply').addEventListener('click', () => {
   document.getElementById('rescan-modal').classList.remove('open');
   rescanResults = [];
   const msg = [
-    accepted ? `${accepted} match${accepted>1?'es':''} accepted` : '',
-    reverted ? `${reverted} reverted to sheet data` : '',
+    accepted ? `${accepted} accepted` : '',
+    reverted ? `${reverted} marked unmatched` : '',
   ].filter(Boolean).join(', ');
   if (msg) alert(`✓ ${msg}.`);
 });
