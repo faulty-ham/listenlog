@@ -223,13 +223,42 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .rescan-section-head{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:8px;flex-wrap:wrap}
 .rescan-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:400}
 .auto-label{color:var(--good)}
-.rescan-cards{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto;padding:2px 0 4px}
-.rescan-card{display:grid;grid-template-columns:1fr 1fr auto;background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.rescan-cards{display:flex;flex-direction:column;gap:6px;padding:2px 0 4px}
+.rescan-card{
+  display:grid;
+  grid-template-columns:1fr 1fr 100px;
+  grid-template-rows:auto auto;
+  background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden;
+  transition:border-color .2s,background .2s;
+}
 .rescan-card.decided-up{border-color:var(--good);background:#0d1f10}
 .rescan-card.decided-down{border-color:var(--danger);background:#1f0d0d}
-/* Inline search panel shown after thumbs-down */
+.rescan-col{padding:12px 14px}
+.rescan-col-label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:5px}
+.rescan-artist{font-weight:500;color:var(--text-hi);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rescan-album-name{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rescan-meta{font-size:10px;color:var(--muted);margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.rescan-divider{width:1px;background:var(--border);grid-row:1;align-self:stretch}
+/* Actions: right column, full height, large buttons side by side */
+.rescan-actions{
+  grid-row:1;grid-column:3;
+  display:flex;flex-direction:row;align-items:center;justify-content:center;
+  gap:10px;padding:0 10px;background:rgba(0,0,0,.15);
+}
+.thumb-btn{
+  width:40px;height:40px;border-radius:50%;border:1px solid var(--border);
+  background:transparent;font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;flex-shrink:0;
+}
+.thumb-btn.up:hover{background:#0d2a12;border-color:var(--good);transform:scale(1.1)}
+.thumb-btn.down:hover{background:#2a0d0d;border-color:var(--danger);transform:scale(1.1)}
+.thumb-btn.active.up{background:var(--good);border-color:var(--good);color:#0d1117}
+.thumb-btn.active.down{background:var(--danger);border-color:var(--danger);color:#fff}
+/* Search panel spans full width below the 3 columns */
 .rescan-search-panel{
-  grid-column:1/-1;border-top:1px solid var(--border);
+  grid-column:1/-1;grid-row:2;
+  border-top:1px solid var(--border);
   padding:10px 12px;display:none;flex-direction:column;gap:8px;
   background:var(--surface);
 }
@@ -241,18 +270,18 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   padding:5px 9px;border-radius:var(--radius);outline:none;
 }
 .rescan-search-input:focus{border-color:var(--accent)}
-.rescan-alts{display:flex;flex-direction:column;gap:4px}
+.rescan-alts{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto}
 .rescan-alt{
   display:flex;align-items:center;gap:8px;padding:6px 8px;
   background:var(--surface2);border:1px solid var(--border);border-radius:4px;
-  font-size:11px;cursor:pointer;transition:border-color .15s;
+  font-size:11px;transition:border-color .15s;
 }
 .rescan-alt:hover{border-color:var(--accent)}
 .rescan-alt-info{flex:1;min-width:0}
 .rescan-alt-artist{font-weight:500;color:var(--text-hi);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rescan-alt-album{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rescan-alt-meta{display:flex;gap:5px;align-items:center;flex-shrink:0}
-.rescan-search-empty{font-size:11px;color:var(--muted);padding:4px 0}
+.rescan-search-empty{font-size:11px;color:var(--muted);padding:6px 2px}
 .rescan-col{padding:9px 12px}
 .rescan-col-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px}
 .rescan-artist{font-weight:500;color:var(--text-hi);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1223,33 +1252,57 @@ function scoreResult(result, tArtist, tAlbum, hintYear) {
 // ── Source 1: Last.fm — largest music-specific catalog ───────
 async function lastfmLookup(artist, album, hintYear) {
   try {
-    const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo`+
-      `&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}`+
-      `&autocorrect=1&format=json&api_key=d8bc1f03ef025f5833d88fd19d603883`;
-    const r = await rateLimitedFetch(url);
-    if (!r.ok) return null;
-    const data = await r.json();
-    if (data.error || !data.album) return null;
-    const al = data.album;
-    const artistSim = similarity(al.artist||'', artist);
-    const albumSim  = similarity(al.name||'', album);
-    if (similarity(al.artist||'', album) > albumSim+0.2) return null;
-    if (artistSim < 0.18) return null;
-    let date = null;
-    const pub = al.wiki?.published||'';
-    const dm = pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
-    if (dm) {
-      const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
-      date = `${dm[3]}-${mo[dm[2]]||'01'}-${dm[1].padStart(2,'0')}`;
-    }
-    if (!date) { const ym = pub.match(/\d{4}/); if (ym) date = ym[0]; }
-    const releaseYear = date ? date.slice(0,4) : null;
-    const art = al.image?.find(i=>i.size==='extralarge')?.['#text'] || null;
-    const fakeResult = { artistName: al.artist, collectionName: al.name, _releaseYear: releaseYear };
-    const score = scoreResult(fakeResult, artist, album, hintYear);
-    if (score < 0) return null;
-    return { date, art: (art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
-             matchedArtist:al.artist, matchedAlbum:al.name, score, _releaseYear:releaseYear };
+    // Use album.search to find all versions, then getinfo on best match
+    const searchUrl = `https://ws.audioscrobbler.com/2.0/?method=album.search`+
+      `&album=${encodeURIComponent(album)}&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json&limit=10`;
+    const sr   = await rateLimitedFetch(searchUrl);
+    const sd   = await sr.json();
+    const matches = (sd?.results?.albummatches?.album || [])
+      .filter(a => {
+        const artistSim = similarity(a.artist||'', artist);
+        const albumSim  = similarity(a.name||'', album);
+        return artistSim >= 0.20 && albumSim >= 0.20
+          && similarity(a.artist||'', album) <= albumSim + 0.2;
+      })
+      .slice(0, 5);
+    if (!matches.length) return null;
+
+    // Fetch full info for each candidate to get dates, pick best score then earliest
+    const infos = await Promise.all(matches.map(async m => {
+      try {
+        const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo`+
+          `&artist=${encodeURIComponent(m.artist)}&album=${encodeURIComponent(m.name)}`+
+          `&autocorrect=1&format=json&api_key=d8bc1f03ef025f5833d88fd19d603883`;
+        const ir  = await rateLimitedFetch(infoUrl);
+        const id  = await ir.json();
+        const al  = id?.album; if (!al) return null;
+        let date = null;
+        const pub = al.wiki?.published||'';
+        const dm = pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
+        if (dm) {
+          const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+          date = `${dm[3]}-${mo[dm[2]]||'01'}-${dm[1].padStart(2,'0')}`;
+        } else { const ym=pub.match(/\d{4}/); if(ym) date=ym[0]; }
+        const yr  = date ? date.slice(0,4) : null;
+        const art = al.image?.find(i=>i.size==='extralarge')?.['#text']||null;
+        const fakeResult = { artistName:al.artist, collectionName:al.name, _releaseYear:yr };
+        const score = scoreResult(fakeResult, artist, album, hintYear);
+        if (score < 0) return null;
+        return { date, art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
+                 matchedArtist:al.artist, matchedAlbum:al.name, score, _releaseYear:yr };
+      } catch(e) { return null; }
+    }));
+
+    const valid = infos.filter(Boolean);
+    if (!valid.length) return null;
+
+    // Among valid candidates: pick highest score, use release year as tiebreaker (earlier = preferred)
+    valid.sort((a,b) => {
+      const sd = b.score - a.score;
+      if (Math.abs(sd) > 0.05) return sd;
+      return parseInt(a._releaseYear||'9999') - parseInt(b._releaseYear||'9999');
+    });
+    return valid[0];
   } catch(e) { return null; }
 }
 
@@ -1856,7 +1909,6 @@ function buildReviewCard(res, needsReview, onAdvance) {
       <div class="rescan-album-name">${esc(res.origAlbum)}</div>
       ${sheetYear ? `<div class="rescan-meta"><span style="color:var(--muted)">${esc(sheetYear)}</span></div>` : ''}
     </div>
-    <div class="rescan-divider"></div>
     <div class="rescan-col">
       <div class="rescan-col-label">Match found</div>
       <div class="rescan-artist">${esc(res.matchedArtist||res.origArtist)}</div>
@@ -1868,14 +1920,13 @@ function buildReviewCard(res, needsReview, onAdvance) {
         ${srcBadge(res.source)}
       </div>
     </div>
-    <div class="rescan-divider"></div>
     <div class="rescan-actions">
       <button class="thumb-btn up" title="Accept match">👍</button>
-      <button class="thumb-btn down" title="Wrong match — search alternatives">👎</button>
+      <button class="thumb-btn down" title="Wrong — search alternatives">👎</button>
     </div>
     <div class="rescan-search-panel">
       <div class="rescan-search-row">
-        <input class="rescan-search-input" placeholder="Search e.g. Alanis Morissette Jagged Little Pill" value="${esc(res.origArtist+' '+res.origAlbum)}">
+        <input class="rescan-search-input" placeholder="Artist  Album  (separate with two spaces)" value="${esc(res.origArtist+'  '+res.origAlbum)}">
         <button class="btn-ghost btn-sm" style="white-space:nowrap" data-action="search">Search</button>
         <button class="btn-ghost btn-sm" style="color:var(--muted)" data-action="skip">Mark unmatched</button>
       </div>
@@ -1962,32 +2013,95 @@ function buildReviewCard(res, needsReview, onAdvance) {
     if (!q) return;
     altsEl.innerHTML = '<div class="rescan-search-empty"><span class="spinner"></span> Searching…</div>';
     try {
-      const parts = q.match(/^(.+?)\s{2,}(.+)$/) || q.match(/^(.+?)\t(.+)$/);
-      const sArtist = parts ? parts[1] : res.origArtist;
-      const sAlbum  = parts ? parts[2] : q;
-      const [bestFound, rawResults] = await Promise.all([
-        lookupBest(sArtist, sAlbum, sheetYear||null),
-        itunesSearch(q, 12),
-      ]);
+      // Split artist / album: try two-space separator first, then guess by
+      // treating the first "word group" as artist and the rest as album
+      let sArtist, sAlbum;
+      const twoSpace = q.match(/^(.+?)\s{2,}(.+)$/);
+      if (twoSpace) {
+        sArtist = twoSpace[1].trim();
+        sAlbum  = twoSpace[2].trim();
+      } else {
+        // Use original values as defaults, search with raw q
+        sArtist = res.origArtist;
+        sAlbum  = q;
+      }
+
       const candidates = [];
-      if (bestFound) candidates.push(...(bestFound.candidates||[]));
-      rawResults.forEach(r => {
-        const yr = r.releaseDate ? r.releaseDate.slice(0,4) : null;
-        const s  = scoreResult({...r, _releaseYear:yr}, sArtist, sAlbum, sheetYear||null);
-        if (s > 0) candidates.push({
-          matchedArtist:r.artistName, matchedAlbum:r.collectionName,
-          date: r.releaseDate ? r.releaseDate.split('T')[0] : null,
-          art:  r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null,
-          score: s, sourceName:'itunes', _releaseYear: yr,
-        });
-      });
       const seen = new Set();
-      renderAlts(candidates.filter(c => {
-        const k=`${c.matchedArtist}|||${c.matchedAlbum}`;
-        if(seen.has(k))return false;seen.add(k);return true;
-      }));
+      function addCand(c) {
+        const k = `${(c.matchedArtist||'').toLowerCase()}|||${(c.matchedAlbum||'').toLowerCase()}`;
+        if (seen.has(k) || !c.matchedAlbum) return;
+        seen.add(k);
+        candidates.push(c);
+      }
+
+      // 1. Last.fm album.search — returns all versions/editions
+      try {
+        const lfUrl = `https://ws.audioscrobbler.com/2.0/?method=album.search`+
+          `&album=${encodeURIComponent(sAlbum)}&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json&limit=20`;
+        const lfr  = await rateLimitedFetch(lfUrl);
+        const lfd  = await lfr.json();
+        const lfAlbums = lfd?.results?.albummatches?.album || [];
+        // For each result, fetch full info to get date
+        const topMatches = lfAlbums
+          .filter(a => similarity(a.artist||'', sArtist) > 0.15)
+          .slice(0, 8);
+        await Promise.all(topMatches.map(async a => {
+          try {
+            const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo`+
+              `&artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.name)}`+
+              `&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json`;
+            const ir   = await rateLimitedFetch(infoUrl);
+            const id   = await ir.json();
+            const info = id?.album;
+            if (!info) return;
+            let date = null;
+            const pub = info.wiki?.published||'';
+            const dm = pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
+            if (dm) {
+              const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+              date = `${dm[3]}-${mo[dm[2]]||'01'}-${dm[1].padStart(2,'0')}`;
+            } else { const ym=pub.match(/\d{4}/); if(ym) date=ym[0]; }
+            const art = info.image?.find(i=>i.size==='extralarge')?.['#text']||null;
+            const albumSim  = similarity(info.name||'', sAlbum);
+            const artistSim = similarity(info.artist||'', sArtist);
+            const score = albumSim*0.65 + Math.min(artistSim,0.55)*0.30;
+            addCand({ matchedArtist:info.artist, matchedAlbum:info.name,
+              date, art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
+              score, sourceName:'lastfm', _releaseYear:date?date.slice(0,4):null });
+          } catch(e) {}
+        }));
+      } catch(e) {}
+
+      // 2. iTunes raw search — no score threshold
+      try {
+        const itunesRaw = await itunesSearch(`${sArtist} ${sAlbum}`, 20);
+        itunesRaw.forEach(r => {
+          const yr = r.releaseDate ? r.releaseDate.slice(0,4) : null;
+          const albumSim  = similarity(r.collectionName||'', sAlbum);
+          const artistSim = similarity(r.artistName||'', sArtist);
+          if (albumSim < 0.2) return; // must at least look like the right album
+          const score = albumSim*0.65 + Math.min(artistSim,0.55)*0.30;
+          addCand({ matchedArtist:r.artistName, matchedAlbum:r.collectionName,
+            date: r.releaseDate ? r.releaseDate.split('T')[0] : null,
+            art: r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null,
+            score, sourceName:'itunes', _releaseYear:yr });
+        });
+      } catch(e) {}
+
+      // Sort: by score desc, use release year as tiebreaker (earlier = first)
+      candidates.sort((a,b) => {
+        const scoreDiff = b.score - a.score;
+        if (Math.abs(scoreDiff) > 0.05) return scoreDiff;
+        // Close scores — prefer earlier release
+        const ya = parseInt(a._releaseYear||'9999');
+        const yb = parseInt(b._releaseYear||'9999');
+        return ya - yb;
+      });
+
+      renderAlts(candidates);
     } catch(e) {
-      altsEl.innerHTML = '<div class="rescan-search-empty">Search failed.</div>';
+      altsEl.innerHTML = '<div class="rescan-search-empty">Search failed — check your connection.</div>';
     }
   }
 
