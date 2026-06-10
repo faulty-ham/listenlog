@@ -1252,33 +1252,48 @@ function scoreResult(result, tArtist, tAlbum, hintYear) {
   return score;
 }
 
-// ── Source 1: Last.fm — largest music-specific catalog ───────
+// ════════════════════════════════════════════════════════════
+// LOOKUP ENGINE — all sources run in parallel, MusicBrainz primary
+// ════════════════════════════════════════════════════════════
+
+// ── MusicBrainz (best date accuracy) ─────────────────────────
+async function musicBrainzLookup(artist, album, hintYear) {
+  try {
+    const q = `release:"${norm(album).replace(/"/g,'')}" AND artist:"${norm(artist).replace(/"/g,'')}"`;
+    const r = await rateLimitedFetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=10&fmt=json`,{headers:{'User-Agent':'ListenLog/1.0'}});
+    if (!r.ok) return null;
+    const data = await r.json();
+    let best=null, bestScore=-Infinity;
+    for (const rel of (data.releases||[])) {
+      const relArtist = rel['artist-credit']?.[0]?.artist?.name||'';
+      const relDate   = rel['first-release-date']||rel.date||'';
+      const yr = relDate.slice(0,4)||null;
+      const s = scoreResult({artistName:relArtist, collectionName:rel.title, _releaseYear:yr}, artist, album, hintYear);
+      if (s > bestScore) { bestScore=s; best={...rel, _yr:yr, _artist:relArtist}; }
+    }
+    if (!best || bestScore < 0) return null;
+    const date = best['first-release-date']||best.date||null;
+    return { date, art:null, matchedArtist:best._artist||artist, matchedAlbum:best.title||album,
+             score:bestScore, _releaseYear:best._yr, mbid:best.id };
+  } catch(e) { return null; }
+}
+
+// ── Last.fm (best art, large catalog) ────────────────────────
 async function lastfmLookup(artist, album, hintYear) {
   try {
-    // Use album.search to find all versions, then getinfo on best match
-    const searchUrl = `https://ws.audioscrobbler.com/2.0/?method=album.search`+
-      `&album=${encodeURIComponent(album)}&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json&limit=10`;
-    const sr   = await rateLimitedFetch(searchUrl);
-    const sd   = await sr.json();
-    const matches = (sd?.results?.albummatches?.album || [])
-      .filter(a => {
-        const artistSim = similarity(a.artist||'', artist);
-        const albumSim  = similarity(a.name||'', album);
-        return artistSim >= 0.20 && albumSim >= 0.20
-          && similarity(a.artist||'', album) <= albumSim + 0.2;
-      })
+    const sd = await (await rateLimitedFetch(
+      `https://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(album)}&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json&limit=10`
+    )).json();
+    const matches = (sd?.results?.albummatches?.album||[])
+      .filter(a => similarity(a.name||'', album) >= 0.20)
       .slice(0, 5);
     if (!matches.length) return null;
-
-    // Fetch full info for each candidate to get dates, pick best score then earliest
     const infos = await Promise.all(matches.map(async m => {
       try {
-        const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo`+
-          `&artist=${encodeURIComponent(m.artist)}&album=${encodeURIComponent(m.name)}`+
-          `&autocorrect=1&format=json&api_key=d8bc1f03ef025f5833d88fd19d603883`;
-        const ir  = await rateLimitedFetch(infoUrl);
-        const id  = await ir.json();
-        const al  = id?.album; if (!al) return null;
+        const id = await (await rateLimitedFetch(
+          `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&artist=${encodeURIComponent(m.artist)}&album=${encodeURIComponent(m.name)}&autocorrect=1&format=json&api_key=d8bc1f03ef025f5833d88fd19d603883`
+        )).json();
+        const al = id?.album; if (!al) return null;
         let date = null;
         const pub = al.wiki?.published||'';
         const dm = pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
@@ -1288,29 +1303,14 @@ async function lastfmLookup(artist, album, hintYear) {
         } else { const ym=pub.match(/\d{4}/); if(ym) date=ym[0]; }
         const yr  = date ? date.slice(0,4) : null;
         const art = al.image?.find(i=>i.size==='extralarge')?.['#text']||null;
-        const fakeResult = { artistName:al.artist, collectionName:al.name, _releaseYear:yr };
-        const score = scoreResult(fakeResult, artist, album, hintYear);
+        const score = scoreResult({artistName:al.artist, collectionName:al.name, _releaseYear:yr}, artist, album, hintYear);
         if (score < 0) return null;
-
-        // If Last.fm has no date, try MusicBrainz for it
-        let finalDate = date;
-        let finalYr   = yr;
-        if (!date) {
-          try {
-            const mb = await musicBrainzLookup(al.artist, al.name, hintYear);
-            if (mb?.date) { finalDate = mb.date; finalYr = mb.date.slice(0,4); }
-          } catch(e) {}
-        }
-
-        return { date:finalDate, art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
-                 matchedArtist:al.artist, matchedAlbum:al.name, score, _releaseYear:finalYr };
+        return { date, art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
+                 matchedArtist:al.artist, matchedAlbum:al.name, score, _releaseYear:yr };
       } catch(e) { return null; }
     }));
-
     const valid = infos.filter(Boolean);
     if (!valid.length) return null;
-
-    // Among valid candidates: pick highest score, use release year as tiebreaker (earlier = preferred)
     valid.sort((a,b) => {
       const sd = b.score - a.score;
       if (Math.abs(sd) > 0.05) return sd;
@@ -1320,7 +1320,7 @@ async function lastfmLookup(artist, album, hintYear) {
   } catch(e) { return null; }
 }
 
-// ── Source 2: iTunes ─────────────────────────────────────────
+// ── iTunes ────────────────────────────────────────────────────
 async function itunesSearch(q, limit=12) {
   for (let attempt=0; attempt<=MAX_RETRIES; attempt++) {
     try {
@@ -1345,8 +1345,8 @@ async function itunesLookupBest(artist, album, hintYear) {
       const results = await itunesSearch(q);
       for (const r of results) {
         const yr = r.releaseDate ? r.releaseDate.slice(0,4) : null;
-        const s = scoreResult({...r, _releaseYear:yr}, artist, album, hintYear);
-        if (s>bestScore) { bestScore=s; bestResult={...r, _releaseYear:yr}; }
+        const s = scoreResult({artistName:r.artistName, collectionName:r.collectionName, _releaseYear:yr}, artist, album, hintYear);
+        if (s > bestScore) { bestScore=s; bestResult={...r, _releaseYear:yr}; }
       }
       if (bestScore>=0.72) break;
     } catch(e) { if(e.message==='aborted') return null; }
@@ -1360,28 +1360,7 @@ async function itunesLookupBest(artist, album, hintYear) {
   return null;
 }
 
-// ── Source 3: MusicBrainz ─────────────────────────────────────
-async function musicBrainzLookup(artist, album, hintYear) {
-  try {
-    const q = `release:"${norm(album).replace(/"/g,'')}" AND artist:"${norm(artist).replace(/"/g,'')}"`;
-    const r = await rateLimitedFetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=8&fmt=json`,{headers:{'User-Agent':'ListenLog/1.0'}});
-    if (!r.ok) return null;
-    const data = await r.json();
-    let best=null, bestScore=-Infinity;
-    for (const rel of (data.releases||[])) {
-      const relDate = rel['first-release-date']||rel.date||'';
-      const yr = relDate.slice(0,4)||null;
-      const s = scoreResult({artistName:rel['artist-credit']?.[0]?.artist?.name||'',collectionName:rel.title,_releaseYear:yr},artist,album,hintYear);
-      if (s>bestScore) { bestScore=s; best={...rel,_yr:yr}; }
-    }
-    if (!best||bestScore<0.25) return null;
-    const date = best['first-release-date']||best.date||null;
-    return { date, art:null, matchedArtist:best['artist-credit']?.[0]?.artist?.name||artist,
-             matchedAlbum:best.title||album, score:bestScore, _releaseYear:best._yr };
-  } catch(e) { return null; }
-}
-
-// ── Source 4: Discogs ─────────────────────────────────────────
+// ── Discogs ───────────────────────────────────────────────────
 async function discogsLookup(artist, album, hintYear) {
   try {
     const q = encodeURIComponent(`${norm(artist)} ${norm(album)}`);
@@ -1393,8 +1372,8 @@ async function discogsLookup(artist, album, hintYear) {
       const parts = String(res.title||'').split(' - ');
       const rArtist=parts[0]||'', rAlbum=parts.slice(1).join(' - ')||res.title;
       const yr = res.year ? String(res.year) : null;
-      const s = scoreResult({artistName:rArtist,collectionName:rAlbum,_releaseYear:yr},artist,album,hintYear);
-      if (s>bestScore) { bestScore=s; best={...res,_rArtist:rArtist,_rAlbum:rAlbum,_yr:yr}; }
+      const s = scoreResult({artistName:rArtist, collectionName:rAlbum, _releaseYear:yr}, artist, album, hintYear);
+      if (s > bestScore) { bestScore=s; best={...res, _rArtist:rArtist, _rAlbum:rAlbum, _yr:yr}; }
     }
     if (!best||bestScore<0.25) return null;
     return { date:best._yr, art:best.cover_image&&!best.cover_image.includes('spacer.gif')?best.cover_image:null,
@@ -1402,40 +1381,70 @@ async function discogsLookup(artist, album, hintYear) {
   } catch(e) { return null; }
 }
 
-// ── Master: all 4 sources, best wins ─────────────────────────
+// ── Force-match: paste a MusicBrainz release URL or bare MBID ─
+async function mbidLookup(mbid) {
+  try {
+    const r = await rateLimitedFetch(
+      `https://musicbrainz.org/ws/2/release/${mbid}?inc=artist-credits&fmt=json`,
+      {headers:{'User-Agent':'ListenLog/1.0'}}
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    const artist = data['artist-credit']?.[0]?.artist?.name||'';
+    const album  = data.title||'';
+    const date   = data['first-release-date']||data.date||null;
+    return { date, art:null, matchedArtist:artist, matchedAlbum:album,
+             score:1.0, _releaseYear:date?date.slice(0,4):null, mbid };
+  } catch(e) { return null; }
+}
+
+// ── Master: all sources run in parallel ──────────────────────
 async function lookupBest(artist, album, hintYear) {
-  const sources = [
-    { fn:()=>lastfmLookup(artist,album,hintYear),      name:'lastfm'      },
-    { fn:()=>itunesLookupBest(artist,album,hintYear),   name:'itunes'      },
-    { fn:()=>musicBrainzLookup(artist,album,hintYear),  name:'musicbrainz' },
-    { fn:()=>discogsLookup(artist,album,hintYear),      name:'discogs'     },
+  // Run all 4 in parallel — fastest wins nothing but all contribute candidates
+  const [mbResult, lfResult, itResult, dcResult] = await Promise.all([
+    musicBrainzLookup(artist, album, hintYear).catch(()=>null),
+    lastfmLookup(artist, album, hintYear).catch(()=>null),
+    itunesLookupBest(artist, album, hintYear).catch(()=>null),
+    discogsLookup(artist, album, hintYear).catch(()=>null),
+  ]);
+
+  const sourceMap = [
+    {res:mbResult, name:'musicbrainz'},
+    {res:lfResult, name:'lastfm'},
+    {res:itResult, name:'itunes'},
+    {res:dcResult, name:'discogs'},
   ];
+
+  const allCandidates = sourceMap.filter(s=>s.res).map(s=>({...s.res, sourceName:s.name}));
+
   let bestResult=null, bestScore=-Infinity, bestSource=null;
-  const allCandidates = [];
-  for (const {fn, name} of sources) {
-    try {
-      const res = await fn();
-      if (res) {
-        allCandidates.push({...res, sourceName:name});
-        if (res.score > bestScore) { bestScore=res.score; bestResult=res; bestSource=name; }
-      }
-      if (bestScore>=0.75) break;
-    } catch(e) { if(e?.message==='aborted') return null; }
+  for (const {res, name} of sourceMap) {
+    if (res && res.score > bestScore) { bestScore=res.score; bestResult=res; bestSource=name; }
   }
-  // Don't accept any result where album similarity is below floor
-  // (belt-and-suspenders in case scoreResult is called with loose params)
+
   if (!bestResult || bestScore < 0.28) return null;
-  // Extra safety: verify album similarity directly
-  const finalAlbumSim = similarity(bestResult.matchedAlbum||'', album);
-  if (finalAlbumSim < 0.25) return null;
+  if (similarity(bestResult.matchedAlbum||'', album) < 0.25) return null;
+
+  // If winner has no date but another source does, borrow the earliest available date
+  if (!bestResult.date) {
+    const withDates = allCandidates.filter(c=>c.date&&similarity(c.matchedAlbum||'',album)>=0.25);
+    if (withDates.length) {
+      withDates.sort((a,b)=>parseInt(a._releaseYear||'9999')-parseInt(b._releaseYear||'9999'));
+      bestResult = {...bestResult, date:withDates[0].date, _releaseYear:withDates[0]._releaseYear};
+    }
+  }
+
+  // Prefer Last.fm art if available
+  const lfArt = lfResult?.art;
+
   return {
     result: {
-      releaseDate:      bestResult.date&&bestResult.date.length>4 ? bestResult.date : null,
-      _mbDate:          bestResult.date,
+      releaseDate:   bestResult.date&&bestResult.date.length>4 ? bestResult.date : null,
+      _mbDate:       bestResult.date,
       primaryGenreName: '',
-      artworkUrl100:    bestResult.art||null,
-      collectionName:   bestResult.matchedAlbum||album,
-      artistName:       bestResult.matchedArtist||artist,
+      artworkUrl100: lfArt || bestResult.art || null,
+      collectionName: bestResult.matchedAlbum||album,
+      artistName:    bestResult.matchedArtist||artist,
     },
     score:      bestScore,
     source:     bestSource,
@@ -1444,10 +1453,11 @@ async function lookupBest(artist, album, hintYear) {
 }
 
 // Shim used by manual auto-fill button
-async function itunesLookup(artist,album) {
-  const found = await lookupBest(artist,album);
+async function itunesLookup(artist, album) {
+  const found = await lookupBest(artist, album, null);
   return found ? found.result : null;
 }
+
 
 async function lookupAlbum() {
   const artist=document.getElementById('f-artist').value.trim(), album=document.getElementById('f-album').value.trim();
@@ -1945,9 +1955,13 @@ function buildReviewCard(res, needsReview, onAdvance) {
     </div>
     <div class="rescan-search-panel">
       <div class="rescan-search-row">
-        <input class="rescan-search-input" placeholder="Artist  Album  (separate with two spaces)" value="${esc(res.origArtist+'  '+res.origAlbum)}">
+        <input class="rescan-search-input" placeholder="Artist  Album  (two spaces to separate)" value="${esc(res.origArtist+'  '+res.origAlbum)}">
         <button class="btn-ghost btn-sm" style="white-space:nowrap" data-action="search">Search</button>
         <button class="btn-ghost btn-sm" style="color:var(--muted)" data-action="skip">Mark unmatched</button>
+      </div>
+      <div class="rescan-search-row" style="margin-top:4px">
+        <input class="rescan-mb-input" placeholder="MusicBrainz URL or release ID (force match)" style="flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:4px 9px;border-radius:var(--radius);outline:none">
+        <button class="btn-ghost btn-sm" style="white-space:nowrap;color:var(--want)" data-action="mbid">Force MB match</button>
       </div>
       <div class="rescan-alts"></div>
     </div>`;
@@ -2044,10 +2058,12 @@ function buildReviewCard(res, needsReview, onAdvance) {
 
   async function openPanel() {
     panel.classList.add('open');
+    // Show stored candidates immediately if available
     if (res.candidates && res.candidates.length) {
       renderAlts(res.candidates);
     } else {
-      altsEl.innerHTML = '<div class="rescan-search-empty">No stored alternatives — use search below.</div>';
+      // Auto-run search with original data
+      doSearch();
     }
   }
 
@@ -2159,6 +2175,18 @@ function buildReviewCard(res, needsReview, onAdvance) {
   card.querySelector('[data-action="skip"]').addEventListener('click', () => {
     panel.classList.remove('open');
     commit('skip');
+  });
+  card.querySelector('[data-action="mbid"]').addEventListener('click', async () => {
+    const raw = card.querySelector('.rescan-mb-input').value.trim();
+    if (!raw) return;
+    // Accept full URL like https://musicbrainz.org/release/abc-123 or bare MBID
+    const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
+    if (!mbid) { altsEl.innerHTML = '<div class="rescan-search-empty">Couldn\'t find a valid MusicBrainz ID in that URL.</div>'; panel.classList.add('open'); return; }
+    altsEl.innerHTML = '<div class="rescan-search-empty"><span class="spinner"></span> Looking up MusicBrainz ID…</div>';
+    panel.classList.add('open');
+    const result = await mbidLookup(mbid);
+    if (!result) { altsEl.innerHTML = '<div class="rescan-search-empty">MusicBrainz lookup failed — check the ID.</div>'; return; }
+    renderAlts([{...result, sourceName:'musicbrainz'}]);
   });
 
   return card;
