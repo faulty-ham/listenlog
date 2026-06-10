@@ -1219,7 +1219,6 @@ function similarity(a,b) {
   return(2*x)/(na.length+nb.length-2);
 }
 // ── Scoring: album name first, artist second, year tiebreaker ─
-// hintYear: the year from the user's sheet (used as soft tiebreaker)
 function scoreResult(result, tArtist, tAlbum, hintYear) {
   const rArtist = result.artistName||'';
   const rAlbum  = result.collectionName||'';
@@ -1227,23 +1226,27 @@ function scoreResult(result, tArtist, tAlbum, hintYear) {
   const albumSim  = similarity(rAlbum,  tAlbum);
   const artistSim = similarity(rArtist, tArtist);
 
+  // Hard reject: album title must be at least somewhat similar
+  // This is the most important gate — prevents completely wrong albums from matching
+  if (albumSim < 0.25) return -1;
+
   // Hard reject: swap detection
   if (similarity(rArtist, tAlbum)  > albumSim  + 0.25) return -1;
   if (similarity(rAlbum,  tArtist) > artistSim + 0.25) return -1;
 
   // Hard reject: artist must be at least minimally plausible
-  // (prevents cast recordings, covers, tribute albums winning on album title alone)
   if (artistSim < 0.20) return -1;
 
   // Base score: album name carries most weight, artist second
   let score = albumSim * 0.65 + Math.min(artistSim, 0.55) * 0.30;
 
-  // Year tiebreaker: small bonus (max 0.05) when release year matches hint
+  // Year: meaningful tiebreaker, bigger penalty for very wrong years
   if (hintYear && result._releaseYear) {
     const yearDiff = Math.abs(parseInt(hintYear) - parseInt(result._releaseYear));
-    if (yearDiff === 0)      score += 0.05;
-    else if (yearDiff <= 1)  score += 0.02;
-    else if (yearDiff >= 5)  score -= 0.02; // slight penalty for very different year
+    if (yearDiff === 0)       score += 0.06;
+    else if (yearDiff <= 2)   score += 0.02;
+    else if (yearDiff >= 10)  score -= 0.05;
+    else if (yearDiff >= 5)   score -= 0.02;
   }
 
   return score;
@@ -2013,90 +2016,86 @@ function buildReviewCard(res, needsReview, onAdvance) {
     if (!q) return;
     altsEl.innerHTML = '<div class="rescan-search-empty"><span class="spinner"></span> Searching…</div>';
     try {
-      // Split artist / album: try two-space separator first, then guess by
-      // treating the first "word group" as artist and the rest as album
-      let sArtist, sAlbum;
       const twoSpace = q.match(/^(.+?)\s{2,}(.+)$/);
-      if (twoSpace) {
-        sArtist = twoSpace[1].trim();
-        sAlbum  = twoSpace[2].trim();
-      } else {
-        // Use original values as defaults, search with raw q
-        sArtist = res.origArtist;
-        sAlbum  = q;
-      }
+      const sArtist = twoSpace ? twoSpace[1].trim() : res.origArtist;
+      const sAlbum  = twoSpace ? twoSpace[2].trim() : q;
 
       const candidates = [];
       const seen = new Set();
       function addCand(c) {
-        const k = `${(c.matchedArtist||'').toLowerCase()}|||${(c.matchedAlbum||'').toLowerCase()}`;
-        if (seen.has(k) || !c.matchedAlbum) return;
+        if (!c?.matchedAlbum) return;
+        const k = `${(c.matchedArtist||'').toLowerCase().trim()}|||${(c.matchedAlbum||'').toLowerCase().trim()}`;
+        if (seen.has(k)) return;
         seen.add(k);
         candidates.push(c);
       }
 
-      // 1. Last.fm album.search — returns all versions/editions
-      try {
-        const lfUrl = `https://ws.audioscrobbler.com/2.0/?method=album.search`+
-          `&album=${encodeURIComponent(sAlbum)}&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json&limit=20`;
-        const lfr  = await rateLimitedFetch(lfUrl);
-        const lfd  = await lfr.json();
-        const lfAlbums = lfd?.results?.albummatches?.album || [];
-        // For each result, fetch full info to get date
-        const topMatches = lfAlbums
-          .filter(a => similarity(a.artist||'', sArtist) > 0.15)
-          .slice(0, 8);
-        await Promise.all(topMatches.map(async a => {
+      // Run Last.fm and iTunes in parallel for speed
+      await Promise.all([
+
+        // Last.fm: search then getinfo on ALL results — no artist filter
+        (async () => {
           try {
-            const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo`+
-              `&artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.name)}`+
-              `&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json`;
-            const ir   = await rateLimitedFetch(infoUrl);
-            const id   = await ir.json();
-            const info = id?.album;
-            if (!info) return;
-            let date = null;
-            const pub = info.wiki?.published||'';
-            const dm = pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
-            if (dm) {
-              const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
-              date = `${dm[3]}-${mo[dm[2]]||'01'}-${dm[1].padStart(2,'0')}`;
-            } else { const ym=pub.match(/\d{4}/); if(ym) date=ym[0]; }
-            const art = info.image?.find(i=>i.size==='extralarge')?.['#text']||null;
-            const albumSim  = similarity(info.name||'', sAlbum);
-            const artistSim = similarity(info.artist||'', sArtist);
-            const score = albumSim*0.65 + Math.min(artistSim,0.55)*0.30;
-            addCand({ matchedArtist:info.artist, matchedAlbum:info.name,
-              date, art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
-              score, sourceName:'lastfm', _releaseYear:date?date.slice(0,4):null });
+            const lfUrl = `https://ws.audioscrobbler.com/2.0/?method=album.search`+
+              `&album=${encodeURIComponent(sAlbum)}&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json&limit=15`;
+            const lfd = await (await rateLimitedFetch(lfUrl)).json();
+            const lfAlbums = lfd?.results?.albummatches?.album || [];
+            await Promise.all(lfAlbums.slice(0, 10).map(async a => {
+              try {
+                const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo`+
+                  `&artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.name)}`+
+                  `&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json`;
+                const id = await (await rateLimitedFetch(infoUrl)).json();
+                const al = id?.album; if (!al) return;
+                let date = null;
+                const pub = al.wiki?.published||'';
+                const dm = pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
+                if (dm) {
+                  const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+                  date = `${dm[3]}-${mo[dm[2]]||'01'}-${dm[1].padStart(2,'0')}`;
+                } else { const ym=pub.match(/\d{4}/); if(ym) date=ym[0]; }
+                const yr  = date ? date.slice(0,4) : null;
+                const art = al.image?.find(i=>i.size==='extralarge')?.['#text']||null;
+                const albumSim  = similarity(al.name||'', sAlbum);
+                const artistSim = similarity(al.artist||'', sArtist);
+                if (albumSim < 0.15) return; // loose filter — show almost everything
+                const score = albumSim * 0.65 + Math.min(artistSim, 0.55) * 0.30;
+                addCand({ matchedArtist:al.artist, matchedAlbum:al.name,
+                  date, art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
+                  score, sourceName:'lastfm', _releaseYear:yr });
+              } catch(e) {}
+            }));
           } catch(e) {}
-        }));
-      } catch(e) {}
+        })(),
 
-      // 2. iTunes raw search — no score threshold
-      try {
-        const itunesRaw = await itunesSearch(`${sArtist} ${sAlbum}`, 20);
-        itunesRaw.forEach(r => {
-          const yr = r.releaseDate ? r.releaseDate.slice(0,4) : null;
-          const albumSim  = similarity(r.collectionName||'', sAlbum);
-          const artistSim = similarity(r.artistName||'', sArtist);
-          if (albumSim < 0.2) return; // must at least look like the right album
-          const score = albumSim*0.65 + Math.min(artistSim,0.55)*0.30;
-          addCand({ matchedArtist:r.artistName, matchedAlbum:r.collectionName,
-            date: r.releaseDate ? r.releaseDate.split('T')[0] : null,
-            art: r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null,
-            score, sourceName:'itunes', _releaseYear:yr });
-        });
-      } catch(e) {}
+        // iTunes: "artist album" AND album-only query for more coverage
+        (async () => {
+          try {
+            const [r1, r2] = await Promise.all([
+              itunesSearch(`${sArtist} ${sAlbum}`, 15),
+              itunesSearch(sAlbum, 10),
+            ]);
+            [...r1, ...r2].forEach(r => {
+              const albumSim  = similarity(r.collectionName||'', sAlbum);
+              const artistSim = similarity(r.artistName||'', sArtist);
+              if (albumSim < 0.15) return;
+              const yr = r.releaseDate ? r.releaseDate.slice(0,4) : null;
+              const score = albumSim * 0.65 + Math.min(artistSim, 0.55) * 0.30;
+              addCand({ matchedArtist:r.artistName, matchedAlbum:r.collectionName,
+                date: r.releaseDate ? r.releaseDate.split('T')[0] : null,
+                art: r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null,
+                score, sourceName:'itunes', _releaseYear:yr });
+            });
+          } catch(e) {}
+        })(),
 
-      // Sort: by score desc, use release year as tiebreaker (earlier = first)
-      candidates.sort((a,b) => {
-        const scoreDiff = b.score - a.score;
-        if (Math.abs(scoreDiff) > 0.05) return scoreDiff;
-        // Close scores — prefer earlier release
-        const ya = parseInt(a._releaseYear||'9999');
-        const yb = parseInt(b._releaseYear||'9999');
-        return ya - yb;
+      ]);
+
+      // Sort: score desc, then earliest release year as tiebreaker
+      candidates.sort((a, b) => {
+        const sd = b.score - a.score;
+        if (Math.abs(sd) > 0.04) return sd;
+        return parseInt(a._releaseYear||'9999') - parseInt(b._releaseYear||'9999');
       });
 
       renderAlts(candidates);
