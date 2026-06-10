@@ -1291,8 +1291,19 @@ async function lastfmLookup(artist, album, hintYear) {
         const fakeResult = { artistName:al.artist, collectionName:al.name, _releaseYear:yr };
         const score = scoreResult(fakeResult, artist, album, hintYear);
         if (score < 0) return null;
-        return { date, art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
-                 matchedArtist:al.artist, matchedAlbum:al.name, score, _releaseYear:yr };
+
+        // If Last.fm has no date, try MusicBrainz for it
+        let finalDate = date;
+        let finalYr   = yr;
+        if (!date) {
+          try {
+            const mb = await musicBrainzLookup(al.artist, al.name, hintYear);
+            if (mb?.date) { finalDate = mb.date; finalYr = mb.date.slice(0,4); }
+          } catch(e) {}
+        }
+
+        return { date:finalDate, art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
+                 matchedArtist:al.artist, matchedAlbum:al.name, score, _releaseYear:finalYr };
       } catch(e) { return null; }
     }));
 
@@ -1411,7 +1422,12 @@ async function lookupBest(artist, album, hintYear) {
       if (bestScore>=0.75) break;
     } catch(e) { if(e?.message==='aborted') return null; }
   }
-  if (!bestResult || bestScore<0.22) return null;
+  // Don't accept any result where album similarity is below floor
+  // (belt-and-suspenders in case scoreResult is called with loose params)
+  if (!bestResult || bestScore < 0.28) return null;
+  // Extra safety: verify album similarity directly
+  const finalAlbumSim = similarity(bestResult.matchedAlbum||'', album);
+  if (finalAlbumSim < 0.25) return null;
   return {
     result: {
       releaseDate:      bestResult.date&&bestResult.date.length>4 ? bestResult.date : null,
@@ -1967,33 +1983,57 @@ function buildReviewCard(res, needsReview, onAdvance) {
 
   function renderAlts(candidates) {
     altsEl.innerHTML = '';
-    const sorted = [...candidates].filter(c=>c.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
+    // Show everything with a positive score — no artificial cap
+    const sorted = [...candidates]
+      .filter(c => c.score >= 0)
+      .sort((a,b) => {
+        const sd = b.score - a.score;
+        if (Math.abs(sd) > 0.04) return sd;
+        return parseInt(a._releaseYear||'9999') - parseInt(b._releaseYear||'9999');
+      });
     if (!sorted.length) {
-      altsEl.innerHTML = '<div class="rescan-search-empty">No alternatives found.</div>';
+      altsEl.innerHTML = '<div class="rescan-search-empty">No results found. Try a different search.</div>';
       return;
     }
     sorted.forEach(cand => {
       const row = document.createElement('div');
       row.className = 'rescan-alt';
+      const yearSpan = document.createElement('span');
+      yearSpan.style.cssText = 'font-size:10px;color:var(--muted);min-width:30px';
+      yearSpan.textContent = (cand.date||cand._releaseYear||'').slice(0,4) || '—';
+
       row.innerHTML = `
         <div class="rescan-alt-info">
           <div class="rescan-alt-artist">${esc(cand.matchedArtist||'')}</div>
           <div class="rescan-alt-album">${esc(cand.matchedAlbum||'')}</div>
         </div>
         <div class="rescan-alt-meta">
-          ${cand.date||cand._releaseYear ? `<span style="font-size:10px;color:var(--muted)">${esc((cand.date||cand._releaseYear||'').slice(0,4))}</span>` : ''}
+          <span class="rescan-alt-year" style="font-size:10px;color:var(--muted);min-width:30px">${esc((cand.date||cand._releaseYear||'').slice(0,4)||'—')}</span>
           ${confPill(cand.score)}
           <span class="src-badge${cand.sourceName==='musicbrainz'?' src-mb':''}">${{lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'}[cand.sourceName]||cand.sourceName||'?'}</span>
           <button class="thumb-btn up" style="width:26px;height:26px;font-size:12px" title="Use this match">👍</button>
         </div>`;
+
+      // If no date, try MusicBrainz async and update in place
+      if (!cand.date && !cand._releaseYear) {
+        const yearEl = row.querySelector('.rescan-alt-year');
+        yearEl.textContent = '…';
+        musicBrainzLookup(cand.matchedArtist||'', cand.matchedAlbum||'', null).then(mb => {
+          if (mb?.date) {
+            const yr = mb.date.slice(0,4);
+            yearEl.textContent = yr;
+            cand._releaseYear = yr;
+            cand.date = mb.date;
+          } else {
+            yearEl.textContent = '—';
+          }
+        }).catch(() => { row.querySelector('.rescan-alt-year').textContent = '—'; });
+      }
+
       row.querySelector('.thumb-btn.up').addEventListener('click', () => {
-        // Build changes from this candidate
         const newChanges = [];
-        if (cand.date) newChanges.push({field:'date', old:'', newVal:cand.date.length>4?cand.date:cand.date, action:'set_date'});
+        if (cand.date) newChanges.push({field:'date', old:'', newVal:cand.date, action:'set_date'});
         if (cand.art)  newChanges.push({field:'art',  old:'', newVal:cand.art,  action:'set_art'});
-        // Update res so applyChange uses the right data
-        res.origArtist    = res.origArtist;
-        res.origAlbum     = res.origAlbum;
         res.matchedArtist = cand.matchedArtist;
         res.matchedAlbum  = cand.matchedAlbum;
         commit('up', newChanges);
