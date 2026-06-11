@@ -1263,18 +1263,33 @@ async function musicBrainzLookup(artist, album, hintYear) {
     const r = await rateLimitedFetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=10&fmt=json`,{headers:{'User-Agent':'ListenLog/1.0'}});
     if (!r.ok) return null;
     const data = await r.json();
-    let best=null, bestScore=-Infinity;
-    for (const rel of (data.releases||[])) {
+
+    // Score all releases
+    const scored = (data.releases||[]).map(rel => {
       const relArtist = rel['artist-credit']?.[0]?.artist?.name||'';
       const relDate   = rel['first-release-date']||rel.date||'';
       const yr = relDate.slice(0,4)||null;
       const s = scoreResult({artistName:relArtist, collectionName:rel.title, _releaseYear:yr}, artist, album, hintYear);
-      if (s > bestScore) { bestScore=s; best={...rel, _yr:yr, _artist:relArtist}; }
-    }
-    if (!best || bestScore < 0) return null;
-    const date = best['first-release-date']||best.date||null;
-    return { date, art:null, matchedArtist:best._artist||artist, matchedAlbum:best.title||album,
-             score:bestScore, _releaseYear:best._yr, mbid:best.id };
+      return {...rel, _yr:yr, _artist:relArtist, _date:relDate||null, _score:s};
+    }).filter(r => r._score >= 0);
+
+    if (!scored.length) return null;
+
+    // Find the best score
+    const bestScore = Math.max(...scored.map(r => r._score));
+
+    // Among releases within 0.05 of best score, prefer fullest date (YYYY-MM-DD > YYYY > none)
+    const dateCompleteness = d => !d ? 0 : d.length >= 10 ? 3 : d.length === 7 ? 2 : 1;
+    const candidates = scored.filter(r => r._score >= bestScore - 0.05);
+    candidates.sort((a, b) => {
+      const dc = dateCompleteness(b._date) - dateCompleteness(a._date);
+      if (dc !== 0) return dc;
+      return a._score - b._score; // higher score as secondary tiebreaker
+    });
+
+    const best = candidates[0];
+    return { date:best._date, art:null, matchedArtist:best._artist||artist,
+             matchedAlbum:best.title||album, score:bestScore, _releaseYear:best._yr, mbid:best.id };
   } catch(e) { return null; }
 }
 
@@ -1427,12 +1442,22 @@ async function lookupBest(artist, album, hintYear) {
   if (!bestResult || bestScore < 0.28) return null;
   if (similarity(bestResult.matchedAlbum||'', album) < 0.25) return null;
 
-  // If winner has no date but another source does, borrow the earliest available date
-  if (!bestResult.date) {
-    const withDates = allCandidates.filter(c=>c.date&&similarity(c.matchedAlbum||'',album)>=0.25);
-    if (withDates.length) {
-      withDates.sort((a,b)=>parseInt(a._releaseYear||'9999')-parseInt(b._releaseYear||'9999'));
-      bestResult = {...bestResult, date:withDates[0].date, _releaseYear:withDates[0]._releaseYear};
+  // If winner has no full date, borrow the most complete date from any source
+  if (!bestResult.date || bestResult.date.length < 10) {
+    const dateCompleteness = d => !d ? 0 : d.length >= 10 ? 3 : d.length === 7 ? 2 : 1;
+    const current = dateCompleteness(bestResult.date||null);
+    const withBetterDates = allCandidates.filter(c =>
+      dateCompleteness(c.date||null) > current &&
+      similarity(c.matchedAlbum||'', album) >= 0.25
+    );
+    if (withBetterDates.length) {
+      // Among candidates with better dates, prefer earliest year then fullest date
+      withBetterDates.sort((a,b) => {
+        const ya = parseInt(a._releaseYear||'9999'), yb = parseInt(b._releaseYear||'9999');
+        if (ya !== yb) return ya - yb;
+        return dateCompleteness(b.date) - dateCompleteness(a.date);
+      });
+      bestResult = {...bestResult, date:withBetterDates[0].date, _releaseYear:withBetterDates[0]._releaseYear};
     }
   }
 
@@ -2088,14 +2113,12 @@ function buildReviewCard(res, needsReview, onAdvance) {
         (async () => {
           try {
             const mbQueries = [
-              // Primary: exact artist + album
               `release:"${norm(sAlbum).replace(/"/g,'')}" AND artist:"${norm(sArtist).replace(/"/g,'')}"`,
-              // Fallback: just album title (catches different artist name spellings)
               `release:"${norm(sAlbum).replace(/"/g,'')}"`,
             ];
+            const dateCompleteness = d => !d ? 0 : d.length >= 10 ? 3 : d.length === 7 ? 2 : 1;
             for (const mbq of mbQueries) {
-              const mbUrl = `https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(mbq)}&limit=10&fmt=json`;
-              const mbd = await (await rateLimitedFetch(mbUrl, {headers:{'User-Agent':'ListenLog/1.0'}})).json();
+              const mbd = await (await rateLimitedFetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(mbq)}&limit=10&fmt=json`, {headers:{'User-Agent':'ListenLog/1.0'}})).json();
               for (const rel of (mbd.releases||[])) {
                 const relArtist = rel['artist-credit']?.[0]?.artist?.name||'';
                 const relDate   = rel['first-release-date']||rel.date||'';
@@ -2104,9 +2127,22 @@ function buildReviewCard(res, needsReview, onAdvance) {
                 const artistSim = similarity(relArtist, sArtist);
                 if (albumSim < 0.15) continue;
                 const score = albumSim * 0.65 + Math.min(artistSim, 0.55) * 0.30;
-                addCand({ matchedArtist:relArtist, matchedAlbum:rel.title,
-                  date:relDate||null, art:null,
-                  score, sourceName:'musicbrainz', _releaseYear:yr, mbid:rel.id });
+                const key = `${relArtist.toLowerCase().trim()}|||${(rel.title||'').toLowerCase().trim()}`;
+                // If we already have this artist+album, only replace if this date is more complete
+                const existing = candidates.find(c =>
+                  `${(c.matchedArtist||'').toLowerCase().trim()}|||${(c.matchedAlbum||'').toLowerCase().trim()}` === key
+                );
+                if (existing) {
+                  if (dateCompleteness(relDate||null) > dateCompleteness(existing.date||null)) {
+                    existing.date = relDate||null;
+                    existing._releaseYear = yr;
+                    existing.mbid = rel.id;
+                  }
+                } else {
+                  addCand({ matchedArtist:relArtist, matchedAlbum:rel.title,
+                    date:relDate||null, art:null,
+                    score, sourceName:'musicbrainz', _releaseYear:yr, mbid:rel.id });
+                }
               }
             }
           } catch(e) {}
