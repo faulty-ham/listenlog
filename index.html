@@ -1572,64 +1572,6 @@ async function itunesSearch(q, limit=12) {
   return [];
 }
 
-async function musicBrainzLookup(artist, album) {
-  try {
-    const q = `release:"${norm(album).replace(/"/g,'')}" AND artist:"${norm(artist).replace(/"/g,'')}"`;
-    const r = await rateLimitedFetch(
-      `https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=8&fmt=json`,
-      { headers: {'User-Agent':'ListenLog/1.0'} }
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    let best=null, bestScore=-Infinity;
-    for (const rel of (data.releases||[])) {
-      const s = scoreResult({artistName:rel['artist-credit']?.[0]?.artist?.name||'', collectionName:rel.title}, artist, album);
-      if (s > bestScore) { bestScore=s; best=rel; }
-    }
-    if (!best || bestScore < 0.25) return null;
-    return { date: best['first-release-date']||best.date||null, genre: best.genres?.[0]?.name||best.tags?.[0]?.name||null };
-  } catch(e) { return null; }
-}
-
-// Full lookup — sequential queries (no parallel), stops at first confident hit
-async function lookupBest(artist, album) {
-  const na=norm(artist), nb=norm(album);
-  // Deduplicated query list — we run these ONE AT A TIME through the rate-limited queue
-  const queries = [...new Set([
-    `${artist} ${album}`,
-    `${na} ${nb}`,
-    nb,           // album only
-    na,           // artist only
-  ])].filter(q => q.trim().length > 1);
-
-  let bestResult=null, bestScore=-Infinity;
-
-  for (const q of queries) {
-    try {
-      const results = await itunesSearch(q);
-      for (const r of results) {
-        const s = scoreResult(r, artist, album);
-        if (s > bestScore) { bestScore=s; bestResult=r; }
-      }
-      if (bestScore >= 0.72) break; // confident — skip remaining queries
-    } catch(e) {
-      if (e.message === 'aborted') return null;
-    }
-  }
-
-  if (bestScore >= 0.30 && bestResult) return { result:bestResult, score:bestScore, source:'itunes' };
-
-  // MusicBrainz fallback
-  try {
-    const mb = await musicBrainzLookup(artist, album);
-    if (mb?.date) return {
-      result: { releaseDate:mb.date.length>4?mb.date:null, _mbDate:mb.date, primaryGenreName:mb.genre||'', artworkUrl100:null, collectionName:album, artistName:artist },
-      score: 0.5, source: 'musicbrainz'
-    };
-  } catch(e) {}
-  return null;
-}
-
 // ── Serial worker — processes one album at a time ────────────
 // (Parallel workers each fire multiple requests = rate limiting death)
 async function serialMap(items, fn, { onProgress } = {}) {
