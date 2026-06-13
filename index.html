@@ -188,6 +188,7 @@ td{padding:7px 10px;vertical-align:middle}
 .badge-want{background:rgba(122,176,201,.12);color:var(--want);border:1px solid rgba(122,176,201,.25)}
 .badge-hard{background:rgba(201,153,122,.12);color:var(--hard);border:1px solid rgba(201,153,122,.25)}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
+.badge-type{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);font-size:9px;text-transform:uppercase;letter-spacing:.08em;border-radius:3px;padding:2px 6px}
 
 /* ── ROW ACTIONS — fade in on hover ── */
 .row-actions{opacity:0;transition:opacity .15s;white-space:nowrap}
@@ -472,6 +473,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <!-- Multi-select filter dropdowns -->
   <div class="ms-wrap" id="ms-artist"><button class="ms-btn" data-field="artist">Artist <span class="ms-arrow">▾</span></button></div>
   <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year">Year <span class="ms-arrow">▾</span></button></div>
+  <div class="ms-wrap" id="ms-type"><button class="ms-btn" data-field="type">Type <span class="ms-arrow">▾</span></button></div>
   <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating">Rating <span class="ms-arrow">▾</span></button></div>
   <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
   <div class="toolbar-sep"></div>
@@ -575,6 +577,21 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <div class="form-group" style="flex:1">
         <label>Release Date</label>
         <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="f-type" style="min-width:130px">
+          <option value="">Unknown</option>
+          <option value="Album">Album</option>
+          <option value="Live">Live</option>
+          <option value="EP">EP</option>
+          <option value="Single">Single</option>
+          <option value="Compilation">Compilation</option>
+          <option value="Soundtrack">Soundtrack</option>
+          <option value="Demo">Demo</option>
+          <option value="Mixtape">Mixtape</option>
+          <option value="Other">Other</option>
+        </select>
       </div>
       <div class="form-group">
         <label>My Rating</label>
@@ -857,7 +874,7 @@ function starsHTML(n) {
 // MULTI-SELECT FILTER SYSTEM
 // ════════════════════════════════════════════════════════════
 // activeFilters: { artist: Set, year: Set, genre: Set, rating: Set, tags: Set }
-const activeFilters = { artist: new Set(), year: new Set(), genre: new Set(), rating: new Set(), tags: new Set() };
+const activeFilters = { artist: new Set(), year: new Set(), type: new Set(), rating: new Set(), tags: new Set() };
 
 const RATING_OPTIONS = [
   { value:'5',      label:'★★★★★ (5)' },
@@ -881,6 +898,7 @@ function getFiltered() {
     if (q && !(a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))) return false;
     if (activeFilters.artist.size && !activeFilters.artist.has(a.artist)) return false;
     if (activeFilters.year.size   && !activeFilters.year.has(extractYear(a.date))) return false;
+    if (activeFilters.type.size   && !activeFilters.type.has(a.releaseType||'Unknown')) return false;
     if (activeFilters.genre.size  && !activeFilters.genre.has(a.genre||'')) return false;
     if (activeFilters.rating.size) {
       const matched = [...activeFilters.rating].some(rat => {
@@ -907,6 +925,7 @@ function getFiltered() {
 function getOptions(field) {
   if (field === 'artist') return [...new Set(albums.map(a=>a.artist).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   if (field === 'year')   return [...new Set(albums.map(a=>extractYear(a.date)).filter(Boolean))].sort().reverse();
+  if (field === 'type')   return [...new Set(albums.map(a=>a.releaseType||'Unknown'))].sort();
   if (field === 'rating') return RATING_OPTIONS.map(o=>o.value);
   if (field === 'tags')   return TAG_OPTIONS.map(o=>o.value);
   return [];
@@ -1127,6 +1146,7 @@ function render() {
       editAlbum(a.id);
     });
     const tags = [
+      a.releaseType ? `<span class="badge badge-type">${esc(a.releaseType)}</span>` : '',
       a.wantToListen ? '<span class="badge badge-want">🎧 want</span>' : '',
       a.hardToFind   ? '<span class="badge badge-hard">📦 hard</span>' : '',
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ unmatched</span>' : '',
@@ -1254,6 +1274,7 @@ function closePanel() {
 }
 function resetForm() {
   ['f-artist','f-album','f-date','f-notes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('f-type').value='';
   setRating(0); formWant=false; formHard=false; syncTagToggles();
   pendingArtUrl='';
   // Reset autofill card
@@ -1290,6 +1311,7 @@ function showAutofillCard(found) {
 
   // Pre-fill form fields with found data but don't lock them
   if (date && !document.getElementById('f-date').value) document.getElementById('f-date').value = date;
+  if (r.releaseType) document.getElementById('f-type').value = r.releaseType;
   pendingArtUrl = art;
 
   // Store found data for accept
@@ -1300,6 +1322,7 @@ function applyAutofill(found) {
   const r = found.result;
   const date = r.releaseDate || r._mbDate || '';
   document.getElementById('f-date').value = date||'';
+  if (r.releaseType) document.getElementById('f-type').value = r.releaseType;
   pendingArtUrl = r.artworkUrl100||'';
   document.getElementById('autofill-up').classList.add('active');
   document.getElementById('autofill-down').classList.remove('active');
@@ -1424,6 +1447,22 @@ function showLookupStatus(msg,cls) {
 }
 function hideLookupStatus() { document.getElementById('lookup-status').style.display='none'; }
 
+// ── Release type helper ───────────────────────────────────────
+const RELEASE_TYPES = ['Album','Live','EP','Single','Compilation','Soundtrack','Demo','Mixtape','Other'];
+function resolveReleaseType(primaryType, secondaryTypes=[]) {
+  if (!primaryType) return null;
+  if (secondaryTypes.includes('Live'))             return 'Live';
+  if (secondaryTypes.includes('Compilation'))      return 'Compilation';
+  if (secondaryTypes.includes('Soundtrack'))       return 'Soundtrack';
+  if (secondaryTypes.includes('Demo'))             return 'Demo';
+  if (secondaryTypes.includes('Mixtape/Street'))   return 'Mixtape';
+  if (primaryType === 'Album')    return 'Album';
+  if (primaryType === 'Single')   return 'Single';
+  if (primaryType === 'EP')       return 'EP';
+  if (primaryType === 'Broadcast')return 'Other';
+  return primaryType || null;
+}
+
 function norm(s) {
   return String(s||'').toLowerCase()
     .replace(/[\(\[（【][^\)\]）】]{0,60}[\)\]）】]/g,'')
@@ -1481,36 +1520,38 @@ function scoreResult(result, tArtist, tAlbum, hintYear) {
 async function musicBrainzLookup(artist, album, hintYear) {
   try {
     const q = `release:"${norm(album).replace(/"/g,'')}" AND artist:"${norm(artist).replace(/"/g,'')}"`;
-    const r = await rateLimitedFetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=10&fmt=json`,{headers:{'User-Agent':'ListenLog/1.0'}});
+    const r = await rateLimitedFetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=10&fmt=json&inc=release-groups`,{headers:{'User-Agent':'ListenLog/1.0'}});
     if (!r.ok) return null;
     const data = await r.json();
 
-    // Score all releases
     const scored = (data.releases||[]).map(rel => {
       const relArtist = rel['artist-credit']?.[0]?.artist?.name||'';
       const relDate   = rel['first-release-date']||rel.date||'';
       const yr = relDate.slice(0,4)||null;
       const s = scoreResult({artistName:relArtist, collectionName:rel.title, _releaseYear:yr}, artist, album, hintYear);
-      return {...rel, _yr:yr, _artist:relArtist, _date:relDate||null, _score:s};
+      // Extract release type from release-group
+      const rg = rel['release-group']||{};
+      const primaryType = rg['primary-type']||null;
+      const secondaryTypes = rg['secondary-types']||[];
+      const releaseType = resolveReleaseType(primaryType, secondaryTypes);
+      return {...rel, _yr:yr, _artist:relArtist, _date:relDate||null, _score:s, _type:releaseType};
     }).filter(r => r._score >= 0);
 
     if (!scored.length) return null;
 
-    // Find the best score
     const bestScore = Math.max(...scored.map(r => r._score));
-
-    // Among releases within 0.05 of best score, prefer fullest date (YYYY-MM-DD > YYYY > none)
     const dateCompleteness = d => !d ? 0 : d.length >= 10 ? 3 : d.length === 7 ? 2 : 1;
     const candidates = scored.filter(r => r._score >= bestScore - 0.05);
     candidates.sort((a, b) => {
       const dc = dateCompleteness(b._date) - dateCompleteness(a._date);
       if (dc !== 0) return dc;
-      return a._score - b._score; // higher score as secondary tiebreaker
+      return a._score - b._score;
     });
 
     const best = candidates[0];
     return { date:best._date, art:null, matchedArtist:best._artist||artist,
-             matchedAlbum:best.title||album, score:bestScore, _releaseYear:best._yr, mbid:best.id };
+             matchedAlbum:best.title||album, score:bestScore, _releaseYear:best._yr,
+             mbid:best.id, releaseType:best._type };
   } catch(e) { return null; }
 }
 
@@ -1623,7 +1664,7 @@ async function discogsLookup(artist, album, hintYear) {
 async function mbidLookup(mbid) {
   try {
     const r = await rateLimitedFetch(
-      `https://musicbrainz.org/ws/2/release/${mbid}?inc=artist-credits&fmt=json`,
+      `https://musicbrainz.org/ws/2/release/${mbid}?inc=artist-credits+release-groups&fmt=json`,
       {headers:{'User-Agent':'ListenLog/1.0'}}
     );
     if (!r.ok) return null;
@@ -1631,8 +1672,10 @@ async function mbidLookup(mbid) {
     const artist = data['artist-credit']?.[0]?.artist?.name||'';
     const album  = data.title||'';
     const date   = data['first-release-date']||data.date||null;
+    const rg = data['release-group']||{};
+    const releaseType = resolveReleaseType(rg['primary-type']||null, rg['secondary-types']||[]);
     return { date, art:null, matchedArtist:artist, matchedAlbum:album,
-             score:1.0, _releaseYear:date?date.slice(0,4):null, mbid };
+             score:1.0, _releaseYear:date?date.slice(0,4):null, mbid, releaseType };
   } catch(e) { return null; }
 }
 
@@ -1693,6 +1736,7 @@ async function lookupBest(artist, album, hintYear) {
       artworkUrl100: lfArt || bestResult.art || null,
       collectionName: bestResult.matchedAlbum||album,
       artistName:    bestResult.matchedArtist||artist,
+      releaseType:   bestResult.releaseType || mbResult?.releaseType || null,
     },
     score:      bestScore,
     source:     bestSource,
@@ -1732,6 +1776,7 @@ function addOrUpdateAlbum() {
   const entry={
     id:editingId||uid(), artist, album,
     date:document.getElementById('f-date').value.trim(),
+    releaseType: document.getElementById('f-type').value||null,
     rating:currentRating||null,
     notes:document.getElementById('f-notes').value.trim(),
     wantToListen:formWant, hardToFind:formWant&&formHard,
@@ -1750,6 +1795,7 @@ function editAlbum(id) {
   document.getElementById('f-artist').value=a.artist;
   document.getElementById('f-album').value=a.album;
   document.getElementById('f-date').value=a.date||'';
+  document.getElementById('f-type').value=a.releaseType||'';
   document.getElementById('f-notes').value=a.notes||'';
   setRating(a.rating||0); formWant=!!a.wantToListen; formHard=!!a.hardToFind; syncTagToggles();
   pendingArtUrl=a.artUrl||'';
@@ -1970,6 +2016,8 @@ async function startRescan() {
       }
       if (newDate && newDate !== a.date) changes.push({field:'date', old:a.date||'', newVal:newDate, action:'set_date'});
       if (newArt && !a.artUrl)           changes.push({field:'art',  old:'',         newVal:newArt,  action:'set_art'});
+      const newType = found.result?.releaseType || found.candidates?.find(c=>c.releaseType)?.releaseType || null;
+      if (newType && !a.releaseType)     changes.push({field:'type', old:'',         newVal:newType, action:'set_type'});
 
       rescanResults.push({albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
         matchedArtist:r.artistName||null, matchedAlbum:r.collectionName||null,
@@ -2423,8 +2471,9 @@ function buildReviewCard(res, needsReview, onAdvance) {
 
 function applyChange(a, res, c) {
   if (c.action==='restore_fields') { a.artist=res.origArtist; a.album=res.origAlbum; }
-  if (c.action==='set_date')  a.date   = c.newVal;
-  if (c.action==='set_art')   a.artUrl = c.newVal;
+  if (c.action==='set_date')  a.date        = c.newVal;
+  if (c.action==='set_art')   a.artUrl      = c.newVal;
+  if (c.action==='set_type')  a.releaseType = c.newVal;
 }
 
 document.getElementById('rescan-cancel').addEventListener('click', () => {
