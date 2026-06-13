@@ -873,7 +873,7 @@ function starsHTML(n) {
 // ════════════════════════════════════════════════════════════
 // MULTI-SELECT FILTER SYSTEM
 // ════════════════════════════════════════════════════════════
-// activeFilters: { artist: Set, year: Set, genre: Set, rating: Set, tags: Set }
+// activeFilters: { artist: Set, year: Set, type: Set, rating: Set, tags: Set }
 const activeFilters = { artist: new Set(), year: new Set(), type: new Set(), rating: new Set(), tags: new Set() };
 
 const RATING_OPTIONS = [
@@ -899,7 +899,6 @@ function getFiltered() {
     if (activeFilters.artist.size && !activeFilters.artist.has(a.artist)) return false;
     if (activeFilters.year.size   && !activeFilters.year.has(extractYear(a.date))) return false;
     if (activeFilters.type.size   && !activeFilters.type.has(a.releaseType||'Unknown')) return false;
-    if (activeFilters.genre.size  && !activeFilters.genre.has(a.genre||'')) return false;
     if (activeFilters.rating.size) {
       const matched = [...activeFilters.rating].some(rat => {
         if (rat === 'unrated') return !a.rating;
