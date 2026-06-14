@@ -366,10 +366,14 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   font-family:'DM Mono',monospace;text-decoration:underline;padding:0;margin-left:4px;
 }
 
+/* Sort dropdown — desktop hides it (column headers serve that role), mobile shows it */
+.mobile-sort-select { display:none }
+
 .io-row{display:flex;gap:6px}
 
 /* ── MOBILE ── */
 @media(max-width:700px){
+  .mobile-sort-select { display:block; font-size:11px; padding:4px 8px }
   header,.panel,.filter-count,#bulk-bar,#filter-pills{padding-left:12px;padding-right:12px}
   .toolbar{gap:4px;padding:7px 12px;flex-wrap:wrap}
   .table-wrap{padding:0 0 80px}
@@ -467,7 +471,16 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating">Rating <span class="ms-arrow">▾</span></button></div>
   <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
   <div class="toolbar-sep"></div>
-  <button class="btn-ghost" id="btn-rescan" title="Re-scan all albums against original source data to fix artist/album swaps and look up missing dates">⟳ Re-scan Library</button>
+  <!-- Sort dropdown: always visible on mobile since column headers are hidden -->
+  <select id="mobile-sort" class="mobile-sort-select" title="Sort by">
+    <option value="date-desc">Release ↓</option>
+    <option value="date-asc">Release ↑</option>
+    <option value="artist-asc">Artist A–Z</option>
+    <option value="artist-desc">Artist Z–A</option>
+    <option value="album-asc">Album A–Z</option>
+    <option value="rating-desc">Rating ↓</option>
+    <option value="rating-asc">Rating ↑</option>
+  </select>
   <button class="btn-ghost" id="btn-gap-scan" title="Find and fix albums with missing art, incomplete dates, or Jan 1 placeholder dates">◎ Scan for Gaps</button>
   <div class="toolbar-sep"></div>
   <div class="io-row">
@@ -1011,7 +1024,7 @@ function updateFilterButton(field, wrap) {
   const sel = activeFilters[field];
   btn.classList.toggle('has-selection', sel.size > 0);
   // Update button label
-  const fieldLabel = { artist:'Artist', year:'Year', genre:'Genre', rating:'Rating', tags:'Tags' }[field];
+  const fieldLabel = { artist:'Artist', year:'Year', type:'Type', rating:'Rating', tags:'Tags' }[field];
   const countBadge = sel.size ? `<span class="ms-count">${sel.size}</span>` : '';
   btn.innerHTML = `${fieldLabel} ${countBadge}<span class="ms-arrow">▾</span>`;
 }
@@ -2759,8 +2772,27 @@ async function doImport() {
 // SORT & EVENTS
 // ════════════════════════════════════════════════════════════
 document.querySelectorAll('th[data-sort]').forEach(th=>{
-  th.addEventListener('click',()=>{const k=th.dataset.sort;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
+  th.addEventListener('click',()=>{
+    const k=th.dataset.sort;
+    if(sortKey===k) sortDir*=-1; else{sortKey=k;sortDir=k==='date'||k==='rating'?-1:1;}
+    syncMobileSort();
+    render();
+  });
 });
+
+// Mobile sort dropdown
+function syncMobileSort() {
+  const sel = document.getElementById('mobile-sort');
+  const val = `${sortKey}-${sortDir===1?'asc':'desc'}`;
+  if (sel.querySelector(`option[value="${val}"]`)) sel.value = val;
+}
+document.getElementById('mobile-sort').addEventListener('change', e => {
+  const [key, dir] = e.target.value.split('-');
+  sortKey = key;
+  sortDir = dir === 'asc' ? 1 : -1;
+  render();
+});
+syncMobileSort();
 document.getElementById('btn-toggle-add').addEventListener('click',()=>{
   editingId=null; resetForm(); openPanel('add');
 });
