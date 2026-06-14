@@ -468,6 +468,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
   <div class="toolbar-sep"></div>
   <button class="btn-ghost" id="btn-rescan" title="Re-scan all albums against original source data to fix artist/album swaps and look up missing dates">⟳ Re-scan Library</button>
+  <button class="btn-ghost" id="btn-gap-scan" title="Find and fix albums with missing art, incomplete dates, or Jan 1 placeholder dates">◎ Scan for Gaps</button>
   <div class="toolbar-sep"></div>
   <div class="io-row">
     <button class="btn-ghost" id="btn-export">Export</button>
@@ -2075,6 +2076,149 @@ function togglePause() {
   document.getElementById('btn-pause-global').textContent = scanPaused ? 'Resume' : 'Pause';
 }
 
+// ── Gap detection helpers ─────────────────────────────────────
+function isJan1(dateStr) {
+  if (!dateStr) return false;
+  // Matches YYYY-01-01 exactly
+  return /^\d{4}-01-01$/.test(dateStr);
+}
+function hasIncompleteDate(dateStr) {
+  if (!dateStr) return true;                    // no date at all
+  if (/^\d{4}$/.test(dateStr)) return true;     // bare year only
+  if (isJan1(dateStr)) return true;             // Jan 1 placeholder
+  return false;
+}
+function hasGap(a) {
+  return !a.artUrl || hasIncompleteDate(a.date||'');
+}
+
+// ════════════════════════════════════════════════════════════
+// SCAN FOR GAPS
+// ════════════════════════════════════════════════════════════
+async function startGapScan() {
+  if (scanRunning) return;
+  if (!albums.length) { alert('No albums to scan.'); return; }
+
+  const toScan = albums.filter(hasGap);
+  if (!toScan.length) {
+    alert('No gaps found — all albums have art and complete release dates!');
+    return;
+  }
+
+  const confirmed = confirm(
+    `Found ${toScan.length} album${toScan.length>1?'s':''} with gaps:\n\n` +
+    `• Missing art\n• Incomplete date (year-only)\n• Jan 1 placeholder date\n\n` +
+    `Scan them now?`
+  );
+  if (!confirmed) return;
+
+  const bar     = document.getElementById('global-progress');
+  const fillEl  = document.getElementById('gprogress-fill');
+  const pctEl   = document.getElementById('gprogress-pct');
+  const foundEl = document.getElementById('gprog-found');
+  const skipEl  = document.getElementById('gprog-skipped');
+  const failEl  = document.getElementById('gprog-failed');
+  const etaEl   = document.getElementById('gprog-eta');
+  const labelEl = document.getElementById('gprogress-label');
+
+  fillEl.style.width='0%'; pctEl.textContent='0%';
+  foundEl.textContent=skipEl.textContent=failEl.textContent='0'; etaEl.textContent='';
+
+  labelEl.innerHTML = 'Scanning for gaps… <button class="btn-pause" id="btn-pause-global">Pause</button>' +
+    '<button class="btn-pause" id="btn-stop-global" style="color:var(--danger);margin-left:4px">Stop</button>';
+  document.getElementById('btn-pause-global').addEventListener('click', togglePause);
+  document.getElementById('btn-stop-global').addEventListener('click', () => { scanAbort=true; scanPaused=false; });
+
+  bar.style.display = 'block';
+  document.getElementById('btn-gap-scan').disabled = true;
+  document.getElementById('btn-gap-scan').textContent = '◎ Scanning…';
+
+  scanAbort=false; scanPaused=false; scanRunning=true;
+  rescanResults = [];
+
+  let countFound=0, countSkipped=0, countFailed=0;
+  const startTime = Date.now();
+
+  await serialMap(toScan, async (a) => {
+    if (scanAbort) return;
+
+    // Use stored original name for searching if available
+    const origRec    = originals[`id:${a.id}`] || originals[origKey(a.artist,a.album)];
+    const searchArtist = origRec ? origRec.artist : a.artist;
+    const searchAlbum  = origRec ? origRec.album  : a.album;
+    const hintYear     = extractYear(a.date||'') || (origRec ? extractYear(origRec.date||'') : null);
+
+    const found = await lookupBest(searchArtist, searchAlbum, hintYear||null);
+
+    if (found) {
+      const r = found.result;
+      const newDate = r.releaseDate ? r.releaseDate.split('T')[0] : (r._mbDate||null);
+      const newArt  = r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null;
+      const newType = found.result?.releaseType || found.candidates?.find(c=>c.releaseType)?.releaseType || null;
+
+      const changes = [];
+
+      // Only propose date change if it actually fills a gap
+      if (newDate) {
+        const needsDate = hasIncompleteDate(a.date||'');
+        const fullDateAvailable = newDate.length >= 10; // YYYY-MM-DD
+        if (needsDate && fullDateAvailable) {
+          // Flag Jan 1 dates differently in the label
+          const oldLabel = isJan1(a.date) ? `${a.date} (Jan 1 placeholder)` : (a.date||'none');
+          changes.push({field:'date', old:oldLabel, newVal:newDate, action:'set_date'});
+        }
+      }
+
+      // Art: only propose if currently missing
+      if (newArt && !a.artUrl) {
+        changes.push({field:'art', old:'', newVal:newArt, action:'set_art'});
+      }
+
+      // Type: fill if missing
+      if (newType && !a.releaseType) {
+        changes.push({field:'type', old:'', newVal:newType, action:'set_type'});
+      }
+
+      rescanResults.push({
+        albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
+        matchedArtist:r.artistName||null, matchedAlbum:r.collectionName||null,
+        score:found.score, source:found.source, changes, accepted:changes.length>0,
+        candidates:found.candidates||[],
+        gapScan:true, // flag so review modal knows this came from gap scan
+      });
+      if (changes.length>0) countFound++; else countSkipped++;
+    } else {
+      rescanResults.push({
+        albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
+        matchedArtist:null, matchedAlbum:null, score:0, source:null,
+        changes:[], accepted:false, notFound:true, gapScan:true,
+      });
+      countFailed++;
+    }
+
+    // Update progress
+    const done = rescanResults.length;
+    const pct  = Math.min(100, Math.round(done / toScan.length * 100));
+    fillEl.style.width=pct+'%'; pctEl.textContent=pct+'%';
+    foundEl.textContent=countFound; skipEl.textContent=countSkipped; failEl.textContent=countFailed;
+    const elapsed=(Date.now()-startTime)/1000, rate=done/elapsed, remain=toScan.length-done;
+    if (rate>0&&remain>0) {
+      const s=Math.round(remain/rate);
+      etaEl.textContent=`~${Math.floor(s/60)>0?Math.floor(s/60)+'m ':''}${s%60}s · ${rate.toFixed(1)}/s`;
+    }
+  });
+
+  scanRunning=false;
+  bar.style.display='none';
+  document.getElementById('btn-gap-scan').disabled=false;
+  document.getElementById('btn-gap-scan').textContent='◎ Scan for Gaps';
+
+  if (scanAbort && rescanResults.length===0) return;
+
+  // Show same review modal — it handles gap scan results identically
+  showRescanModal();
+}
+
 // ── RESCAN REVIEW MODAL ──────────────────────────────────────
 const HIGH_CONF = 0.78; // threshold for auto-approval
 
@@ -2105,7 +2249,11 @@ function showRescanModal() {
   });
   if (autoAppliedCount) { save(); render(); }
 
-  document.getElementById('rescan-modal-desc').textContent = `Scanned ${rescanResults.length} albums.`;
+  const isGapScan = rescanResults.some(r => r.gapScan);
+  const totalScanned = rescanResults.length;
+  document.getElementById('rescan-modal-desc').textContent = isGapScan
+    ? `Gap scan complete — reviewed ${totalScanned} album${totalScanned!==1?'s':''} with missing art or incomplete dates.`
+    : `Scanned ${totalScanned} albums.`;
   document.getElementById('rescan-summary').innerHTML = `
     <span><b>${autoAppliedCount}</b> auto-approved</span>
     <span><b>${needsReview.length}</b> need review</span>
@@ -2698,6 +2846,7 @@ document.getElementById('csv-file-input').addEventListener('change',e=>{handleCS
 document.getElementById('btn-do-import').addEventListener('click',doImport);
 document.getElementById('btn-cancel-import').addEventListener('click',closeImportPanel);
 document.getElementById('btn-rescan').addEventListener('click',startRescan);
+document.getElementById('btn-gap-scan').addEventListener('click',startGapScan);
 document.getElementById('btn-pause-global').addEventListener('click',togglePause);
 document.getElementById('btn-stop-global').addEventListener('click',()=>{scanAbort=true;scanPaused=false;});
 document.getElementById('btn-export').addEventListener('click',()=>{
