@@ -1460,12 +1460,24 @@ function norm(s) {
 }
 function similarity(a,b) {
   const na=norm(a), nb=norm(b);
-  if (!na&&!nb) return 1; if (!na||!nb) return 0; if (na===nb) return 1;
-  if (na.includes(nb)||nb.includes(na)) return 0.85;
+  if(!na&&!nb)return 1; if(!na||!nb)return 0; if(na===nb)return 1;
+  if(na.includes(nb)||nb.includes(na))return 0.85;
+
+  // Bigram Dice coefficient
   const bigrams=s=>{const m=new Map();for(let i=0;i<s.length-1;i++){const bg=s.slice(i,i+2);m.set(bg,(m.get(bg)||0)+1);}return m;};
   const ba=bigrams(na),bb=bigrams(nb); let x=0;
   for(const[k,v]of ba)x+=Math.min(v,bb.get(k)||0);
-  return(2*x)/(na.length+nb.length-2);
+  const dice=(2*x)/(na.length+nb.length-2);
+
+  // Normalized Levenshtein — catches single-char typos that bigrams miss
+  const la=na.length, lb=nb.length;
+  const dp=Array.from({length:la+1},(_,i)=>Array.from({length:lb+1},(_,j)=>i===0?j:j===0?i:0));
+  for(let i=1;i<=la;i++)for(let j=1;j<=lb;j++)
+    dp[i][j]=na[i-1]===nb[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  const lev=1-dp[la][lb]/Math.max(la,lb);
+
+  // Take the higher of the two — whichever method scores the string pair better
+  return Math.max(dice, lev);
 }
 // ── Scoring: album name first, artist second, year tiebreaker ─
 function scoreResult(result, tArtist, tAlbum, hintYear) {
@@ -1476,8 +1488,8 @@ function scoreResult(result, tArtist, tAlbum, hintYear) {
   const artistSim = similarity(rArtist, tArtist);
 
   // Hard reject: album title must be at least somewhat similar
-  // This is the most important gate — prevents completely wrong albums from matching
-  if (albumSim < 0.25) return -1;
+  // Threshold raised to 0.55 because Levenshtein is more generous than pure bigrams
+  if (albumSim < 0.55) return -1;
 
   // Hard reject: swap detection
   if (similarity(rArtist, tAlbum)  > albumSim  + 0.25) return -1;
@@ -1693,7 +1705,7 @@ async function lookupBest(artist, album, hintYear) {
   }
 
   if (!bestResult || bestScore < 0.28) return null;
-  if (similarity(bestResult.matchedAlbum||'', album) < 0.25) return null;
+  if (similarity(bestResult.matchedAlbum||'', album) < 0.55) return null;
 
   // If winner has no full date, borrow the most complete date from any source
   if (!bestResult.date || bestResult.date.length < 10) {
