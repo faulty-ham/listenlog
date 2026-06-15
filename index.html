@@ -96,12 +96,11 @@ button{font-family:'DM Mono',monospace;font-size:12px;border:none;cursor:pointer
 .form-group label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .form-actions{display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 
-/* ── HALF-STAR INPUT (form) ── */
-.star-input{display:flex;gap:0;align-items:center;padding-top:2px;user-select:none}
-.star-half{display:inline-block;height:22px;line-height:22px;font-size:22px;cursor:pointer;overflow:hidden;color:var(--star-empty);transition:color .08s;position:relative}
-.star-half.left{width:11px;text-align:left}
-.star-half.right{width:12px;text-align:right;direction:rtl;margin-right:3px}
-.star-half.lit{color:var(--star)}
+/* ── STAR RATING INPUT ── */
+.star-input{display:flex;gap:3px;align-items:center;padding-top:2px;user-select:none}
+.star-btn{font-size:24px;cursor:pointer;color:var(--star-empty);transition:color .08s;background:none;border:none;padding:0;line-height:1}
+.star-btn.lit{color:var(--star)}
+.star-val-display{font-size:11px;color:var(--muted);margin-left:6px}
 .star-val-display{font-size:11px;color:var(--muted);margin-left:6px}
 
 /* ── TAG TOGGLES ── */
@@ -778,8 +777,9 @@ function origKey(artist, album) {
 
 function setRating(val) {
   currentRating = val;
-  document.querySelectorAll('.star-half').forEach(s => s.classList.toggle('lit', parseFloat(s.dataset.val) <= val));
-  document.getElementById('star-val-display').textContent = val ? `${val}/5` : '';
+  document.querySelectorAll('.star-btn').forEach(s => s.classList.toggle('lit', parseInt(s.dataset.val) <= val));
+  const disp = document.getElementById('star-val-display');
+  if (disp) disp.textContent = val ? `${val}/5` : '';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -798,52 +798,16 @@ document.getElementById('want-toggle').addEventListener('click', () => {
 document.getElementById('hard-toggle').addEventListener('click', () => { formHard = !formHard; syncTagToggles(); });
 
 // ════════════════════════════════════════════════════════════
-// STARS DISPLAY — SVG, 16px, pixel-perfect half-stars
+// STARS DISPLAY — simple full stars
 // ════════════════════════════════════════════════════════════
 function starsHTML(n) {
   if (!n) return '';
-  const S = 16; // px per star
-  const filled = '#00e54b', empty = '#2c353d';
-
-  // Build one SVG containing all 5 stars
-  // Each star is 16×16; half-stars use a clipPath
-  let svg = `<svg width="${S*5}" height="${S}" viewBox="0 0 ${S*5} ${S}" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
-
-  // Star polygon points (scaled to S×S grid, centred)
-  function starPath(cx, cy, r_out=7, r_in=2.8, pts=5) {
-    let d='';
-    for(let i=0;i<pts*2;i++){
-      const r=i%2===0?r_out:r_in;
-      const a=Math.PI/pts*i - Math.PI/2;
-      d+=(i===0?'M':'L')+(cx+r*Math.cos(a)).toFixed(2)+','+(cy+r*Math.sin(a)).toFixed(2);
-    }
-    return d+'Z';
-  }
-
-  const half = (n%1)>=0.5;
-  const full = Math.floor(n);
-
-  for(let i=0;i<5;i++){
-    const cx = i*S + S/2;
-    const cy = S/2;
-    const path = starPath(cx, cy);
-
-    if(i < full){
-      // fully filled
-      svg += `<path d="${path}" fill="${filled}"/>`;
-    } else if(i === full && half){
-      // half-star: filled left, empty right
-      const clipId = `hc${i}`;
-      svg += `<defs><clipPath id="${clipId}"><rect x="${i*S}" y="0" width="${S/2}" height="${S}"/></clipPath></defs>`;
-      svg += `<path d="${path}" fill="${empty}"/>`;
-      svg += `<path d="${path}" fill="${filled}" clip-path="url(#${clipId})"/>`;
-    } else {
-      // empty
-      svg += `<path d="${path}" fill="${empty}"/>`;
-    }
-  }
-  svg += '</svg>';
-  return `<span class="stars-display" title="${n}/5">${svg}</span>`;
+  const full  = Math.round(n);
+  const empty = 5 - full;
+  return `<span class="stars-display" title="${n}/5" style="font-size:15px;letter-spacing:1px">`
+    + `<span style="color:var(--star)">${'★'.repeat(full)}</span>`
+    + `<span style="color:var(--star-empty)">${'★'.repeat(empty)}</span>`
+    + `</span>`;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1647,8 +1611,11 @@ async function mbidLookup(mbid) {
     const date   = data['first-release-date']||data.date||null;
     const rg = data['release-group']||{};
     const releaseType = resolveReleaseType(rg['primary-type']||null, rg['secondary-types']||[]);
-    // Cover Art Archive — use direct URL pattern, no fetch needed
-    const art = `https://coverartarchive.org/release/${mbid}/front`;
+    const rgid = rg.id || null;
+    // Use release-group CAA URL if available (more stable), fall back to release URL
+    const art = rgid
+      ? `https://coverartarchive.org/release-group/${rgid}/front`
+      : `https://coverartarchive.org/release/${mbid}/front`;
     return { date, art, matchedArtist:artist, matchedAlbum:album,
              score:1.0, _releaseYear:date?date.slice(0,4):null, mbid, releaseType };
   } catch(e) { return null; }
@@ -2754,17 +2721,18 @@ function initApp() {
   if (_appInited) return;
   _appInited = true;
 
-// Build star widget
+// Build star rating widget (full stars, 1-5)
 (function() {
   const wrap = document.getElementById('star-input');
   if (!wrap) return;
-  wrap.innerHTML = ''; // clear any existing stars before building
+  wrap.innerHTML = '';
   for (let i = 1; i <= 5; i++) {
-    const L = document.createElement('span');
-    L.className = 'star-half left'; L.dataset.val = (i-.5).toString(); L.textContent = '★';
-    const R = document.createElement('span');
-    R.className = 'star-half right'; R.dataset.val = i.toString(); R.textContent = '★';
-    wrap.appendChild(L); wrap.appendChild(R);
+    const btn = document.createElement('button');
+    btn.className = 'star-btn';
+    btn.dataset.val = i.toString();
+    btn.textContent = '★';
+    btn.type = 'button';
+    wrap.appendChild(btn);
   }
   const d = document.createElement('span');
   d.className = 'star-val-display'; d.id = 'star-val-display';
@@ -2772,15 +2740,15 @@ function initApp() {
 })();
 
 // Star input event listeners
-document.getElementById('star-input').addEventListener('mousemove', e => {
-  const s = e.target.closest('.star-half'); if (!s) return;
-  const v = parseFloat(s.dataset.val);
-  document.querySelectorAll('.star-half').forEach(x => x.classList.toggle('lit', parseFloat(x.dataset.val) <= v));
+document.getElementById('star-input').addEventListener('mouseover', e => {
+  const b = e.target.closest('.star-btn'); if (!b) return;
+  const v = parseInt(b.dataset.val);
+  document.querySelectorAll('.star-btn').forEach(x => x.classList.toggle('lit', parseInt(x.dataset.val) <= v));
 });
 document.getElementById('star-input').addEventListener('mouseleave', () => setRating(currentRating));
 document.getElementById('star-input').addEventListener('click', e => {
-  const s = e.target.closest('.star-half'); if (!s) return;
-  const v = parseFloat(s.dataset.val);
+  const b = e.target.closest('.star-btn'); if (!b) return;
+  const v = parseInt(b.dataset.val);
   setRating(currentRating === v ? 0 : v);
   if (currentRating > 0 && formWant) { formWant = false; formHard = false; syncTagToggles(); }
 });
@@ -2841,13 +2809,21 @@ document.getElementById('autofill-mb-btn').addEventListener('click', async()=>{
     document.getElementById('f-artist').value=result.matchedArtist||document.getElementById('f-artist').value;
     document.getElementById('f-album').value=result.matchedAlbum||document.getElementById('f-album').value;
     document.getElementById('f-date').value=result.date||'';
+    if (result.releaseType) document.getElementById('f-type').value=result.releaseType;
     pendingArtUrl=result.art||'';
     document.getElementById('autofill-artist').textContent=result.matchedArtist||'';
     document.getElementById('autofill-album-name').textContent=result.matchedAlbum||'';
     document.getElementById('autofill-date').textContent=result.date||'—';
     document.getElementById('autofill-conf').innerHTML='<span class="conf-pill conf-high-pill">100%</span>';
-    document.getElementById('autofill-src').textContent='MB'; document.getElementById('autofill-src').className='src-badge src-mb';
-    document.getElementById('autofill-up').classList.add('active'); document.getElementById('autofill-down').classList.remove('active');
+    document.getElementById('autofill-src').textContent='MB';
+    document.getElementById('autofill-src').className='src-badge src-mb';
+    // Update the art preview
+    const artEl=document.getElementById('autofill-art');
+    if(result.art){artEl.src=result.art;artEl.style.display='block';artEl.onerror=()=>{artEl.style.display='none';};}
+    else{artEl.style.display='none';}
+    document.getElementById('autofill-card').style.display='block';
+    document.getElementById('autofill-up').classList.add('active');
+    document.getElementById('autofill-down').classList.remove('active');
     document.getElementById('autofill-search-panel').style.display='none';
   });
   altsEl.appendChild(row);
@@ -2917,7 +2893,7 @@ function rebuildOriginalIdIndex() {
 // SUPABASE — auth + cloud sync
 // Fill in your project URL and anon key below.
 // ════════════════════════════════════════════════════════════
-const SUPABASE_URL  = 'https://jzyyhqudynpezkddhjhf.supabase.co';   // e.g. https://xyzxyz.supabase.co
+const SUPABASE_URL  = 'https://jzyyhqudynpezkddhjhf.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_sdrLgh-9xgPZxCFsA56ZSw_SG0MSBxW';
 
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
