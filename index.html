@@ -781,18 +781,6 @@ function setRating(val) {
   document.querySelectorAll('.star-half').forEach(s => s.classList.toggle('lit', parseFloat(s.dataset.val) <= val));
   document.getElementById('star-val-display').textContent = val ? `${val}/5` : '';
 }
-document.getElementById('star-input').addEventListener('mousemove', e => {
-  const s = e.target.closest('.star-half'); if (!s) return;
-  const v = parseFloat(s.dataset.val);
-  document.querySelectorAll('.star-half').forEach(x => x.classList.toggle('lit', parseFloat(x.dataset.val) <= v));
-});
-document.getElementById('star-input').addEventListener('mouseleave', () => setRating(currentRating));
-document.getElementById('star-input').addEventListener('click', e => {
-  const s = e.target.closest('.star-half'); if (!s) return;
-  const v = parseFloat(s.dataset.val);
-  setRating(currentRating === v ? 0 : v);
-  if (currentRating > 0 && formWant) { formWant = false; formHard = false; syncTagToggles(); }
-});
 
 // ════════════════════════════════════════════════════════════
 // TAG TOGGLES
@@ -1659,7 +1647,9 @@ async function mbidLookup(mbid) {
     const date   = data['first-release-date']||data.date||null;
     const rg = data['release-group']||{};
     const releaseType = resolveReleaseType(rg['primary-type']||null, rg['secondary-types']||[]);
-    return { date, art:null, matchedArtist:artist, matchedAlbum:album,
+    // Cover Art Archive — use direct URL pattern, no fetch needed
+    const art = `https://coverartarchive.org/release/${mbid}/front`;
+    return { date, art, matchedArtist:artist, matchedAlbum:album,
              score:1.0, _releaseYear:date?date.slice(0,4):null, mbid, releaseType };
   } catch(e) { return null; }
 }
@@ -2764,10 +2754,11 @@ function initApp() {
   if (_appInited) return;
   _appInited = true;
 
-// Build star widget (here so it's guarded against double-init)
+// Build star widget
 (function() {
   const wrap = document.getElementById('star-input');
-  if (!wrap || wrap.querySelector('.star-half')) return;
+  if (!wrap) return;
+  wrap.innerHTML = ''; // clear any existing stars before building
   for (let i = 1; i <= 5; i++) {
     const L = document.createElement('span');
     L.className = 'star-half left'; L.dataset.val = (i-.5).toString(); L.textContent = '★';
@@ -2779,6 +2770,20 @@ function initApp() {
   d.className = 'star-val-display'; d.id = 'star-val-display';
   wrap.appendChild(d);
 })();
+
+// Star input event listeners
+document.getElementById('star-input').addEventListener('mousemove', e => {
+  const s = e.target.closest('.star-half'); if (!s) return;
+  const v = parseFloat(s.dataset.val);
+  document.querySelectorAll('.star-half').forEach(x => x.classList.toggle('lit', parseFloat(x.dataset.val) <= v));
+});
+document.getElementById('star-input').addEventListener('mouseleave', () => setRating(currentRating));
+document.getElementById('star-input').addEventListener('click', e => {
+  const s = e.target.closest('.star-half'); if (!s) return;
+  const v = parseFloat(s.dataset.val);
+  setRating(currentRating === v ? 0 : v);
+  if (currentRating > 0 && formWant) { formWant = false; formHard = false; syncTagToggles(); }
+});
 
 document.getElementById('btn-toggle-add').addEventListener('click',()=>{
   editingId=null; resetForm(); openPanel('add');
