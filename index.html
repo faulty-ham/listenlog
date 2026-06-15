@@ -502,7 +502,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 <!-- GLOBAL PROGRESS BAR -->
 <div id="global-progress">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-    <span style="font-size:11px;color:var(--muted)" id="gprogress-label">Scanning library…
+    <span style="font-size:11px;color:var(--muted)">
+      <span id="gprogress-label">Scanning…</span>
       <button class="btn-pause" id="btn-pause-global">Pause</button>
       <button class="btn-pause" id="btn-stop-global" style="color:var(--danger);margin-left:4px">Stop</button>
     </span>
@@ -1958,11 +1959,9 @@ async function startRescan() {
   const skipEl  = document.getElementById('gprog-skipped');
   const failEl  = document.getElementById('gprog-failed');
   const etaEl   = document.getElementById('gprog-eta');
-  const labelEl = document.getElementById('gprogress-label');
 
-  labelEl.innerHTML = 'Scanning library… <button class="btn-pause" id="btn-pause-global">Pause</button><button class="btn-pause" id="btn-stop-global" style="color:var(--danger);margin-left:4px">Stop</button>';
-  document.getElementById('btn-pause-global').addEventListener('click', togglePause);
-  document.getElementById('btn-stop-global').addEventListener('click', () => { scanAbort=true; scanPaused=false; });
+  labelEl.textContent = 'Re-scanning library…';
+  document.getElementById('btn-pause-global').textContent = 'Pause';
 
   bar.style.display = 'block';
   document.getElementById('btn-rescan').disabled = true;
@@ -2114,15 +2113,12 @@ async function startGapScan() {
   const skipEl  = document.getElementById('gprog-skipped');
   const failEl  = document.getElementById('gprog-failed');
   const etaEl   = document.getElementById('gprog-eta');
-  const labelEl = document.getElementById('gprogress-label');
 
   fillEl.style.width='0%'; pctEl.textContent='0%';
   foundEl.textContent=skipEl.textContent=failEl.textContent='0'; etaEl.textContent='';
 
-  labelEl.innerHTML = 'Scanning for gaps… <button class="btn-pause" id="btn-pause-global">Pause</button>' +
-    '<button class="btn-pause" id="btn-stop-global" style="color:var(--danger);margin-left:4px">Stop</button>';
-  document.getElementById('btn-pause-global').addEventListener('click', togglePause);
-  document.getElementById('btn-stop-global').addEventListener('click', () => { scanAbort=true; scanPaused=false; });
+  labelEl.textContent = 'Scanning for gaps…';
+  document.getElementById('btn-pause-global').textContent = 'Pause';
 
   bar.style.display = 'block';
   document.getElementById('btn-gap-scan').disabled = true;
