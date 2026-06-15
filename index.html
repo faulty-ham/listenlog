@@ -773,21 +773,8 @@ function origKey(artist, album) {
 }
 
 // ════════════════════════════════════════════════════════════
-// HALF-STAR WIDGET
+// HALF-STAR WIDGET — built inside initApp() to prevent double-init
 // ════════════════════════════════════════════════════════════
-(function() {
-  const wrap = document.getElementById('star-input');
-  for (let i = 1; i <= 5; i++) {
-    const L = document.createElement('span');
-    L.className = 'star-half left'; L.dataset.val = (i-.5).toString(); L.textContent = '★';
-    const R = document.createElement('span');
-    R.className = 'star-half right'; R.dataset.val = i.toString(); R.textContent = '★';
-    wrap.appendChild(L); wrap.appendChild(R);
-  }
-  const d = document.createElement('span');
-  d.className = 'star-val-display'; d.id = 'star-val-display';
-  wrap.appendChild(d);
-})();
 
 function setRating(val) {
   currentRating = val;
@@ -2776,6 +2763,22 @@ let _appInited = false;
 function initApp() {
   if (_appInited) return;
   _appInited = true;
+
+// Build star widget (here so it's guarded against double-init)
+(function() {
+  const wrap = document.getElementById('star-input');
+  if (!wrap || wrap.querySelector('.star-half')) return;
+  for (let i = 1; i <= 5; i++) {
+    const L = document.createElement('span');
+    L.className = 'star-half left'; L.dataset.val = (i-.5).toString(); L.textContent = '★';
+    const R = document.createElement('span');
+    R.className = 'star-half right'; R.dataset.val = i.toString(); R.textContent = '★';
+    wrap.appendChild(L); wrap.appendChild(R);
+  }
+  const d = document.createElement('span');
+  d.className = 'star-val-display'; d.id = 'star-val-display';
+  wrap.appendChild(d);
+})();
 
 document.getElementById('btn-toggle-add').addEventListener('click',()=>{
   editingId=null; resetForm(); openPanel('add');
