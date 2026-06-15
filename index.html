@@ -94,9 +94,6 @@ button{font-family:'DM Mono',monospace;font-size:12px;border:none;cursor:pointer
 .form-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
-.lookup-status{font-size:11px;color:var(--muted);padding:5px 0;display:flex;align-items:center;gap:6px}
-.lookup-status.found{color:var(--good)}.lookup-status.error{color:var(--danger)}
-.art-preview{width:56px;height:56px;border-radius:var(--radius);object-fit:cover;border:1px solid var(--border);display:none}
 .form-actions{display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 
 /* ── HALF-STAR INPUT (form) ── */
@@ -175,7 +172,6 @@ td{padding:7px 10px;vertical-align:middle}
 .td-artist{font-weight:500;color:var(--text-hi);max-width:180px;font-size:13px}
 .td-album{font-family:'Playfair Display',serif;font-style:italic;font-size:15px;color:var(--muted);max-width:220px}
 .td-date{color:var(--muted);white-space:nowrap;font-size:12px}
-.td-genre{color:var(--muted);font-size:11px}
 .td-notes{color:var(--muted);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── RATING DISPLAY — SVG half-stars, Letterboxd green ── */
@@ -1155,16 +1151,6 @@ function render() {
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ unmatched</span>' : '',
     ].filter(Boolean).join(' ');
 
-    const origRec = originals[`id:${a.id}`]
-                 || originals[origKey(a.artist, a.album)]
-                 || originals[origKey(a.album, a.artist)];
-    const origLine = origRec
-      ? `<div style="font-size:10px;color:var(--muted);opacity:.55;margin-top:2px;font-style:normal;font-family:'DM Mono',monospace">` +
-        `sheet: ${esc(origRec.artist)} / <em style="font-family:'Playfair Display',serif">${esc(origRec.album)}</em>` +
-        (origRec.date ? ` · ${esc(origRec.date)}` : '') +
-        `</div>`
-      : '';
-
     const checkCell = bulkMode
       ? `<td><input type="checkbox" class="row-cb" data-id="${a.id}" ${selectedIds.has(a.id)?'checked':''}></td>`
       : '';
@@ -1173,8 +1159,8 @@ function render() {
       <td class="td-art">${a.artUrl
         ? `<img class="art-thumb" src="${esc(a.artUrl)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
         : `<div class="art-placeholder">♪</div>`}</td>
-      <td class="td-artist">${esc(a.artist)}${origLine}</td>
-      <td class="td-album" data-year="${esc(extractYear(a.date))}"><em>${esc(a.album)}</em></td>
+      <td class="td-artist">${esc(a.artist)}</td>
+      <td class="td-album"><em>${esc(a.album)}</em></td>
       <td class="td-date">${esc(a.date||'—')}</td>
       <td>${a.rating ? starsHTML(a.rating) : '<span style="color:var(--border);font-size:11px">—</span>'}</td>
       <td><div class="row-tags">${tags||'<span style="color:var(--border);font-size:11px">—</span>'}</div></td>
@@ -1445,10 +1431,6 @@ async function runAutofillSearch() {
 // ════════════════════════════════════════════════════════════
 // LOOKUP ENGINE
 // ════════════════════════════════════════════════════════════
-function showLookupStatus(msg,cls) {
-  const el=document.getElementById('lookup-status'); el.style.display='flex'; el.className='lookup-status '+(cls||''); el.innerHTML=msg;
-}
-function hideLookupStatus() { document.getElementById('lookup-status').style.display='none'; }
 
 // ── Release type helper ───────────────────────────────────────
 const RELEASE_TYPES = ['Album','Live','EP','Single','Compilation','Soundtrack','Demo','Mixtape','Other'];
