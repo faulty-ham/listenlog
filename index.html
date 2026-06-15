@@ -2771,6 +2771,12 @@ document.getElementById('mobile-sort').addEventListener('change', e => {
   render();
 });
 syncMobileSort();
+// ── Wire all static event listeners once the app is shown ────
+let _appInited = false;
+function initApp() {
+  if (_appInited) return;
+  _appInited = true;
+
 document.getElementById('btn-toggle-add').addEventListener('click',()=>{
   editingId=null; resetForm(); openPanel('add');
 });
@@ -2884,8 +2890,10 @@ document.getElementById('btn-json-import').addEventListener('change',e=>{
 
 render();
 updateRescanButton();
+rebuildOriginalIdIndex();
+syncMobileSort();
+} // end initApp
 
-// Retroactively add id: keys to originals for albums imported before this index existed.
 function rebuildOriginalIdIndex() {
   let changed = false;
   albums.forEach(a => {
@@ -2896,7 +2904,6 @@ function rebuildOriginalIdIndex() {
   });
   if (changed) saveOriginals();
 }
-rebuildOriginalIdIndex();
 
 // ════════════════════════════════════════════════════════════
 // SUPABASE — auth + cloud sync
@@ -3024,6 +3031,7 @@ function showApp(user) {
   document.getElementById('auth-screen').classList.remove('visible');
   document.getElementById('app-wrap').classList.add('visible');
   document.getElementById('sync-indicator').style.display = 'flex';
+  initApp();
   pullFromCloud();
 }
 function showAuth() {
