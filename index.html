@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ListenLog</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -358,22 +358,38 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   font-family:'DM Mono',monospace;text-decoration:underline;padding:0;margin-left:4px;
 }
 
-/* Sort dropdown — desktop hides it (column headers serve that role), mobile shows it */
-.mobile-sort-select { display:none }
+/* ── QUICK-RATE MODAL ── */
+.quick-rate-card{width:360px;max-width:95vw;padding:24px}
+.qr-album-info{display:flex;gap:12px;align-items:center;margin-bottom:20px}
+.qr-art{width:56px;height:56px;border-radius:4px;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
+.qr-artist{font-weight:600;color:var(--text-hi);font-size:14px}
+.qr-album{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:14px;margin-top:2px}
+.qr-stars{display:flex;justify-content:center;gap:6px;margin-bottom:16px}
+.qr-stars .star-btn{font-size:44px;width:52px;height:52px}
+.qr-tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
+.qr-notes-row{margin-bottom:16px}
+.qr-notes-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:7px 10px;border-radius:var(--radius);outline:none;box-sizing:border-box}
+.qr-notes-input:focus{border-color:var(--accent)}
+.qr-actions{display:flex;gap:8px;justify-content:flex-end}
 
-.io-row{display:flex;gap:6px}
-
-/* ── MOBILE ── */
+/* ── MOBILE TOOLBAR ── */
+.mobile-hidden{display:inline-flex}
 @media(max-width:700px){
+  /* Viewport: prevent zoom, fit to screen */
   .mobile-sort-select { display:block; font-size:11px; padding:4px 8px }
   header,.panel,.filter-count,#bulk-bar,#filter-pills{padding-left:12px;padding-right:12px}
-  .toolbar{gap:4px;padding:7px 12px;flex-wrap:wrap}
+  .toolbar{gap:6px;padding:8px 12px;flex-wrap:wrap}
   .table-wrap{padding:0 0 80px}
   header{padding:12px 12px 10px}
   .header-title h1{font-size:26px}
   .header-stats{display:none}
   .ms-btn{font-size:11px;padding:4px 7px}
-  .search-wrap input{width:130px;font-size:11px}
+  /* Hide utility buttons on mobile */
+  .mobile-hidden{display:none}
+  /* Make Add and Search more prominent */
+  #btn-toggle-add{font-size:14px;padding:8px 16px}
+  .search-wrap input{flex:1;width:auto;font-size:12px}
+  .search-wrap{flex:1}
   /* Card layout for table rows */
   table thead{display:none}
   table,tbody,tr.album-row,td{display:block;width:100%}
@@ -386,28 +402,24 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     align-items:start;
   }
   tr.album-row td{padding:0;border:none}
-  /* art: col 1, rows 1-2 */
   tr.album-row td:nth-child(1){grid-column:1;grid-row:1/4;align-self:center}
-  /* artist: col 2, row 1 */
   tr.album-row td:nth-child(2){grid-column:2;grid-row:1;font-size:13px}
-  /* album: col 2, row 2 */
   tr.album-row td:nth-child(3){grid-column:2;grid-row:2;font-size:12px}
-  /* date: col 2, row 3 — visible as small muted text */
   tr.album-row td:nth-child(4){grid-column:2;grid-row:3;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
-  /* rating: col 3, row 1 */
   tr.album-row td:nth-child(5){grid-column:3;grid-row:1}
-  /* tags: col 3, row 2-3 */
   tr.album-row td:nth-child(6){grid-column:3;grid-row:2/4}
-  /* notes + actions: hide */
   tr.album-row td:nth-child(7),tr.album-row td:nth-child(8){display:none}
   /* Rescan card stack */
   .rescan-card{grid-template-columns:1fr}
   .rescan-divider{width:100%;height:1px}
   .rescan-actions{flex-direction:row;justify-content:flex-end;padding:8px 12px;border-top:1px solid var(--border)}
-  .modal.wide{width:98vw;padding:16px}
+  /* All modals full-width on mobile */
+  .modal,.modal.wide,.quick-rate-card{width:96vw!important;max-width:96vw!important;padding:16px;max-height:90vh;overflow-y:auto}
   #filter-pills{padding:5px 12px}
   .filter-pill{font-size:10px}
   #bulk-bar{top:0}
+  /* Quick-rate stars slightly smaller on mobile */
+  .qr-stars .star-btn{font-size:36px;width:44px;height:44px}
 }
 </style>
 </head>
@@ -450,7 +462,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
 <div class="toolbar">
   <button class="btn-primary" id="btn-toggle-add">+ Add Album</button>
-  <button class="btn-ghost" id="btn-toggle-import">⬆ Import CSV</button>
+  <button class="btn-ghost mobile-hidden" id="btn-toggle-import">⬆ Import CSV</button>
   <div class="toolbar-sep"></div>
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
@@ -472,9 +484,9 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <option value="rating-desc">Rating ↓</option>
     <option value="rating-asc">Rating ↑</option>
   </select>
-  <button class="btn-ghost" id="btn-gap-scan" title="Find and fix albums with missing art, incomplete dates, or Jan 1 placeholder dates">◎ Scan for Gaps</button>
-  <div class="toolbar-sep"></div>
-  <div class="io-row">
+  <button class="btn-ghost mobile-hidden" id="btn-gap-scan" title="Find and fix albums with missing art, incomplete dates, or Jan 1 placeholder dates">◎ Scan for Gaps</button>
+  <div class="toolbar-sep mobile-hidden"></div>
+  <div class="io-row mobile-hidden">
     <button class="btn-ghost" id="btn-export">Export</button>
     <button class="btn-ghost" id="btn-json-import-trigger">Import JSON</button>
     <input type="file" id="btn-json-import" accept=".json" style="display:none">
@@ -687,7 +699,31 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   </div>
 </div>
 
-<!-- RESCAN REVIEW MODAL -->
+<!-- QUICK-RATE MODAL -->
+<div class="modal-overlay" id="quick-rate-modal">
+  <div class="modal quick-rate-card">
+    <div class="qr-album-info">
+      <img id="qr-art" class="qr-art" alt="" style="display:none">
+      <div>
+        <div id="qr-artist" class="qr-artist"></div>
+        <div id="qr-album" class="qr-album"></div>
+      </div>
+    </div>
+    <div class="qr-stars" id="qr-star-input"></div>
+    <div class="qr-tags">
+      <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
+      <button class="tag-toggle hard" id="qr-hard-toggle" style="display:none">📦 Hard to find</button>
+      <button class="tag-toggle" id="qr-unmatched-toggle" style="font-size:11px">⚠ Unmatched</button>
+    </div>
+    <div class="qr-notes-row">
+      <input type="text" id="qr-notes" class="qr-notes-input" placeholder="Notes…">
+    </div>
+    <div class="qr-actions">
+      <button class="btn-primary" id="qr-save">Save</button>
+      <button class="btn-ghost" id="qr-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="rescan-modal">
   <div class="modal wide">
     <h3>Re-scan Results</h3>
@@ -1163,11 +1199,18 @@ function render() {
   list.forEach(a => {
     const tr = document.createElement('tr');
     tr.className = 'album-row' + (selectedIds.has(a.id) ? ' selected' : '');
-    // Single click opens edit (unless clicking a button or checkbox)
     tr.addEventListener('click', e => {
       if (bulkMode) return;
       if (e.target.closest('button,input')) return;
-      editAlbum(a.id);
+      // td 5 (rating) and td 6 (tags) are the right-side quick-rate area
+      const td = e.target.closest('td');
+      const tds = [...tr.querySelectorAll('td')];
+      const tdIdx = tds.indexOf(td);
+      if (tdIdx === 4 || tdIdx === 5) {
+        openQuickRate(a.id);
+      } else {
+        editAlbum(a.id);
+      }
     });
     const tags = [
       a.wantToListen ? '<span class="badge badge-want">🎧 want</span>' : '',
@@ -1821,6 +1864,39 @@ function editAlbum(id) {
     artEl.src=a.artUrl; artEl.style.display='block';
   }
   openPanel('edit');
+}
+
+// ── Quick-Rate modal ──────────────────────────────────────────
+let qrId=null, qrRating=0, qrWant=false, qrHard=false, qrUnmatched=false;
+
+function openQuickRate(id) {
+  const a=albums.find(x=>x.id===id); if(!a) return;
+  qrId=id; qrRating=a.rating||0; qrWant=!!a.wantToListen; qrHard=!!a.hardToFind; qrUnmatched=!!a.unmatched;
+  document.getElementById('qr-artist').textContent=a.artist;
+  document.getElementById('qr-album').textContent=a.album;
+  document.getElementById('qr-notes').value=a.notes||'';
+  const artEl=document.getElementById('qr-art');
+  if(a.artUrl){artEl.src=a.artUrl;artEl.style.display='block';}else artEl.style.display='none';
+  setQrRating(qrRating);
+  syncQrToggles();
+  document.getElementById('quick-rate-modal').classList.add('open');
+}
+
+function setQrRating(val) {
+  qrRating=val;
+  document.querySelectorAll('#qr-star-input .star-btn').forEach(b=>{
+    b.classList.toggle('lit',parseInt(b.dataset.val)<=val);
+  });
+}
+
+function syncQrToggles() {
+  const w=document.getElementById('qr-want-toggle');
+  const h=document.getElementById('qr-hard-toggle');
+  const u=document.getElementById('qr-unmatched-toggle');
+  w.classList.toggle('active',qrWant);
+  h.style.display=qrWant?'':'none';
+  h.classList.toggle('active',qrHard);
+  u.classList.toggle('active',qrUnmatched);
 }
 function confirmDelete(id,label) {
   pendingDeleteId=id; document.getElementById('delete-desc').textContent=`Remove "${label}"?`;
@@ -2678,6 +2754,42 @@ document.getElementById('star-input').addEventListener('click', e => {
   const v = parseInt(b.dataset.val);
   setRating(currentRating === v ? 0 : v);
   if (currentRating > 0 && formWant) { formWant = false; formHard = false; syncTagToggles(); }
+});
+
+// Build quick-rate star widget
+(function(){
+  const wrap=document.getElementById('qr-star-input');
+  if(!wrap)return;
+  for(let i=1;i<=5;i++){
+    const btn=document.createElement('button');
+    btn.className='star-btn';btn.dataset.val=i;btn.textContent='★';btn.type='button';
+    wrap.appendChild(btn);
+  }
+  wrap.addEventListener('mouseover',e=>{const b=e.target.closest('.star-btn');if(!b)return;const v=parseInt(b.dataset.val);wrap.querySelectorAll('.star-btn').forEach(x=>x.classList.toggle('lit',parseInt(x.dataset.val)<=v));});
+  wrap.addEventListener('mouseleave',()=>setQrRating(qrRating));
+  wrap.addEventListener('click',e=>{const b=e.target.closest('.star-btn');if(!b)return;const v=parseInt(b.dataset.val);setQrRating(qrRating===v?0:v);});
+})();
+
+document.getElementById('qr-want-toggle').addEventListener('click',()=>{qrWant=!qrWant;if(!qrWant)qrHard=false;syncQrToggles();});
+document.getElementById('qr-hard-toggle').addEventListener('click',()=>{qrHard=!qrHard;syncQrToggles();});
+document.getElementById('qr-unmatched-toggle').addEventListener('click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
+document.getElementById('qr-save').addEventListener('click',()=>{
+  if(!qrId)return;
+  const a=albums.find(x=>x.id===qrId); if(!a)return;
+  a.rating=qrRating||null;
+  a.wantToListen=qrWant;
+  a.hardToFind=qrWant&&qrHard;
+  a.unmatched=qrUnmatched;
+  a.notes=document.getElementById('qr-notes').value.trim()||null;
+  save();render();
+  document.getElementById('quick-rate-modal').classList.remove('open');
+  qrId=null;
+});
+document.getElementById('qr-cancel').addEventListener('click',()=>{
+  document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
+});
+document.getElementById('quick-rate-modal').addEventListener('click',e=>{
+  if(e.target.id==='quick-rate-modal'){document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;}
 });
 
 document.getElementById('btn-toggle-add').addEventListener('click',()=>{
