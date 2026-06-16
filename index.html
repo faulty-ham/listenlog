@@ -73,7 +73,7 @@ input[type="text"],select{background:var(--bg);border:1px solid var(--border);co
 input[type="text"]:focus,select:focus{border-color:var(--accent)}
 select option{background:#1f2328}
 .search-wrap{position:relative}
-.search-wrap input{padding-left:26px;width:190px}
+.search-wrap input{padding-left:26px;padding-right:22px;width:190px}
 .search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
 .toolbar-sep{width:1px;height:22px;background:var(--border);margin:0 2px}
 button{font-family:'DM Mono',monospace;font-size:12px;border:none;cursor:pointer;border-radius:var(--radius);padding:5px 11px;transition:all .15s}
@@ -467,6 +467,12 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
     <input type="text" id="filter-search" placeholder="Search artist or album…">
+    <button id="search-clear" title="Clear search" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;line-height:1">✕</button>
+  </div>
+  <!-- Quick Add: desktop only, paste MB link → opens add modal prefilled -->
+  <div class="mobile-hidden" style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:2px 4px 2px 8px">
+    <span style="font-size:10px;color:var(--muted);white-space:nowrap;text-transform:uppercase;letter-spacing:.08em">Quick Add</span>
+    <input type="text" id="quick-add-mb" placeholder="Paste MB link…" style="background:none;border:none;outline:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);width:160px;padding:3px 4px">
   </div>
   <!-- Multi-select filter dropdowns -->
   <div class="ms-wrap" id="ms-artist"><button class="ms-btn" data-field="artist">Artist <span class="ms-arrow">▾</span></button></div>
@@ -2817,45 +2823,75 @@ document.getElementById('f-album').addEventListener('keydown',e=>{if(e.key==='En
 // Autofill card: result shown after auto-fill or MB force match
 document.getElementById('autofill-search-btn').addEventListener('click', runAutofillSearch);
 document.getElementById('autofill-search-input').addEventListener('keydown',e=>{if(e.key==='Enter')runAutofillSearch();});
-document.getElementById('autofill-mb-btn').addEventListener('click', async()=>{
-  const raw=document.getElementById('autofill-mb-input').value.trim();
-  if(!raw)return;
-  const mbid=raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
-  if(!mbid){document.getElementById('autofill-alts').innerHTML='<div class="rescan-search-empty">Invalid MusicBrainz ID.</div>';return;}
-  document.getElementById('autofill-alts').innerHTML='<div class="rescan-search-empty"><span class="spinner"></span> Looking up…</div>';
-  document.getElementById('autofill-search-panel').style.display='block';
-  const result=await mbidLookup(mbid);
-  if(!result){document.getElementById('autofill-alts').innerHTML='<div class="rescan-search-empty">Lookup failed.</div>';return;}
-  const altsEl=document.getElementById('autofill-alts');
-  altsEl.innerHTML='';
-  const row=document.createElement('div'); row.className='rescan-alt';
-  row.innerHTML=`<div class="rescan-alt-info"><div class="rescan-alt-artist">${esc(result.matchedArtist||'')}</div><div class="rescan-alt-album">${esc(result.matchedAlbum||'')}</div></div>
-    <div class="rescan-alt-meta"><span style="font-size:10px;color:var(--muted)">${esc((result.date||'').slice(0,4)||'—')}</span><span class="conf-pill conf-high-pill">100%</span><span class="src-badge src-mb">MB</span><button class="thumb-btn up" style="width:26px;height:26px;font-size:12px">👍</button></div>`;
-  row.querySelector('.thumb-btn.up').addEventListener('click',()=>{
-    document.getElementById('f-artist').value=result.matchedArtist||document.getElementById('f-artist').value;
-    document.getElementById('f-album').value=result.matchedAlbum||document.getElementById('f-album').value;
-    document.getElementById('f-date').value=result.date||'';
-    pendingArtUrl=result.art||'';
-    document.getElementById('autofill-artist').textContent=result.matchedArtist||'';
-    document.getElementById('autofill-album-name').textContent=result.matchedAlbum||'';
-    document.getElementById('autofill-date').textContent=result.date||'—';
-    document.getElementById('autofill-conf').innerHTML='<span class="conf-pill conf-high-pill">100%</span>';
-    document.getElementById('autofill-src').textContent='MB';
-    document.getElementById('autofill-src').className='src-badge src-mb';
-    // Update the art preview
-    const artEl=document.getElementById('autofill-art');
-    if(result.art){artEl.src=result.art;artEl.style.display='block';artEl.onerror=()=>{artEl.style.display='none';};}
-    else{artEl.style.display='none';}
-    document.getElementById('autofill-card').style.display='block';
-    document.getElementById('autofill-search-panel').style.display='none';
+// ── Shared MB apply helper ────────────────────────────────────
+function applyMbResult(result) {
+  document.getElementById('f-artist').value = result.matchedArtist||'';
+  document.getElementById('f-album').value  = result.matchedAlbum||'';
+  document.getElementById('f-date').value   = result.date||'';
+  pendingArtUrl = result.art||'';
+  document.getElementById('autofill-artist').textContent      = result.matchedArtist||'';
+  document.getElementById('autofill-album-name').textContent  = result.matchedAlbum||'';
+  document.getElementById('autofill-date').textContent        = result.date||'—';
+  document.getElementById('autofill-conf').innerHTML          = '<span class="conf-pill conf-high-pill">100%</span>';
+  document.getElementById('autofill-src').textContent         = 'MB';
+  document.getElementById('autofill-src').className           = 'src-badge src-mb';
+  const artEl = document.getElementById('autofill-art');
+  if (result.art) { artEl.src=result.art; artEl.style.display='block'; artEl.onerror=()=>artEl.style.display='none'; }
+  else artEl.style.display='none';
+  document.getElementById('autofill-card').style.display='block';
+  document.getElementById('autofill-search-panel').style.display='none';
+  document.getElementById('autofill-mb-input').value='';
+}
+
+async function runMbForce(raw, onOpen) {
+  if (!raw) return;
+  const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
+  if (!mbid) { alert('No valid MusicBrainz ID found in that link.'); return; }
+  document.getElementById('form-error').textContent = '';
+  const result = await mbidLookup(mbid);
+  if (!result) { alert('MusicBrainz lookup failed — check the link and try again.'); return; }
+  if (onOpen) onOpen(); // open modal if not already open
+  applyMbResult(result);
+}
+
+document.getElementById('autofill-mb-btn').addEventListener('click', () => {
+  const raw = document.getElementById('autofill-mb-input').value.trim();
+  runMbForce(raw, null);
+});
+document.getElementById('autofill-mb-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); runMbForce(e.target.value.trim(), null); }
+});
+
+// Quick Add: paste MB link in toolbar → opens Add modal prefilled
+document.getElementById('quick-add-mb').addEventListener('keydown', async e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const raw = e.target.value.trim();
+  e.target.value = '';
+  await runMbForce(raw, () => {
+    editingId = null;
+    resetForm();
+    openPanel('add');
   });
-  altsEl.appendChild(row);
+});
+
+// Search clear button
+const searchInput = document.getElementById('filter-search');
+const searchClear = document.getElementById('search-clear');
+searchInput.addEventListener('input', () => {
+  searchClear.style.display = searchInput.value ? 'block' : 'none';
+  render();
+});
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchClear.style.display = 'none';
+  render();
+  searchInput.focus();
 });
 
 // Close add modal on overlay click
 document.getElementById('add-modal').addEventListener('click',e=>{if(e.target.id==='add-modal')closePanel();});
 
-document.getElementById('filter-search').addEventListener('input', render);
 document.getElementById('delete-confirm').addEventListener('click',doDelete);
 document.getElementById('delete-cancel').addEventListener('click',()=>{document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;});
 document.getElementById('delete-modal').addEventListener('click',e=>{if(e.target.id==='delete-modal'){document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;}});
