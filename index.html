@@ -333,6 +333,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .ms-clear{color:var(--danger);cursor:pointer;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;padding:0}
 .ms-clear:hover{text-decoration:underline}
 .ms-done{color:var(--accent);cursor:pointer;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;padding:0}
+.ms-mode-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;padding:3px 10px;border-radius:var(--radius);cursor:pointer;transition:all .1s}
+.ms-mode-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 
 /* ── ACTIVE FILTER PILLS (below toolbar) ── */
 #filter-pills{
@@ -456,7 +458,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   </div>
   <!-- Multi-select filter dropdowns -->
   <div class="ms-wrap" id="ms-artist"><button class="ms-btn" data-field="artist">Artist <span class="ms-arrow">▾</span></button></div>
-  <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year">Year <span class="ms-arrow">▾</span></button></div>
+  <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year">Release Date <span class="ms-arrow">▾</span></button></div>
   <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating">Rating <span class="ms-arrow">▾</span></button></div>
   <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
   <div class="toolbar-sep"></div>
@@ -812,7 +814,19 @@ function getFiltered() {
   return albums.filter(a => {
     if (q && !(a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))) return false;
     if (activeFilters.artist.size && !activeFilters.artist.has(a.artist)) return false;
-    if (activeFilters.year.size   && !activeFilters.year.has(extractYear(a.date))) return false;
+    if (activeFilters.year.size) {
+      const yr = extractYear(a.date);
+      const matched = [...activeFilters.year].some(val => {
+        if (/^\d{4}s$/.test(val)) {
+          // Decade: "1990s" matches years 1990-1999
+          const decade = parseInt(val);
+          const y = parseInt(yr);
+          return y >= decade && y < decade + 10;
+        }
+        return yr === val;
+      });
+      if (!matched) return false;
+    }
     if (activeFilters.rating.size) {
       const matched = [...activeFilters.rating].some(rat => {
         if (rat === 'unrated') return !a.rating;
@@ -852,16 +866,97 @@ function getLabel(field, value) {
 let openDropdown = null;
 
 function buildDropdown(field, wrap) {
-  // Remove existing
   const existing = wrap.querySelector('.ms-dropdown');
   if (existing) existing.remove();
 
-  const opts = getOptions(field);
-  const sel  = activeFilters[field];
-  const hasSearch = opts.length > 10;
-
-  const dd = document.createElement('div');
+  const sel = activeFilters[field];
+  const dd  = document.createElement('div');
   dd.className = 'ms-dropdown open';
+
+  // ── Year field: decade/year toggle mode ──────────────────────
+  if (field === 'year') {
+    const allYears = getOptions('year'); // sorted desc
+    let mode = 'decade'; // 'decade' | 'year'
+
+    function renderYear() {
+      dd.innerHTML = '';
+
+      // Toggle row
+      const toggle = document.createElement('div');
+      toggle.style.cssText = 'display:flex;gap:4px;padding:8px 8px 4px;border-bottom:1px solid var(--border)';
+      toggle.innerHTML = `
+        <button class="ms-mode-btn${mode==='decade'?' active':''}" data-m="decade">Decade</button>
+        <button class="ms-mode-btn${mode==='year'?' active':''}" data-m="year">Year</button>`;
+      toggle.querySelectorAll('.ms-mode-btn').forEach(b => {
+        b.addEventListener('click', () => { mode = b.dataset.m; renderYear(); });
+      });
+      dd.appendChild(toggle);
+
+      const list = document.createElement('div');
+      list.className = 'ms-list';
+
+      if (mode === 'decade') {
+        // Group years into decades
+        const decades = {};
+        allYears.forEach(y => {
+          const d = Math.floor(parseInt(y)/10)*10;
+          const key = `${d}s`;
+          if (!decades[key]) decades[key] = [];
+          decades[key].push(y);
+        });
+        Object.entries(decades).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([decade, years]) => {
+          // A decade is "selected" if ALL its years are selected
+          const allSelected = years.every(y => sel.has(y));
+          const someSelected = years.some(y => sel.has(y));
+          const item = document.createElement('label');
+          item.className = 'ms-item' + (someSelected ? ' selected' : '');
+          item.innerHTML = `<input type="checkbox" ${allSelected?'checked':someSelected?'indeterminate':''} data-decade="${decade}"><span>${esc(decade)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">${years.length} albums</span>`;
+          const cb = item.querySelector('input');
+          if (someSelected && !allSelected) cb.indeterminate = true;
+          cb.addEventListener('change', e => {
+            if (e.target.checked) years.forEach(y => sel.add(y));
+            else years.forEach(y => sel.delete(y));
+            updateFilterButton(field, wrap); updateFilterPills(); render();
+            renderYear();
+          });
+          list.appendChild(item);
+        });
+      } else {
+        allYears.forEach(val => {
+          const item = document.createElement('label');
+          item.className = 'ms-item' + (sel.has(val) ? ' selected' : '');
+          item.innerHTML = `<input type="checkbox" ${sel.has(val)?'checked':''}><span>${esc(val)}</span>`;
+          item.querySelector('input').addEventListener('change', e => {
+            if (e.target.checked) sel.add(val); else sel.delete(val);
+            item.classList.toggle('selected', sel.has(val));
+            updateFilterButton(field, wrap); updateFilterPills(); render();
+          });
+          list.appendChild(item);
+        });
+      }
+
+      dd.appendChild(list);
+
+      const footer = document.createElement('div');
+      footer.className = 'ms-footer';
+      footer.innerHTML = `<button class="ms-clear">Clear</button><button class="ms-done">Done</button>`;
+      footer.querySelector('.ms-clear').addEventListener('click', () => {
+        sel.clear(); updateFilterButton(field, wrap); updateFilterPills(); render(); closeDropdown();
+      });
+      footer.querySelector('.ms-done').addEventListener('click', closeDropdown);
+      dd.appendChild(footer);
+    }
+
+    renderYear();
+    wrap.appendChild(dd);
+    openDropdown = dd;
+    setTimeout(() => document.addEventListener('click', onOutsideClick, { once: true }), 0);
+    return;
+  }
+
+  // ── All other fields ─────────────────────────────────────────
+  const opts      = getOptions(field);
+  const hasSearch = field === 'artist'; // only artist needs search
 
   if (hasSearch) {
     dd.innerHTML = `<div class="ms-search-wrap"><input class="ms-search" placeholder="Search…" type="text"></div>`;
@@ -872,7 +967,7 @@ function buildDropdown(field, wrap) {
 
   function renderItems(filter='') {
     list.innerHTML = '';
-    const filtered = field === 'artist'
+    const filtered = hasSearch
       ? opts.filter(o => o.toLowerCase().includes(filter.toLowerCase()))
       : opts;
     filtered.forEach(val => {
@@ -895,7 +990,10 @@ function buildDropdown(field, wrap) {
   dd.appendChild(list);
 
   if (hasSearch) {
-    dd.querySelector('.ms-search').addEventListener('input', e => renderItems(e.target.value));
+    const searchEl = dd.querySelector('.ms-search');
+    searchEl.addEventListener('input', e => renderItems(e.target.value));
+    // Auto-focus after dropdown is in DOM
+    setTimeout(() => searchEl.focus(), 0);
   }
 
   const footer = document.createElement('div');
@@ -909,11 +1007,7 @@ function buildDropdown(field, wrap) {
 
   wrap.appendChild(dd);
   openDropdown = dd;
-
-  // Close on outside click
-  setTimeout(() => {
-    document.addEventListener('click', onOutsideClick, { once: true });
-  }, 0);
+  setTimeout(() => document.addEventListener('click', onOutsideClick, { once: true }), 0);
 }
 
 function onOutsideClick(e) {
@@ -933,7 +1027,7 @@ function updateFilterButton(field, wrap) {
   const sel = activeFilters[field];
   btn.classList.toggle('has-selection', sel.size > 0);
   // Update button label
-  const fieldLabel = { artist:'Artist', year:'Year', rating:'Rating', tags:'Tags' }[field];
+  const fieldLabel = { artist:'Artist', year:'Release Date', rating:'Rating', tags:'Tags' }[field];
   const countBadge = sel.size ? `<span class="ms-count">${sel.size}</span>` : '';
   btn.innerHTML = `${fieldLabel} ${countBadge}<span class="ms-arrow">▾</span>`;
 }
