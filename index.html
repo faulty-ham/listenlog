@@ -815,10 +815,10 @@ function getFiltered() {
     if (q && !(a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))) return false;
     if (activeFilters.artist.size && !activeFilters.artist.has(a.artist)) return false;
     if (activeFilters.year.size) {
-      const yr = extractYear(a.date);
+      const yr = extractYear(a.date||'');
       const matched = [...activeFilters.year].some(val => {
+        if (val === 'no-date') return !yr;
         if (/^\d{4}s$/.test(val)) {
-          // Decade: "1990s" matches years 1990-1999
           const decade = parseInt(val);
           const y = parseInt(yr);
           return y >= decade && y < decade + 10;
@@ -859,6 +859,7 @@ function getOptions(field) {
 function getLabel(field, value) {
   if (field === 'rating') return RATING_OPTIONS.find(o=>o.value===value)?.label || value;
   if (field === 'tags')   return TAG_OPTIONS.find(o=>o.value===value)?.label || value;
+  if (field === 'year' && value === 'no-date') return 'No date';
   return value;
 }
 
@@ -888,7 +889,7 @@ function buildDropdown(field, wrap) {
         <button class="ms-mode-btn${mode==='decade'?' active':''}" data-m="decade">Decade</button>
         <button class="ms-mode-btn${mode==='year'?' active':''}" data-m="year">Year</button>`;
       toggle.querySelectorAll('.ms-mode-btn').forEach(b => {
-        b.addEventListener('click', () => { mode = b.dataset.m; renderYear(); });
+        b.addEventListener('click', e => { e.stopPropagation(); mode = b.dataset.m; renderYear(); });
       });
       dd.appendChild(toggle);
 
@@ -927,6 +928,18 @@ function buildDropdown(field, wrap) {
           list.appendChild(item);
         });
       } else {
+        // "No date" option first
+        const noDateVal = 'no-date';
+        const ndItem = document.createElement('label');
+        ndItem.className = 'ms-item' + (sel.has(noDateVal) ? ' selected' : '');
+        ndItem.innerHTML = `<input type="checkbox" ${sel.has(noDateVal)?'checked':''}><span style="color:var(--muted);font-style:italic">No date</span>`;
+        ndItem.querySelector('input').addEventListener('change', e => {
+          if (e.target.checked) sel.add(noDateVal); else sel.delete(noDateVal);
+          ndItem.classList.toggle('selected', sel.has(noDateVal));
+          updateFilterButton(field, wrap); updateFilterPills(); render();
+        });
+        list.appendChild(ndItem);
+
         allYears.forEach(val => {
           const item = document.createElement('label');
           item.className = 'ms-item' + (sel.has(val) ? ' selected' : '');
