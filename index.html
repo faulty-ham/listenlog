@@ -183,7 +183,6 @@ td{padding:7px 10px;vertical-align:middle}
 .badge-want{background:rgba(122,176,201,.12);color:var(--want);border:1px solid rgba(122,176,201,.25)}
 .badge-hard{background:rgba(201,153,122,.12);color:var(--hard);border:1px solid rgba(201,153,122,.25)}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
-.badge-type{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);font-size:9px;text-transform:uppercase;letter-spacing:.08em;border-radius:3px;padding:2px 6px}
 
 /* ── ROW ACTIONS — fade in on hover ── */
 .row-actions{opacity:0;transition:opacity .15s;white-space:nowrap}
@@ -383,24 +382,24 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   tr.album-row{
     display:grid;
     grid-template-columns:48px 1fr auto;
-    grid-template-rows:auto auto;
+    grid-template-rows:auto auto auto;
     padding:9px 12px;gap:1px 10px;
     border-bottom:1px solid var(--border);
     align-items:start;
   }
   tr.album-row td{padding:0;border:none}
   /* art: col 1, rows 1-2 */
-  tr.album-row td:nth-child(1){grid-column:1;grid-row:1/3;align-self:center}
+  tr.album-row td:nth-child(1){grid-column:1;grid-row:1/4;align-self:center}
   /* artist: col 2, row 1 */
-  tr.album-row td:nth-child(2){grid-column:2;grid-row:1}
+  tr.album-row td:nth-child(2){grid-column:2;grid-row:1;font-size:13px}
   /* album: col 2, row 2 */
-  tr.album-row td:nth-child(3){grid-column:2;grid-row:2}
-  /* date: hide (shown via data attr) */
-  tr.album-row td:nth-child(4){display:none}
+  tr.album-row td:nth-child(3){grid-column:2;grid-row:2;font-size:12px}
+  /* date: col 2, row 3 — visible as small muted text */
+  tr.album-row td:nth-child(4){grid-column:2;grid-row:3;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
   /* rating: col 3, row 1 */
   tr.album-row td:nth-child(5){grid-column:3;grid-row:1}
-  /* tags: col 3, row 2 */
-  tr.album-row td:nth-child(6){grid-column:3;grid-row:2}
+  /* tags: col 3, row 2-3 */
+  tr.album-row td:nth-child(6){grid-column:3;grid-row:2/4}
   /* notes + actions: hide */
   tr.album-row td:nth-child(7),tr.album-row td:nth-child(8){display:none}
   /* Rescan card stack */
@@ -462,7 +461,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <!-- Multi-select filter dropdowns -->
   <div class="ms-wrap" id="ms-artist"><button class="ms-btn" data-field="artist">Artist <span class="ms-arrow">▾</span></button></div>
   <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year">Year <span class="ms-arrow">▾</span></button></div>
-  <div class="ms-wrap" id="ms-type"><button class="ms-btn" data-field="type">Type <span class="ms-arrow">▾</span></button></div>
   <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating">Rating <span class="ms-arrow">▾</span></button></div>
   <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
   <div class="toolbar-sep"></div>
@@ -533,8 +531,16 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
         <input type="text" id="f-album" placeholder="e.g. OK Computer" autocomplete="off" style="width:100%">
       </div>
     </div>
-    <div style="margin-bottom:12px">
-      <button class="btn-ghost" id="btn-lookup" style="width:100%;justify-content:center">🔍 Auto-fill from MusicBrainz / Last.fm / iTunes</button>
+    <!-- AUTO-FILL BUTTON + MB LINK ROW -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;align-items:flex-end">
+      <button class="btn-ghost" id="btn-lookup" style="flex:1;justify-content:center">🔍 Auto-fill</button>
+      <div style="display:flex;flex-direction:column;gap:2px;flex:1">
+        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">MusicBrainz link</label>
+        <div style="display:flex;gap:4px">
+          <input class="rescan-search-input" id="autofill-mb-input" placeholder="URL or release ID" style="flex:1;font-size:11px;padding:5px 8px">
+          <button class="btn-ghost btn-sm" style="color:var(--want);white-space:nowrap" id="autofill-mb-btn">Force</button>
+        </div>
+      </div>
     </div>
 
     <!-- AUTO-FILL RESULT CARD -->
@@ -564,10 +570,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
           <input class="rescan-search-input" id="autofill-search-input" placeholder="Artist  Album  (two spaces)" style="flex:1" value="">
           <button class="btn-ghost btn-sm" id="autofill-search-btn">Search</button>
         </div>
-        <div id="autofill-search-input-mb" style="display:flex;gap:6px;margin-bottom:6px">
-          <input class="rescan-search-input" id="autofill-mb-input" placeholder="MusicBrainz URL or release ID" style="flex:1">
-          <button class="btn-ghost btn-sm" style="color:var(--want)" id="autofill-mb-btn">Force MB</button>
-        </div>
         <div id="autofill-alts" class="rescan-alts" style="max-height:200px;overflow-y:auto"></div>
       </div>
     </div>
@@ -577,21 +579,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <div class="form-group" style="flex:1">
         <label>Release Date</label>
         <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="width:100%">
-      </div>
-      <div class="form-group">
-        <label>Type</label>
-        <select id="f-type" style="min-width:130px">
-          <option value="">Unknown</option>
-          <option value="Album">Album</option>
-          <option value="Live">Live</option>
-          <option value="EP">EP</option>
-          <option value="Single">Single</option>
-          <option value="Compilation">Compilation</option>
-          <option value="Soundtrack">Soundtrack</option>
-          <option value="Demo">Demo</option>
-          <option value="Mixtape">Mixtape</option>
-          <option value="Other">Other</option>
-        </select>
       </div>
       <div class="form-group">
         <label>My Rating</label>
@@ -808,7 +795,7 @@ function starsHTML(n) {
 // MULTI-SELECT FILTER SYSTEM
 // ════════════════════════════════════════════════════════════
 // activeFilters: { artist: Set, year: Set, type: Set, rating: Set, tags: Set }
-const activeFilters = { artist: new Set(), year: new Set(), type: new Set(), rating: new Set(), tags: new Set() };
+const activeFilters = { artist: new Set(), year: new Set(), rating: new Set(), tags: new Set() };
 
 const RATING_OPTIONS = [
   { value:'5',      label:'★★★★★ (5)' },
@@ -832,7 +819,6 @@ function getFiltered() {
     if (q && !(a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))) return false;
     if (activeFilters.artist.size && !activeFilters.artist.has(a.artist)) return false;
     if (activeFilters.year.size   && !activeFilters.year.has(extractYear(a.date))) return false;
-    if (activeFilters.type.size   && !activeFilters.type.has(a.releaseType||'Unknown')) return false;
     if (activeFilters.rating.size) {
       const matched = [...activeFilters.rating].some(rat => {
         if (rat === 'unrated') return !a.rating;
@@ -858,7 +844,6 @@ function getFiltered() {
 function getOptions(field) {
   if (field === 'artist') return [...new Set(albums.map(a=>a.artist).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   if (field === 'year')   return [...new Set(albums.map(a=>extractYear(a.date)).filter(Boolean))].sort().reverse();
-  if (field === 'type')   return [...new Set(albums.map(a=>a.releaseType||'Unknown'))].sort();
   if (field === 'rating') return RATING_OPTIONS.map(o=>o.value);
   if (field === 'tags')   return TAG_OPTIONS.map(o=>o.value);
   return [];
@@ -954,7 +939,7 @@ function updateFilterButton(field, wrap) {
   const sel = activeFilters[field];
   btn.classList.toggle('has-selection', sel.size > 0);
   // Update button label
-  const fieldLabel = { artist:'Artist', year:'Year', type:'Type', rating:'Rating', tags:'Tags' }[field];
+  const fieldLabel = { artist:'Artist', year:'Year', rating:'Rating', tags:'Tags' }[field];
   const countBadge = sel.size ? `<span class="ms-count">${sel.size}</span>` : '';
   btn.innerHTML = `${fieldLabel} ${countBadge}<span class="ms-arrow">▾</span>`;
 }
@@ -1079,7 +1064,6 @@ function render() {
       editAlbum(a.id);
     });
     const tags = [
-      a.releaseType ? `<span class="badge badge-type">${esc(a.releaseType)}</span>` : '',
       a.wantToListen ? '<span class="badge badge-want">🎧 want</span>' : '',
       a.hardToFind   ? '<span class="badge badge-hard">📦 hard</span>' : '',
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ unmatched</span>' : '',
@@ -1197,7 +1181,6 @@ function closePanel() {
 }
 function resetForm() {
   ['f-artist','f-album','f-date','f-notes'].forEach(id => document.getElementById(id).value='');
-  document.getElementById('f-type').value='';
   setRating(0); formWant=false; formHard=false; syncTagToggles();
   pendingArtUrl='';
   // Reset autofill card
@@ -1234,7 +1217,6 @@ function showAutofillCard(found) {
 
   // Pre-fill form fields with found data but don't lock them
   if (date && !document.getElementById('f-date').value) document.getElementById('f-date').value = date;
-  if (r.releaseType) document.getElementById('f-type').value = r.releaseType;
   pendingArtUrl = art;
 
   // Store found data for accept
@@ -1245,7 +1227,6 @@ function applyAutofill(found) {
   const r = found.result;
   const date = r.releaseDate || r._mbDate || '';
   document.getElementById('f-date').value = date||'';
-  if (r.releaseType) document.getElementById('f-type').value = r.releaseType;
   pendingArtUrl = r.artworkUrl100||'';
   document.getElementById('autofill-up').classList.add('active');
   document.getElementById('autofill-down').classList.remove('active');
@@ -1377,7 +1358,6 @@ async function runAutofillSearch() {
     document.getElementById('f-artist').value  = cand.matchedArtist||document.getElementById('f-artist').value;
     document.getElementById('f-album').value   = cand.matchedAlbum||document.getElementById('f-album').value;
     document.getElementById('f-date').value    = cand.date||cand._releaseYear||'';
-    if (cand.releaseType) document.getElementById('f-type').value = cand.releaseType;
     pendingArtUrl = cand.art||'';
     document.getElementById('autofill-artist').textContent     = cand.matchedArtist||'';
     document.getElementById('autofill-album-name').textContent = cand.matchedAlbum||'';
@@ -1724,7 +1704,6 @@ function addOrUpdateAlbum() {
   const entry={
     id:editingId||uid(), artist, album,
     date:document.getElementById('f-date').value.trim(),
-    releaseType: document.getElementById('f-type').value||null,
     rating:currentRating||null,
     notes:document.getElementById('f-notes').value.trim(),
     wantToListen:formWant, hardToFind:formWant&&formHard,
@@ -1743,7 +1722,6 @@ function editAlbum(id) {
   document.getElementById('f-artist').value=a.artist;
   document.getElementById('f-album').value=a.album;
   document.getElementById('f-date').value=a.date||'';
-  document.getElementById('f-type').value=a.releaseType||'';
   document.getElementById('f-notes').value=a.notes||'';
   setRating(a.rating||0); formWant=!!a.wantToListen; formHard=!!a.hardToFind; syncTagToggles();
   pendingArtUrl=a.artUrl||'';
@@ -1962,8 +1940,6 @@ async function startRescan() {
       }
       if (newDate && newDate !== a.date) changes.push({field:'date', old:a.date||'', newVal:newDate, action:'set_date'});
       if (newArt && !a.artUrl)           changes.push({field:'art',  old:'',         newVal:newArt,  action:'set_art'});
-      const newType = found.result?.releaseType || found.candidates?.find(c=>c.releaseType)?.releaseType || null;
-      if (newType && !a.releaseType)     changes.push({field:'type', old:'',         newVal:newType, action:'set_type'});
 
       rescanResults.push({albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
         matchedArtist:r.artistName||null, matchedAlbum:r.collectionName||null,
@@ -2095,7 +2071,6 @@ async function startGapScan() {
       const r = found.result;
       const newDate = r.releaseDate ? r.releaseDate.split('T')[0] : (r._mbDate||null);
       const newArt  = r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null;
-      const newType = found.result?.releaseType || found.candidates?.find(c=>c.releaseType)?.releaseType || null;
 
       const changes = [];
 
@@ -2116,9 +2091,6 @@ async function startGapScan() {
       }
 
       // Type: fill if missing
-      if (newType && !a.releaseType) {
-        changes.push({field:'type', old:'', newVal:newType, action:'set_type'});
-      }
 
       rescanResults.push({
         albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
@@ -2431,7 +2403,6 @@ function applyChange(a, res, c) {
   if (c.action==='restore_fields') { a.artist=res.origArtist; a.album=res.origAlbum; }
   if (c.action==='set_date')  a.date        = c.newVal;
   if (c.action==='set_art')   a.artUrl      = c.newVal;
-  if (c.action==='set_type')  a.releaseType = c.newVal;
 }
 
 document.getElementById('rescan-cancel').addEventListener('click', () => {
@@ -2683,7 +2654,6 @@ document.getElementById('autofill-mb-btn').addEventListener('click', async()=>{
     document.getElementById('f-artist').value=result.matchedArtist||document.getElementById('f-artist').value;
     document.getElementById('f-album').value=result.matchedAlbum||document.getElementById('f-album').value;
     document.getElementById('f-date').value=result.date||'';
-    if (result.releaseType) document.getElementById('f-type').value=result.releaseType;
     pendingArtUrl=result.art||'';
     document.getElementById('autofill-artist').textContent=result.matchedArtist||'';
     document.getElementById('autofill-album-name').textContent=result.matchedAlbum||'';
