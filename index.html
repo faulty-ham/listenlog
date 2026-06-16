@@ -546,7 +546,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <!-- AUTO-FILL RESULT CARD -->
     <div id="autofill-card" style="display:none;margin-bottom:12px">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px">Auto-fill result</div>
-      <div style="display:grid;grid-template-columns:1fr auto;background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden" id="autofill-card-inner">
+      <div style="display:grid;grid-template-columns:1fr;background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden" id="autofill-card-inner">
         <div style="display:flex;gap:10px;padding:10px 12px;align-items:center">
           <img id="autofill-art" style="width:44px;height:44px;border-radius:3px;object-fit:cover;display:none;border:1px solid var(--border)" alt="">
           <div>
@@ -558,10 +558,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
               <span id="autofill-src" class="src-badge"></span>
             </div>
           </div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:0 12px;background:rgba(0,0,0,.15);min-width:64px">
-          <button class="thumb-btn up" id="autofill-up" title="Accept this match">👍</button>
-          <button class="thumb-btn down" id="autofill-down" title="Wrong — search for alternatives">👎</button>
         </div>
       </div>
       <!-- Search results shown after thumbs-down -->
@@ -799,9 +795,10 @@ const activeFilters = { artist: new Set(), year: new Set(), rating: new Set(), t
 
 const RATING_OPTIONS = [
   { value:'5',      label:'★★★★★ (5)' },
-  { value:'4.5',    label:'★★★★½+' },
-  { value:'4',      label:'★★★★+' },
-  { value:'3',      label:'★★★+' },
+  { value:'4',      label:'★★★★ (4)' },
+  { value:'3',      label:'★★★ (3)' },
+  { value:'2',      label:'★★ (2)' },
+  { value:'1',      label:'★ (1)' },
   { value:'unrated',label:'Unrated' },
 ];
 const TAG_OPTIONS = [
@@ -822,7 +819,7 @@ function getFiltered() {
     if (activeFilters.rating.size) {
       const matched = [...activeFilters.rating].some(rat => {
         if (rat === 'unrated') return !a.rating;
-        return (a.rating||0) >= parseFloat(rat);
+        return Math.round(a.rating||0) === parseInt(rat);
       });
       if (!matched) return false;
     }
@@ -1186,8 +1183,6 @@ function resetForm() {
   // Reset autofill card
   document.getElementById('autofill-card').style.display='none';
   document.getElementById('autofill-search-panel').style.display='none';
-  document.getElementById('autofill-up').classList.remove('active');
-  document.getElementById('autofill-down').classList.remove('active');
   document.getElementById('autofill-alts').innerHTML='';
   document.getElementById('form-error').textContent='';
 }
@@ -1211,29 +1206,12 @@ function showAutofillCard(found) {
   if (art) { artEl.src=art; artEl.style.display='block'; } else { artEl.style.display='none'; }
 
   document.getElementById('autofill-card').style.display='block';
-  document.getElementById('autofill-up').classList.remove('active');
-  document.getElementById('autofill-down').classList.remove('active');
   document.getElementById('autofill-search-panel').style.display='none';
-
-  // Pre-fill form fields with found data but don't lock them
+  document.getElementById('form-error').textContent='';
   if (date && !document.getElementById('f-date').value) document.getElementById('f-date').value = date;
   pendingArtUrl = art;
-
-  // Store found data for accept
-  document.getElementById('autofill-card').dataset.found = JSON.stringify(found);
 }
 
-function applyAutofill(found) {
-  const r = found.result;
-  const date = r.releaseDate || r._mbDate || '';
-  document.getElementById('f-date').value = date||'';
-  pendingArtUrl = r.artworkUrl100||'';
-  document.getElementById('autofill-up').classList.add('active');
-  document.getElementById('autofill-down').classList.remove('active');
-  document.getElementById('autofill-search-panel').style.display='none';
-}
-
-// ── Autofill search (thumbs-down) ────────────────────────────
 // ════════════════════════════════════════════════════════════
 // SHARED SEARCH — used by both autofill panel and rescan review
 // ════════════════════════════════════════════════════════════
@@ -1367,8 +1345,6 @@ async function runAutofillSearch() {
     const artEl = document.getElementById('autofill-art');
     if (cand.art){artEl.src=cand.art;artEl.style.display='block';}else artEl.style.display='none';
     document.getElementById('autofill-card').style.display='block';
-    document.getElementById('autofill-up').classList.add('active');
-    document.getElementById('autofill-down').classList.remove('active');
     document.getElementById('autofill-search-panel').style.display='none';
   });
 }
@@ -1736,7 +1712,6 @@ function editAlbum(id) {
     document.getElementById('autofill-src').className='src-badge';
     const artEl=document.getElementById('autofill-art');
     artEl.src=a.artUrl; artEl.style.display='block';
-    document.getElementById('autofill-up').classList.add('active');
   }
   openPanel('edit');
 }
@@ -2611,29 +2586,7 @@ document.getElementById('btn-save').addEventListener('click',addOrUpdateAlbum);
 document.getElementById('btn-lookup').addEventListener('click',lookupAlbum);
 document.getElementById('f-album').addEventListener('keydown',e=>{if(e.key==='Enter')lookupAlbum();});
 
-// Autofill card thumbs
-document.getElementById('autofill-up').addEventListener('click',()=>{
-  const foundStr=document.getElementById('autofill-card').dataset.found;
-  if(foundStr){ try{ applyAutofill(JSON.parse(foundStr)); }catch(e){} }
-  document.getElementById('autofill-up').classList.add('active');
-  document.getElementById('autofill-down').classList.remove('active');
-  document.getElementById('autofill-search-panel').style.display='none';
-});
-document.getElementById('autofill-down').addEventListener('click',()=>{
-  document.getElementById('autofill-down').classList.add('active');
-  document.getElementById('autofill-up').classList.remove('active');
-  const sp=document.getElementById('autofill-search-panel');
-  if(sp.style.display==='none'){
-    sp.style.display='block';
-    // Pre-fill search with artist + album
-    const artist=document.getElementById('f-artist').value.trim();
-    const album=document.getElementById('f-album').value.trim();
-    document.getElementById('autofill-search-input').value=artist+'  '+album;
-    runAutofillSearch();
-  } else {
-    sp.style.display='none';
-  }
-});
+// Autofill card: result shown after auto-fill or MB force match
 document.getElementById('autofill-search-btn').addEventListener('click', runAutofillSearch);
 document.getElementById('autofill-search-input').addEventListener('keydown',e=>{if(e.key==='Enter')runAutofillSearch();});
 document.getElementById('autofill-mb-btn').addEventListener('click', async()=>{
@@ -2666,8 +2619,6 @@ document.getElementById('autofill-mb-btn').addEventListener('click', async()=>{
     if(result.art){artEl.src=result.art;artEl.style.display='block';artEl.onerror=()=>{artEl.style.display='none';};}
     else{artEl.style.display='none';}
     document.getElementById('autofill-card').style.display='block';
-    document.getElementById('autofill-up').classList.add('active');
-    document.getElementById('autofill-down').classList.remove('active');
     document.getElementById('autofill-search-panel').style.display='none';
   });
   altsEl.appendChild(row);
