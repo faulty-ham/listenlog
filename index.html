@@ -905,12 +905,17 @@ function buildDropdown(field, wrap) {
           decades[key].push(y);
         });
         Object.entries(decades).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([decade, years]) => {
-          // A decade is "selected" if ALL its years are selected
           const allSelected = years.every(y => sel.has(y));
           const someSelected = years.some(y => sel.has(y));
+          // Count albums in this decade (not distinct years)
+          const decadeStart = parseInt(decade);
+          const albumCount = albums.filter(a => {
+            const y = parseInt(extractYear(a.date||''));
+            return y >= decadeStart && y < decadeStart + 10;
+          }).length;
           const item = document.createElement('label');
           item.className = 'ms-item' + (someSelected ? ' selected' : '');
-          item.innerHTML = `<input type="checkbox" ${allSelected?'checked':someSelected?'indeterminate':''} data-decade="${decade}"><span>${esc(decade)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">${years.length} albums</span>`;
+          item.innerHTML = `<input type="checkbox" ${allSelected?'checked':''} data-decade="${decade}"><span>${esc(decade)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">${albumCount} albums</span>`;
           const cb = item.querySelector('input');
           if (someSelected && !allSelected) cb.indeterminate = true;
           cb.addEventListener('change', e => {
