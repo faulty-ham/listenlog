@@ -150,7 +150,6 @@ th.th-check{cursor:default;width:32px}
 /* ── ALBUM ROW ── */
 tr.album-row{border-bottom:1px solid #1c2128;transition:background .12s;cursor:pointer}
 tr.album-row:hover{background:var(--surface)}
-tr.album-row:hover .row-actions{opacity:1}
 tr.album-row.selected{background:#1a2518}
 td{padding:7px 10px;vertical-align:middle}
 
@@ -183,9 +182,6 @@ td{padding:7px 10px;vertical-align:middle}
 .badge-want{background:rgba(122,176,201,.12);color:var(--want);border:1px solid rgba(122,176,201,.25)}
 .badge-hard{background:rgba(201,153,122,.12);color:var(--hard);border:1px solid rgba(201,153,122,.25)}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
-
-/* ── ROW ACTIONS — fade in on hover ── */
-.row-actions{opacity:0;transition:opacity .15s;white-space:nowrap}
 
 /* ── EMPTY STATE ── */
 .empty-state{text-align:center;padding:80px 40px;color:var(--muted)}
@@ -596,6 +592,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     </div>
     <div class="form-actions" style="padding-top:12px;border-top:1px solid var(--border)">
       <button class="btn-primary" id="btn-save">Save Entry</button>
+      <button class="btn-ghost" id="btn-delete-entry" style="color:var(--danger);border-color:var(--danger);display:none">Delete Entry</button>
       <button class="btn-ghost" id="btn-cancel">Cancel</button>
       <span id="form-error" style="font-size:11px;color:var(--danger)"></span>
     </div>
@@ -1080,10 +1077,7 @@ function render() {
       <td>${a.rating ? starsHTML(a.rating) : '<span style="color:var(--border);font-size:11px">—</span>'}</td>
       <td><div class="row-tags">${tags||'<span style="color:var(--border);font-size:11px">—</span>'}</div></td>
       <td class="td-notes" title="${esc(a.notes||'')}">${esc(a.notes||'—')}</td>
-      <td class="row-actions">
-        <button class="btn-ghost btn-sm" onclick="editAlbum('${a.id}')">Edit</button>
-        <button class="btn-ghost btn-sm" style="color:var(--danger);border-color:transparent" onclick="confirmDelete('${a.id}','${esc(a.artist)} – ${esc(a.album)}')">✕</button>
-      </td>`;
+      <td></td>`;
     tbody.appendChild(tr);
   });
 
@@ -1170,6 +1164,7 @@ function openPanel(mode) {
   closeImportPanel();
   document.getElementById('add-modal-title').textContent = mode==='edit' ? 'Edit Entry' : 'New Entry';
   document.getElementById('btn-save').textContent = mode==='edit' ? 'Update Entry' : 'Save Entry';
+  document.getElementById('btn-delete-entry').style.display = mode==='edit' ? '' : 'none';
   document.getElementById('add-modal').classList.add('open');
 }
 function closePanel() {
@@ -2583,6 +2578,15 @@ document.getElementById('btn-toggle-import').addEventListener('click',()=>{
 });
 document.getElementById('btn-cancel').addEventListener('click',closePanel);
 document.getElementById('btn-save').addEventListener('click',addOrUpdateAlbum);
+document.getElementById('btn-delete-entry').addEventListener('click',()=>{
+  if (!editingId) return;
+  const a = albums.find(x=>x.id===editingId);
+  if (!a) return;
+  if (confirm(`Delete "${a.artist} – ${a.album}"?`)) {
+    albums = albums.filter(x=>x.id!==editingId);
+    save(); closePanel(); render();
+  }
+});
 document.getElementById('btn-lookup').addEventListener('click',lookupAlbum);
 document.getElementById('f-album').addEventListener('keydown',e=>{if(e.key==='Enter')lookupAlbum();});
 
