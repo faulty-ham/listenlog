@@ -108,6 +108,7 @@ button{font-family:'DM Mono',monospace;font-size:12px;border:none;cursor:pointer
 .tag-toggle{font-size:11px;border-radius:20px;padding:3px 10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;font-family:'DM Mono',monospace}
 .tag-toggle.want.on{background:var(--want);color:#0d1117;border-color:var(--want)}
 .tag-toggle.hard.on{background:var(--hard);color:#0d1117;border-color:var(--hard)}
+.tag-toggle.unmatch.on{background:var(--danger);color:#fff;border-color:var(--danger)}
 
 /* ── IMPORT PANEL ── */
 .import-instructions{font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:12px}
@@ -719,7 +720,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="qr-tags">
       <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
       <button class="tag-toggle hard" id="qr-hard-toggle" style="display:none">📦 Hard to find</button>
-      <button class="tag-toggle" id="qr-unmatched-toggle" style="font-size:11px">⚠ Unmatched</button>
+      <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:11px">⚠ Unmatched</button>
     </div>
     <div class="qr-notes-row">
       <input type="text" id="qr-notes" class="qr-notes-input" placeholder="Notes…">
@@ -1899,10 +1900,10 @@ function syncQrToggles() {
   const w=document.getElementById('qr-want-toggle');
   const h=document.getElementById('qr-hard-toggle');
   const u=document.getElementById('qr-unmatched-toggle');
-  w.classList.toggle('active',qrWant);
-  h.style.display=qrWant?'':'none';
-  h.classList.toggle('active',qrHard);
-  u.classList.toggle('active',qrUnmatched);
+  w.classList.toggle('on', qrWant);
+  h.style.display = qrWant ? '' : 'none';
+  h.classList.toggle('on', qrHard);
+  u.classList.toggle('on', qrUnmatched);
 }
 function confirmDelete(id,label) {
   pendingDeleteId=id; document.getElementById('delete-desc').textContent=`Remove "${label}"?`;
