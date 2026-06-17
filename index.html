@@ -1289,37 +1289,6 @@ function updateBulkBar() {
   document.getElementById('bulk-count').textContent = `${selectedIds.size} selected`;
   document.getElementById('btn-bulk-delete').disabled = selectedIds.size === 0;
 }
-document.getElementById('btn-bulk-mode').addEventListener('click', () => bulkMode ? exitBulkMode() : enterBulkMode());
-document.getElementById('btn-bulk-cancel').addEventListener('click', exitBulkMode);
-document.getElementById('th-check-cb').addEventListener('change', e => {
-  const list = getSorted(getFiltered());
-  if (e.target.checked) list.forEach(a => selectedIds.add(a.id));
-  else selectedIds.clear();
-  updateBulkBar(); render();
-});
-document.getElementById('select-all-cb').addEventListener('change', e => {
-  const list = getSorted(getFiltered());
-  if (e.target.checked) list.forEach(a => selectedIds.add(a.id));
-  else selectedIds.clear();
-  updateBulkBar(); render();
-});
-document.getElementById('btn-bulk-delete').addEventListener('click', () => {
-  if (!selectedIds.size) return;
-  if (!confirm(`Delete ${selectedIds.size} selected album${selectedIds.size>1?'s':''}?`)) return;
-  albums = albums.filter(a => !selectedIds.has(a.id));
-  save(); exitBulkMode();
-});
-document.getElementById('btn-nuke').addEventListener('click', () => {
-  document.getElementById('nuke-count').textContent = albums.length;
-  document.getElementById('nuke-modal').classList.add('open');
-});
-document.getElementById('nuke-cancel').addEventListener('click', () => document.getElementById('nuke-modal').classList.remove('open'));
-document.getElementById('nuke-confirm').addEventListener('click', () => {
-  albums = []; originals = {};
-  save(); saveOriginals();
-  document.getElementById('nuke-modal').classList.remove('open');
-  exitBulkMode();
-});
 
 // ════════════════════════════════════════════════════════════
 // FORM MODAL
@@ -2568,17 +2537,6 @@ function applyChange(a, res, c) {
   if (c.action==='set_art')   a.artUrl      = c.newVal;
 }
 
-document.getElementById('rescan-cancel').addEventListener('click', () => {
-  document.getElementById('rescan-modal').classList.remove('open');
-  rescanResults = [];
-});
-
-document.getElementById('rescan-apply').addEventListener('click', () => {
-  document.getElementById('rescan-modal').classList.remove('open');
-  rescanResults = [];
-  render();
-});
-
 // ════════════════════════════════════════════════════════════
 // CSV IMPORT
 // ════════════════════════════════════════════════════════════
@@ -2716,18 +2674,53 @@ function syncMobileSort() {
   const val = `${sortKey}-${sortDir===1?'asc':'desc'}`;
   if (sel.querySelector(`option[value="${val}"]`)) sel.value = val;
 }
-document.getElementById('mobile-sort').addEventListener('change', e => {
-  const [key, dir] = e.target.value.split('-');
-  sortKey = key;
-  sortDir = dir === 'asc' ? 1 : -1;
-  render();
-});
-syncMobileSort();
 // ── Wire all static event listeners once the app is shown ────
 let _appInited = false;
 function initApp() {
   if (_appInited) return;
   _appInited = true;
+
+// Bulk select
+document.getElementById('btn-bulk-mode').addEventListener('click', () => bulkMode ? exitBulkMode() : enterBulkMode());
+document.getElementById('btn-bulk-cancel').addEventListener('click', exitBulkMode);
+document.getElementById('th-check-cb').addEventListener('change', e => {
+  const list = getSorted(getFiltered());
+  if (e.target.checked) list.forEach(a => selectedIds.add(a.id)); else selectedIds.clear();
+  updateBulkBar(); render();
+});
+document.getElementById('select-all-cb').addEventListener('change', e => {
+  const list = getSorted(getFiltered());
+  if (e.target.checked) list.forEach(a => selectedIds.add(a.id)); else selectedIds.clear();
+  updateBulkBar(); render();
+});
+document.getElementById('btn-bulk-delete').addEventListener('click', () => {
+  if (!selectedIds.size) return;
+  if (!confirm(`Delete ${selectedIds.size} selected album${selectedIds.size>1?'s':''}?`)) return;
+  albums = albums.filter(a => !selectedIds.has(a.id)); save(); exitBulkMode();
+});
+document.getElementById('btn-nuke').addEventListener('click', () => {
+  document.getElementById('nuke-count').textContent = albums.length;
+  document.getElementById('nuke-modal').classList.add('open');
+});
+document.getElementById('nuke-cancel').addEventListener('click', () => document.getElementById('nuke-modal').classList.remove('open'));
+document.getElementById('nuke-confirm').addEventListener('click', () => {
+  albums = []; originals = {}; save(); saveOriginals();
+  document.getElementById('nuke-modal').classList.remove('open'); exitBulkMode();
+});
+
+// Rescan modal
+document.getElementById('rescan-cancel').addEventListener('click', () => {
+  document.getElementById('rescan-modal').classList.remove('open'); rescanResults = [];
+});
+document.getElementById('rescan-apply').addEventListener('click', () => {
+  document.getElementById('rescan-modal').classList.remove('open'); rescanResults = []; render();
+});
+
+// Mobile sort
+document.getElementById('mobile-sort').addEventListener('change', e => {
+  const [key, dir] = e.target.value.split('-');
+  sortKey = key; sortDir = dir === 'asc' ? 1 : -1; render();
+});
 
 // Build quick-rate star widget
 (function(){
