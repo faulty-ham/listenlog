@@ -156,16 +156,16 @@ tr.album-row.selected{background:#1a2518}
 td{padding:7px 10px;vertical-align:middle}
 
 /* ── ART CELL ── bigger, rounded like Letterboxd ── */
-.td-art{width:52px;padding-right:4px}
+.td-art{width:64px;padding-right:6px}
 .art-thumb{
-  width:44px;height:44px;border-radius:3px;object-fit:cover;
+  width:56px;height:56px;border-radius:4px;object-fit:cover;
   display:block;box-shadow:0 1px 4px rgba(0,0,0,.5);
   border:1px solid rgba(255,255,255,.05);
 }
 .art-placeholder{
-  width:44px;height:44px;border-radius:3px;background:var(--surface2);
+  width:56px;height:56px;border-radius:4px;background:var(--surface2);
   border:1px solid var(--border);display:flex;align-items:center;
-  justify-content:center;font-size:16px;color:var(--border);
+  justify-content:center;font-size:20px;color:var(--border);
 }
 
 /* ── TEXT CELLS ── */
@@ -397,14 +397,17 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   table,tbody,tr.album-row,td{display:block;width:100%}
   tr.album-row{
     display:grid;
-    grid-template-columns:48px 1fr auto;
+    grid-template-columns:68px 1fr auto;
     grid-template-rows:auto auto auto;
-    padding:9px 12px;gap:1px 10px;
+    padding:6px 12px;gap:1px 10px;
     border-bottom:1px solid var(--border);
-    align-items:start;
+    align-items:center;
   }
   tr.album-row td{padding:0;border:none}
-  tr.album-row td:nth-child(1){grid-column:1;grid-row:1/4;align-self:center}
+  tr.album-row td:nth-child(1){grid-column:1;grid-row:1/4;align-self:stretch;display:flex;align-items:center}
+  /* Make art fill row on mobile */
+  tr.album-row td:nth-child(1) .art-thumb,
+  tr.album-row td:nth-child(1) .art-placeholder{width:60px;height:60px;border-radius:4px}
   tr.album-row td:nth-child(2){grid-column:2;grid-row:1;font-size:13px}
   tr.album-row td:nth-child(3){grid-column:2;grid-row:2;font-size:12px}
   tr.album-row td:nth-child(4){grid-column:2;grid-row:3;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
@@ -1210,7 +1213,16 @@ function render() {
     tr.addEventListener('click', e => {
       if (bulkMode) return;
       if (e.target.closest('button,input')) return;
-      // td 5 (rating) and td 6 (tags) are the right-side quick-rate area
+      // On mobile (cards): split by horizontal position — left half = edit, right half = quick-rate
+      const isMobile = window.innerWidth <= 700;
+      if (isMobile) {
+        const rect = tr.getBoundingClientRect();
+        const mid  = rect.left + rect.width / 2;
+        if (e.clientX >= mid) openQuickRate(a.id);
+        else editAlbum(a.id);
+        return;
+      }
+      // Desktop: rating (col 5), tags (col 6), notes (col 7) → quick-rate
       const td = e.target.closest('td');
       const tds = [...tr.querySelectorAll('td')];
       const tdIdx = tds.indexOf(td);
@@ -2991,23 +3003,21 @@ function saveOriginals() {
   _syncTimeout = setTimeout(pushToCloud, 1500);
 }
 
-async function pushToCloud() {
+async function pushToCloud(retrying=false) {
   if (!_userId) return;
   setSyncStatus('busy', 'saving…');
   try {
-    const payload = {
-      user_id:   _userId,
-      albums:    albums,
-      originals: originals,
-      updated_at: new Date().toISOString(),
-    };
     const { error } = await _sb.from('listenlog_data')
-      .upsert(payload, { onConflict: 'user_id' });
+      .upsert({ user_id:_userId, albums, originals }, { onConflict:'user_id' });
     if (error) throw error;
     setSyncStatus('ok', 'synced');
   } catch(e) {
     console.error('Sync error:', e);
-    setSyncStatus('err', 'sync failed');
+    if (!retrying) {
+      setTimeout(() => pushToCloud(true), 3000);
+    } else {
+      setSyncStatus('err', 'sync failed');
+    }
   }
 }
 
