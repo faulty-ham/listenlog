@@ -360,7 +360,36 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   font-family:'DM Mono',monospace;text-decoration:underline;padding:0;margin-left:4px;
 }
 
-/* ── QUICK-RATE MODAL ── */
+/* ── AUTOFILL CARD ── */
+.autofill-card-inner{
+  display:grid;grid-template-columns:72px 1fr auto;
+  background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  overflow:hidden;transition:border-color .15s;min-height:72px;
+}
+#autofill-card:hover .autofill-card-inner{border-color:var(--accent)}
+.autofill-art{width:72px;height:72px;object-fit:cover;display:block;border-right:1px solid var(--border)}
+.autofill-info{padding:10px 12px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.autofill-main-artist{font-weight:600;color:var(--text-hi);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.autofill-main-album{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.autofill-meta-row{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap}
+.autofill-meta-date{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
+.autofill-hint{display:flex;align-items:center;justify-content:center;padding:0 14px;background:rgba(0,192,48,.04);border-left:1px solid var(--border);min-width:100px;text-align:center}
+#autofill-hint-text{font-size:11px;color:var(--muted);line-height:1.4}
+
+/* ── FORM ACTION BAR ── */
+.form-actions-bar{
+  display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);
+  align-items:center;
+}
+.form-action-main{flex:2}
+.form-action-cancel{flex:1}
+.btn-danger-sm{
+  flex:1;font-family:'DM Mono',monospace;font-size:12px;
+  background:none;border:1px solid var(--danger);color:var(--danger);
+  border-radius:var(--radius);padding:6px 8px;cursor:pointer;white-space:nowrap;
+  transition:background .15s;
+}
+.btn-danger-sm:hover{background:rgba(201,122,122,.15)}
 .quick-rate-card{width:360px;max-width:95vw;padding:24px}
 .qr-album-info{display:flex;gap:12px;align-items:center;margin-bottom:20px}
 .qr-art{width:56px;height:56px;border-radius:4px;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
@@ -538,88 +567,69 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
 <!-- ADD/EDIT MODAL -->
 <div class="modal-overlay" id="add-modal">
-  <div class="modal" style="width:500px">
+  <div class="modal" style="width:520px">
     <h3 id="add-modal-title">New Entry</h3>
 
-    <!-- ARTIST + ALBUM inputs + auto-fill -->
+    <!-- ARTIST + ALBUM + DATE all in one row -->
     <div class="form-row" style="margin-bottom:10px">
-      <div class="form-group" style="flex:1;min-width:160px">
+      <div class="form-group" style="flex:1.2;min-width:130px">
         <label>Artist *</label>
         <input type="text" id="f-artist" placeholder="e.g. Radiohead" autocomplete="off" style="width:100%">
       </div>
-      <div class="form-group" style="flex:1;min-width:160px">
+      <div class="form-group" style="flex:1.5;min-width:140px">
         <label>Album *</label>
         <input type="text" id="f-album" placeholder="e.g. OK Computer" autocomplete="off" style="width:100%">
       </div>
-    </div>
-    <!-- AUTO-FILL BUTTON + MB LINK ROW -->
-    <div style="display:flex;gap:6px;margin-bottom:12px;align-items:flex-end">
-      <button class="btn-ghost" id="btn-lookup" style="flex:1;justify-content:center">🔍 Auto-fill</button>
-      <div style="display:flex;flex-direction:column;gap:2px;flex:1">
-        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">MusicBrainz link</label>
-        <div style="display:flex;gap:4px">
-          <input class="rescan-search-input" id="autofill-mb-input" placeholder="URL or release ID" style="flex:1;font-size:11px;padding:5px 8px">
-          <button class="btn-ghost btn-sm" style="color:var(--want);white-space:nowrap" id="autofill-mb-btn">Force</button>
-        </div>
+      <div class="form-group" style="min-width:110px">
+        <label>Release Date</label>
+        <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="width:100%">
       </div>
     </div>
 
-    <!-- AUTO-FILL RESULT CARD -->
-    <div id="autofill-card" style="display:none;margin-bottom:12px">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px">Auto-fill result</div>
-      <div style="display:grid;grid-template-columns:1fr;background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden" id="autofill-card-inner">
-        <div style="display:flex;gap:10px;padding:10px 12px;align-items:center">
-          <img id="autofill-art" style="width:44px;height:44px;border-radius:3px;object-fit:cover;display:none;border:1px solid var(--border)" alt="">
-          <div>
-            <div id="autofill-artist" style="font-weight:500;color:var(--text-hi);font-size:13px"></div>
-            <div id="autofill-album-name" style="font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:13px"></div>
-            <div style="display:flex;gap:6px;margin-top:3px;align-items:center">
-              <span id="autofill-date" style="font-size:11px;color:var(--muted)"></span>
-              <span id="autofill-conf" style="font-size:9px"></span>
-              <span id="autofill-src" class="src-badge"></span>
-            </div>
+    <!-- AUTO-FILL RESULT CARD — clickable, acts as the trigger -->
+    <div id="autofill-card" style="margin-bottom:10px;cursor:pointer" title="Click to auto-fill from MusicBrainz / Last.fm / iTunes">
+      <div class="autofill-card-inner" id="autofill-card-inner">
+        <!-- Left: art -->
+        <img id="autofill-art" class="autofill-art" alt="">
+        <!-- Center: info -->
+        <div class="autofill-info">
+          <div id="autofill-artist" class="autofill-main-artist"></div>
+          <div id="autofill-album-name" class="autofill-main-album"></div>
+          <div class="autofill-meta-row">
+            <span id="autofill-date" class="autofill-meta-date"></span>
+            <span id="autofill-conf"></span>
+            <span id="autofill-src" class="src-badge"></span>
           </div>
         </div>
+        <!-- Right: status/hint -->
+        <div class="autofill-hint" id="autofill-hint">
+          <span id="autofill-hint-text">🔍 Click to auto-fill</span>
+        </div>
       </div>
-      <!-- Search results shown after thumbs-down -->
+      <!-- Search panel (shown after click when no result yet, or to search alternatives) -->
       <div id="autofill-search-panel" style="display:none;margin-top:6px">
         <div style="display:flex;gap:6px;margin-bottom:6px">
           <input class="rescan-search-input" id="autofill-search-input" placeholder="Artist  Album  (two spaces)" style="flex:1" value="">
           <button class="btn-ghost btn-sm" id="autofill-search-btn">Search</button>
         </div>
-        <div id="autofill-alts" class="rescan-alts" style="max-height:200px;overflow-y:auto"></div>
+        <div id="autofill-alts" class="rescan-alts" style="max-height:180px;overflow-y:auto"></div>
       </div>
     </div>
 
-    <!-- DATE + RATING + TAGS + NOTES -->
-    <div class="form-row" style="margin-bottom:10px">
-      <div class="form-group" style="flex:1">
-        <label>Release Date</label>
-        <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="width:100%">
-      </div>
-      <div class="form-group">
-        <label>My Rating</label>
-        <div class="star-input" id="star-input"></div>
-      </div>
+    <!-- MB LINK -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
+      <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">MB link</label>
+      <input class="rescan-search-input" id="autofill-mb-input" placeholder="Paste MusicBrainz URL or release ID" style="flex:1;font-size:11px;padding:5px 8px">
+      <button class="btn-ghost btn-sm" style="color:var(--want);white-space:nowrap" id="autofill-mb-btn">Force</button>
     </div>
-    <div class="form-row" style="margin-bottom:10px">
-      <div class="form-group">
-        <label>Tags</label>
-        <div class="tag-row">
-          <button class="tag-toggle want" id="want-toggle">🎧 Want to listen</button>
-          <span id="hard-toggle-wrap" style="display:none"><button class="tag-toggle hard" id="hard-toggle">📦 Hard to find</button></span>
-        </div>
-      </div>
-      <div class="form-group" style="flex:1;min-width:160px">
-        <label>Notes</label>
-        <input type="text" id="f-notes" placeholder="Optional…" style="width:100%">
-      </div>
-    </div>
-    <div class="form-actions" style="padding-top:12px;border-top:1px solid var(--border)">
-      <button class="btn-primary" id="btn-save">Save Entry</button>
-      <button class="btn-ghost" id="btn-delete-entry" style="color:var(--danger);border-color:var(--danger);display:none">Delete Entry</button>
-      <button class="btn-ghost" id="btn-cancel">Cancel</button>
-      <span id="form-error" style="font-size:11px;color:var(--danger)"></span>
+
+    <span id="form-error" style="font-size:11px;color:var(--danger);display:block;min-height:16px;margin-bottom:6px"></span>
+
+    <!-- ACTION BUTTONS — full width, evenly spread -->
+    <div class="form-actions-bar">
+      <button class="btn-primary form-action-main" id="btn-save">Save Entry</button>
+      <button class="btn-danger-sm" id="btn-delete-entry" style="display:none">Delete</button>
+      <button class="btn-ghost form-action-cancel" id="btn-cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -1347,39 +1357,48 @@ function closePanel() {
   resetForm(); editingId=null;
 }
 function resetForm() {
-  ['f-artist','f-album','f-date','f-notes'].forEach(id => document.getElementById(id).value='');
-  setRating(0); formWant=false; formHard=false; syncTagToggles();
+  ['f-artist','f-album','f-date'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('autofill-mb-input').value='';
   pendingArtUrl='';
-  // Reset autofill card
-  document.getElementById('autofill-card').style.display='none';
-  document.getElementById('autofill-search-panel').style.display='none';
-  document.getElementById('autofill-alts').innerHTML='';
-  document.getElementById('form-error').textContent='';
+  showAutofillCard(null);
 }
 
 // ── Autofill card display ────────────────────────────────────
 function showAutofillCard(found) {
-  const r = found.result;
-  const date = r.releaseDate || r._mbDate || '';
-  const art  = r.artworkUrl100 || '';
+  const r = found ? found.result : null;
+  const date = r ? (r.releaseDate || r._mbDate || '') : '';
+  const art  = r ? (r.artworkUrl100 || '') : '';
   const srcLabels = {lastfm:'Last.fm', itunes:'iTunes', musicbrainz:'MB', discogs:'Discogs'};
-  const srcClass  = found.source==='musicbrainz' ? ' src-mb' : '';
+  const srcClass  = found?.source==='musicbrainz' ? ' src-mb' : '';
 
-  document.getElementById('autofill-artist').textContent    = r.artistName||'';
-  document.getElementById('autofill-album-name').textContent= r.collectionName||'';
-  document.getElementById('autofill-date').textContent      = date||'—';
-  document.getElementById('autofill-conf').innerHTML        = confPill(found.score);
-  document.getElementById('autofill-src').textContent       = srcLabels[found.source]||found.source||'';
-  document.getElementById('autofill-src').className         = 'src-badge'+srcClass;
-
-  const artEl = document.getElementById('autofill-art');
-  if (art) { artEl.src=art; artEl.style.display='block'; } else { artEl.style.display='none'; }
-
-  document.getElementById('autofill-card').style.display='block';
-  document.getElementById('autofill-search-panel').style.display='none';
-  document.getElementById('form-error').textContent='';
-  if (date && !document.getElementById('f-date').value) document.getElementById('f-date').value = date;
-  pendingArtUrl = art;
+  if (r) {
+    document.getElementById('autofill-artist').textContent     = r.artistName||'';
+    document.getElementById('autofill-album-name').textContent = r.collectionName||'';
+    document.getElementById('autofill-date').textContent       = date||'';
+    document.getElementById('autofill-conf').innerHTML         = (found.score < 0.99) ? confPill(found.score) : '';
+    document.getElementById('autofill-src').textContent        = srcLabels[found.source]||found.source||'';
+    document.getElementById('autofill-src').className          = 'src-badge'+srcClass;
+    const artEl = document.getElementById('autofill-art');
+    if (art) { artEl.src=art; artEl.style.cssText='width:72px;height:72px;object-fit:cover;display:block;border-right:1px solid var(--border)'; }
+    else { artEl.style.display='none'; }
+    document.getElementById('autofill-hint-text').textContent = '✓ Applied — click to search alternatives';
+    document.getElementById('autofill-hint-text').style.color = 'var(--good)';
+    if (date && !document.getElementById('f-date').value) document.getElementById('f-date').value = date;
+    pendingArtUrl = art;
+  } else {
+    document.getElementById('autofill-artist').textContent     = '';
+    document.getElementById('autofill-album-name').textContent = '';
+    document.getElementById('autofill-date').textContent       = '';
+    document.getElementById('autofill-conf').innerHTML         = '';
+    document.getElementById('autofill-src').textContent        = '';
+    document.getElementById('autofill-art').style.display      = 'none';
+    document.getElementById('autofill-hint-text').textContent  = '🔍 Click to auto-fill';
+    document.getElementById('autofill-hint-text').style.color  = '';
+  }
+  document.getElementById('autofill-card').style.display         = 'block';
+  document.getElementById('autofill-search-panel').style.display = 'none';
+  document.getElementById('form-error').textContent              = '';
+  document.getElementById('autofill-card').dataset.found         = found ? JSON.stringify(found) : '';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1825,19 +1844,6 @@ async function itunesLookup(artist, album) {
 }
 
 
-async function lookupAlbum() {
-  const artist=document.getElementById('f-artist').value.trim(), album=document.getElementById('f-album').value.trim();
-  if(!artist||!album){document.getElementById('form-error').textContent='Enter both artist and album first.';return;}
-  document.getElementById('form-error').textContent='';
-  document.getElementById('btn-lookup').innerHTML='<span class="spinner"></span> Searching…';
-  document.getElementById('btn-lookup').disabled=true;
-  try{
-    const found=await lookupBest(artist,album,null);
-    if(found){ showAutofillCard(found); }
-    else{ document.getElementById('autofill-card').style.display='none'; document.getElementById('form-error').textContent='No match found. Fill in manually or try different spelling.'; }
-  }catch(e){ document.getElementById('form-error').textContent='Lookup failed (network error).'; }
-  finally{ document.getElementById('btn-lookup').innerHTML='🔍 Auto-fill from MusicBrainz / Last.fm / iTunes'; document.getElementById('btn-lookup').disabled=false; }
-}
 
 // ════════════════════════════════════════════════════════════
 // CRUD
@@ -1847,19 +1853,19 @@ function addOrUpdateAlbum() {
   const ferr=document.getElementById('form-error');
   if(!artist||!album){ferr.textContent='Artist and Album are required.';return;}
   ferr.textContent='';
+  const existing = editingId ? (albums.find(a=>a.id===editingId)||{}) : {};
   const entry={
     id:editingId||uid(), artist, album,
     date:document.getElementById('f-date').value.trim(),
-    rating:currentRating||null,
-    notes:document.getElementById('f-notes').value.trim(),
-    wantToListen:formWant, hardToFind:formWant&&formHard,
-    unmatched: editingId ? (albums.find(a=>a.id===editingId)||{}).unmatched||false : false,
-    artUrl:pendingArtUrl||(editingId?(albums.find(a=>a.id===editingId)||{}).artUrl||'':''),
-    added:editingId?(albums.find(a=>a.id===editingId)||{}).added:Date.now(),
+    // Preserve rating/tags/notes from existing — these are managed via Quick Rate
+    rating:existing.rating||null,
+    notes:existing.notes||null,
+    wantToListen:existing.wantToListen||false,
+    hardToFind:existing.hardToFind||false,
+    unmatched:existing.unmatched||false,
+    artUrl:pendingArtUrl||existing.artUrl||'',
+    added:existing.added||Date.now(),
   };
-  if(!entry.wantToListen) entry.hardToFind=false;
-  // Only remove want-to-listen if a rating is being set
-  if(entry.rating) entry.wantToListen=false;
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
   else albums.unshift(entry);
   save(); closePanel(); render();
@@ -1870,10 +1876,8 @@ function editAlbum(id) {
   document.getElementById('f-artist').value=a.artist;
   document.getElementById('f-album').value=a.album;
   document.getElementById('f-date').value=a.date||'';
-  document.getElementById('f-notes').value=a.notes||'';
-  setRating(a.rating||0); formWant=!!a.wantToListen; formHard=!!a.hardToFind; syncTagToggles();
   pendingArtUrl=a.artUrl||'';
-  // Show existing art in autofill card if present
+  // Show existing art/data in autofill card
   if(a.artUrl){
     document.getElementById('autofill-card').style.display='block';
     document.getElementById('autofill-artist').textContent=a.artist;
@@ -2830,6 +2834,38 @@ document.getElementById('btn-toggle-import').addEventListener('click',()=>{
   if(p.classList.contains('open')){closeImportPanel();return;}
   openImportPanel();
 });
+// Autofill card click — triggers lookup if no result yet, or opens search if result shown
+document.getElementById('autofill-card').addEventListener('click', async e => {
+  if (e.target.closest('#autofill-search-panel')) return; // don't re-trigger from inside panel
+  const artist = document.getElementById('f-artist').value.trim();
+  const album  = document.getElementById('f-album').value.trim();
+  const hasResult = !!document.getElementById('autofill-card').dataset.found;
+  if (hasResult) {
+    // Already have a result — toggle search panel for alternatives
+    const sp = document.getElementById('autofill-search-panel');
+    if (sp.style.display === 'none') {
+      sp.style.display = 'block';
+      document.getElementById('autofill-search-input').value = artist + '  ' + album;
+    } else {
+      sp.style.display = 'none';
+    }
+    return;
+  }
+  if (!artist || !album) {
+    document.getElementById('form-error').textContent = 'Enter artist and album first.';
+    return;
+  }
+  document.getElementById('autofill-hint-text').textContent = '⟳ Searching…';
+  document.getElementById('form-error').textContent = '';
+  const found = await lookupBest(artist, album, null);
+  if (found) showAutofillCard(found);
+  else {
+    document.getElementById('autofill-hint-text').textContent = 'No match found — paste MB link or search below';
+    document.getElementById('autofill-hint-text').style.color = 'var(--muted)';
+    document.getElementById('autofill-search-panel').style.display = 'block';
+    document.getElementById('autofill-search-input').value = artist + '  ' + album;
+  }
+});
 document.getElementById('btn-cancel').addEventListener('click',closePanel);
 document.getElementById('btn-save').addEventListener('click',addOrUpdateAlbum);
 document.getElementById('btn-delete-entry').addEventListener('click',()=>{
@@ -2841,8 +2877,6 @@ document.getElementById('btn-delete-entry').addEventListener('click',()=>{
     save(); closePanel(); render();
   }
 });
-document.getElementById('btn-lookup').addEventListener('click',lookupAlbum);
-document.getElementById('f-album').addEventListener('keydown',e=>{if(e.key==='Enter')lookupAlbum();});
 
 // Autofill card: result shown after auto-fill or MB force match
 document.getElementById('autofill-search-btn').addEventListener('click', runAutofillSearch);
