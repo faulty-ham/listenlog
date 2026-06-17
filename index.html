@@ -787,8 +787,7 @@ let albums    = JSON.parse(localStorage.getItem('listenLog')    || '[]');
 let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
 let editingId = null, pendingDeleteId = null;
-let currentRating = 0, pendingArtUrl = '';
-let formWant = false, formHard = false;
+let pendingArtUrl = '';
 let sortKey = 'date', sortDir = -1;
 let bulkMode = false;
 let selectedIds = new Set();
@@ -808,28 +807,8 @@ function origKey(artist, album) {
 // HALF-STAR WIDGET — built inside initApp() to prevent double-init
 // ════════════════════════════════════════════════════════════
 
-function setRating(val) {
-  currentRating = val;
-  document.querySelectorAll('.star-btn').forEach(s => s.classList.toggle('lit', parseInt(s.dataset.val) <= val));
-  const disp = document.getElementById('star-val-display');
-  if (disp) disp.textContent = val ? `${val}/5` : '';
-}
-
 // ════════════════════════════════════════════════════════════
 // TAG TOGGLES
-// ════════════════════════════════════════════════════════════
-function syncTagToggles() {
-  document.getElementById('want-toggle').classList.toggle('on', formWant);
-  document.getElementById('hard-toggle').classList.toggle('on', formHard);
-  document.getElementById('hard-toggle-wrap').style.display = formWant ? 'inline' : 'none';
-  if (!formWant) formHard = false;
-}
-document.getElementById('want-toggle').addEventListener('click', () => {
-  formWant = !formWant; if (!formWant) formHard = false; syncTagToggles();
-  if (formWant) setRating(0);
-});
-document.getElementById('hard-toggle').addEventListener('click', () => { formHard = !formHard; syncTagToggles(); });
-
 // ════════════════════════════════════════════════════════════
 // STARS DISPLAY — simple full stars
 // ════════════════════════════════════════════════════════════
@@ -2749,38 +2728,6 @@ let _appInited = false;
 function initApp() {
   if (_appInited) return;
   _appInited = true;
-
-// Build star rating widget (full stars, 1-5)
-(function() {
-  const wrap = document.getElementById('star-input');
-  if (!wrap) return;
-  wrap.innerHTML = '';
-  for (let i = 1; i <= 5; i++) {
-    const btn = document.createElement('button');
-    btn.className = 'star-btn';
-    btn.dataset.val = i.toString();
-    btn.textContent = '★';
-    btn.type = 'button';
-    wrap.appendChild(btn);
-  }
-  const d = document.createElement('span');
-  d.className = 'star-val-display'; d.id = 'star-val-display';
-  wrap.appendChild(d);
-})();
-
-// Star input event listeners
-document.getElementById('star-input').addEventListener('mouseover', e => {
-  const b = e.target.closest('.star-btn'); if (!b) return;
-  const v = parseInt(b.dataset.val);
-  document.querySelectorAll('.star-btn').forEach(x => x.classList.toggle('lit', parseInt(x.dataset.val) <= v));
-});
-document.getElementById('star-input').addEventListener('mouseleave', () => setRating(currentRating));
-document.getElementById('star-input').addEventListener('click', e => {
-  const b = e.target.closest('.star-btn'); if (!b) return;
-  const v = parseInt(b.dataset.val);
-  setRating(currentRating === v ? 0 : v);
-  if (currentRating > 0 && formWant) { formWant = false; formHard = false; syncTagToggles(); }
-});
 
 // Build quick-rate star widget
 (function(){
