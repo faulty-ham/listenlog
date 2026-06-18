@@ -823,6 +823,9 @@ function starsHTML(n) {
 // ════════════════════════════════════════════════════════════
 // activeFilters: { artist: Set, year: Set, type: Set, rating: Set, tags: Set }
 const activeFilters = { artist: new Map(), year: new Map(), rating: new Map(), tags: new Map() };
+// Default view: unrated albums that are NOT hard to find
+activeFilters.rating.set('unrated', 'include');
+activeFilters.tags.set('hard', 'exclude');
 
 const RATING_OPTIONS = [
   { value:'5',      label:'★★★★★ (5)' },
@@ -956,8 +959,7 @@ function buildDropdown(field, wrap) {
           const item = document.createElement('div');
           item.className = 'ms-item';
           item.innerHTML = `<span class="tri-check ${allInclude?'tri-include':allExclude?'tri-exclude':someActive?'tri-mixed':''}"></span><span>${esc(decade)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">${albumCount} albums</span>`;
-          item.querySelector('.tri-check').addEventListener('click', e => {
-            e.stopPropagation();
+          item.addEventListener('click', () => {
             const cur = allInclude ? 'include' : allExclude ? 'exclude' : someActive ? 'include' : null;
             const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
             if (next) years.forEach(y => map.set(y, next));
@@ -975,8 +977,7 @@ function buildDropdown(field, wrap) {
           const item = document.createElement('div');
           item.className = 'ms-item';
           item.innerHTML = `<span class="tri-check ${state==='include'?'tri-include':state==='exclude'?'tri-exclude':''}"></span><span${val==='no-date'?' style="color:var(--muted);font-style:italic"':''}>${esc(label)}</span>`;
-          item.querySelector('.tri-check').addEventListener('click', e => {
-            e.stopPropagation();
+          item.addEventListener('click', () => {
             const cur = map.get(val) || null;
             const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
             if (next) map.set(val, next); else map.delete(val);
@@ -1028,8 +1029,7 @@ function buildDropdown(field, wrap) {
       const item = document.createElement('div');
       item.className = 'ms-item';
       item.innerHTML = `<span class="tri-check ${state==='include'?'tri-include':state==='exclude'?'tri-exclude':''}"></span><span>${esc(label)}</span>`;
-      item.querySelector('.tri-check').addEventListener('click', e => {
-        e.stopPropagation();
+      item.addEventListener('click', () => {
         const cur = map.get(val) || null;
         const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
         if (next) map.set(val, next); else map.delete(val);
@@ -1048,7 +1048,8 @@ function buildDropdown(field, wrap) {
   if (hasSearch) {
     const searchEl = dd.querySelector('.ms-search');
     searchEl.addEventListener('input', e => renderItems(e.target.value));
-    setTimeout(() => searchEl.focus(), 0);
+    searchEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchEl.blur(); } });
+    setTimeout(() => { searchEl.focus(); }, 50);
   }
 
   const footer = document.createElement('div');
@@ -2812,6 +2813,9 @@ on('filter-search','input',e=>{
   const cl=document.getElementById('search-clear');
   if(cl)cl.style.display=e.target.value?'block':'none';
   render();
+});
+on('filter-search','keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();e.target.blur();}
 });
 on('search-clear','click',()=>{
   const si=document.getElementById('filter-search');
