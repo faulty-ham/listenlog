@@ -2682,44 +2682,47 @@ let _appInited = false;
 function initApp() {
   if (_appInited) return;
   _appInited = true;
-// Bulk select
-document.getElementById('btn-bulk-mode').addEventListener('click', () => bulkMode ? exitBulkMode() : enterBulkMode());
-document.getElementById('btn-bulk-cancel').addEventListener('click', exitBulkMode);
-document.getElementById('th-check-cb').addEventListener('change', e => {
-  const list = getSorted(getFiltered());
-  if (e.target.checked) list.forEach(a => selectedIds.add(a.id)); else selectedIds.clear();
-  updateBulkBar(); render();
+
+  function on(id, evt, fn) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(evt, fn);
+  }
+
+// Bulk select — th-check-cb and select-all-cb are dynamically rendered, use delegation
+on('btn-bulk-mode', 'click', () => bulkMode ? exitBulkMode() : enterBulkMode());
+on('btn-bulk-cancel', 'click', exitBulkMode);
+document.addEventListener('change', e => {
+  if (e.target.id === 'th-check-cb' || e.target.id === 'select-all-cb') {
+    const list = getSorted(getFiltered());
+    if (e.target.checked) list.forEach(a => selectedIds.add(a.id)); else selectedIds.clear();
+    updateBulkBar(); render();
+  }
 });
-document.getElementById('select-all-cb').addEventListener('change', e => {
-  const list = getSorted(getFiltered());
-  if (e.target.checked) list.forEach(a => selectedIds.add(a.id)); else selectedIds.clear();
-  updateBulkBar(); render();
-});
-document.getElementById('btn-bulk-delete').addEventListener('click', () => {
+on('btn-bulk-delete', 'click', () => {
   if (!selectedIds.size) return;
   if (!confirm(`Delete ${selectedIds.size} selected album${selectedIds.size>1?'s':''}?`)) return;
   albums = albums.filter(a => !selectedIds.has(a.id)); save(); exitBulkMode();
 });
-document.getElementById('btn-nuke').addEventListener('click', () => {
+on('btn-nuke', 'click', () => {
   document.getElementById('nuke-count').textContent = albums.length;
   document.getElementById('nuke-modal').classList.add('open');
 });
-document.getElementById('nuke-cancel').addEventListener('click', () => document.getElementById('nuke-modal').classList.remove('open'));
-document.getElementById('nuke-confirm').addEventListener('click', () => {
+on('nuke-cancel', 'click', () => document.getElementById('nuke-modal').classList.remove('open'));
+on('nuke-confirm', 'click', () => {
   albums = []; originals = {}; save(); saveOriginals();
   document.getElementById('nuke-modal').classList.remove('open'); exitBulkMode();
 });
 
 // Rescan modal
-document.getElementById('rescan-cancel').addEventListener('click', () => {
+on('rescan-cancel', 'click', () => {
   document.getElementById('rescan-modal').classList.remove('open'); rescanResults = [];
 });
-document.getElementById('rescan-apply').addEventListener('click', () => {
+on('rescan-apply', 'click', () => {
   document.getElementById('rescan-modal').classList.remove('open'); rescanResults = []; render();
 });
 
 // Mobile sort
-document.getElementById('mobile-sort').addEventListener('change', e => {
+on('mobile-sort', 'change', e => {
   const [key, dir] = e.target.value.split('-');
   sortKey = key; sortDir = dir === 'asc' ? 1 : -1; render();
 });
@@ -2738,182 +2741,108 @@ document.getElementById('mobile-sort').addEventListener('change', e => {
   wrap.addEventListener('click',e=>{const b=e.target.closest('.star-btn');if(!b)return;const v=parseInt(b.dataset.val);setQrRating(qrRating===v?0:v);if(qrRating>0){qrWant=false;qrHard=false;syncQrToggles();}});
 })();
 
-document.getElementById('qr-want-toggle').addEventListener('click',()=>{
-  qrWant=!qrWant;
-  if(!qrWant) qrHard=false;
-  // Never clear rating when toggling want
-  syncQrToggles();
-});
-document.getElementById('qr-hard-toggle').addEventListener('click',()=>{qrHard=!qrHard;syncQrToggles();});
-document.getElementById('qr-unmatched-toggle').addEventListener('click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
-document.getElementById('qr-save').addEventListener('click',()=>{
+on('qr-want-toggle','click',()=>{qrWant=!qrWant;if(!qrWant)qrHard=false;syncQrToggles();});
+on('qr-hard-toggle','click',()=>{qrHard=!qrHard;syncQrToggles();});
+on('qr-unmatched-toggle','click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
+on('qr-save','click',()=>{
   if(!qrId)return;
   const a=albums.find(x=>x.id===qrId); if(!a)return;
-  const ratingChanged = qrRating !== (a.rating||0);
-  // Only remove want-to-listen if a rating was set or changed
-  if(ratingChanged && qrRating>0) { qrWant=false; qrHard=false; }
-  a.rating=qrRating||null;
-  a.wantToListen=qrWant;
-  a.hardToFind=qrWant&&qrHard;
-  a.unmatched=qrUnmatched;
+  const ratingChanged=qrRating!==(a.rating||0);
+  if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
+  a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;
   a.notes=document.getElementById('qr-notes').value.trim()||null;
   save();render();
-  document.getElementById('quick-rate-modal').classList.remove('open');
-  qrId=null;
-});
-document.getElementById('qr-cancel').addEventListener('click',()=>{
   document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
 });
-document.getElementById('quick-rate-modal').addEventListener('click',e=>{
-  if(e.target.id==='quick-rate-modal'){document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;}
-});
+on('qr-cancel','click',()=>{document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;});
+on('quick-rate-modal','click',e=>{if(e.target.id==='quick-rate-modal'){document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;}});
 
-document.getElementById('btn-toggle-add').addEventListener('click',()=>{
-  editingId=null; resetForm(); openPanel('add');
-});
-document.getElementById('btn-toggle-import').addEventListener('click',()=>{
+on('btn-toggle-add','click',()=>{editingId=null;resetForm();openPanel('add');});
+on('btn-toggle-import','click',()=>{
   const p=document.getElementById('import-panel');
-  if(p.classList.contains('open')){closeImportPanel();return;}
+  if(p&&p.classList.contains('open')){closeImportPanel();return;}
   openImportPanel();
 });
-// Autofill card click — triggers lookup if no result yet, or opens search if result shown
-document.getElementById('autofill-card').addEventListener('click', async e => {
-  if (e.target.closest('#autofill-search-panel')) return; // don't re-trigger from inside panel
-  const artist = document.getElementById('f-artist').value.trim();
-  const album  = document.getElementById('f-album').value.trim();
-  const hasResult = !!document.getElementById('autofill-card').dataset.found;
-  if (hasResult) {
-    // Already have a result — toggle search panel for alternatives
-    const sp = document.getElementById('autofill-search-panel');
-    if (sp.style.display === 'none') {
-      sp.style.display = 'block';
-      document.getElementById('autofill-search-input').value = artist + '  ' + album;
-    } else {
-      sp.style.display = 'none';
-    }
+
+on('autofill-card','click',async e=>{
+  if(e.target.closest('#autofill-search-panel'))return;
+  const artist=document.getElementById('f-artist').value.trim();
+  const album=document.getElementById('f-album').value.trim();
+  const hasResult=!!document.getElementById('autofill-card').dataset.found;
+  if(hasResult){
+    const sp=document.getElementById('autofill-search-panel');
+    if(sp.style.display==='none'){sp.style.display='block';document.getElementById('autofill-search-input').value=artist+'  '+album;}
+    else sp.style.display='none';
     return;
   }
-  if (!artist || !album) {
-    document.getElementById('form-error').textContent = 'Enter artist and album first.';
-    return;
-  }
-  document.getElementById('autofill-hint-text').textContent = '⟳ Searching…';
-  document.getElementById('form-error').textContent = '';
-  const found = await lookupBest(artist, album, null);
-  if (found) showAutofillCard(found);
-  else {
-    document.getElementById('autofill-hint-text').textContent = 'No match found — paste MB link or search below';
-    document.getElementById('autofill-hint-text').style.color = 'var(--muted)';
-    document.getElementById('autofill-search-panel').style.display = 'block';
-    document.getElementById('autofill-search-input').value = artist + '  ' + album;
-  }
-});
-document.getElementById('btn-cancel').addEventListener('click',closePanel);
-document.getElementById('btn-save').addEventListener('click',addOrUpdateAlbum);
-document.getElementById('btn-delete-entry').addEventListener('click',()=>{
-  if (!editingId) return;
-  const a = albums.find(x=>x.id===editingId);
-  if (!a) return;
-  if (confirm(`Delete "${a.artist} – ${a.album}"?`)) {
-    albums = albums.filter(x=>x.id!==editingId);
-    save(); closePanel(); render();
+  if(!artist||!album){document.getElementById('form-error').textContent='Enter artist and album first.';return;}
+  document.getElementById('autofill-hint-text').textContent='⟳ Searching…';
+  document.getElementById('form-error').textContent='';
+  const found=await lookupBest(artist,album,null);
+  if(found)showAutofillCard(found);
+  else{
+    document.getElementById('autofill-hint-text').textContent='No match found — paste MB link or search below';
+    document.getElementById('autofill-hint-text').style.color='var(--muted)';
+    document.getElementById('autofill-search-panel').style.display='block';
+    document.getElementById('autofill-search-input').value=artist+'  '+album;
   }
 });
 
-// Autofill card: result shown after auto-fill or MB force match
-document.getElementById('autofill-search-btn').addEventListener('click', runAutofillSearch);
-document.getElementById('autofill-search-input').addEventListener('keydown',e=>{if(e.key==='Enter')runAutofillSearch();});
-// ── Shared MB apply helper ────────────────────────────────────
-function applyMbResult(result) {
-  document.getElementById('f-artist').value = result.matchedArtist||'';
-  document.getElementById('f-album').value  = result.matchedAlbum||'';
-  document.getElementById('f-date').value   = result.date||'';
-  pendingArtUrl = result.art||'';
-  document.getElementById('autofill-artist').textContent      = result.matchedArtist||'';
-  document.getElementById('autofill-album-name').textContent  = result.matchedAlbum||'';
-  document.getElementById('autofill-date').textContent        = result.date||'—';
-  document.getElementById('autofill-conf').innerHTML          = '<span class="conf-pill conf-high-pill">100%</span>';
-  document.getElementById('autofill-src').textContent         = 'MB';
-  document.getElementById('autofill-src').className           = 'src-badge src-mb';
-  const artEl = document.getElementById('autofill-art');
-  if (result.art) { artEl.src=result.art; artEl.style.display='block'; artEl.onerror=()=>artEl.style.display='none'; }
-  else artEl.style.display='none';
-  document.getElementById('autofill-card').style.display='block';
-  document.getElementById('autofill-search-panel').style.display='none';
-  document.getElementById('autofill-mb-input').value='';
-}
-
-async function runMbForce(raw, onOpen) {
-  if (!raw) return;
-  const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
-  if (!mbid) { alert('No valid MusicBrainz ID found in that link.'); return; }
-  document.getElementById('form-error').textContent = '';
-  const result = await mbidLookup(mbid);
-  if (!result) { alert('MusicBrainz lookup failed — check the link and try again.'); return; }
-  if (onOpen) onOpen(); // open modal if not already open
-  applyMbResult(result);
-}
-
-document.getElementById('autofill-mb-btn').addEventListener('click', () => {
-  const raw = document.getElementById('autofill-mb-input').value.trim();
-  runMbForce(raw, null);
-});
-document.getElementById('autofill-mb-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); runMbForce(e.target.value.trim(), null); }
+on('btn-cancel','click',closePanel);
+on('btn-save','click',addOrUpdateAlbum);
+on('btn-delete-entry','click',()=>{
+  if(!editingId)return;
+  const a=albums.find(x=>x.id===editingId);if(!a)return;
+  if(confirm(`Delete "${a.artist} – ${a.album}"?`)){albums=albums.filter(x=>x.id!==editingId);save();closePanel();render();}
 });
 
-// Quick Add: paste MB link in toolbar → opens Add modal prefilled
-document.getElementById('quick-add-mb').addEventListener('keydown', async e => {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  const raw = e.target.value.trim();
-  e.target.value = '';
-  await runMbForce(raw, () => {
-    editingId = null;
-    resetForm();
-    openPanel('add');
-  });
+on('autofill-search-btn','click',runAutofillSearch);
+on('autofill-search-input','keydown',e=>{if(e.key==='Enter')runAutofillSearch();});
+on('autofill-mb-btn','click',()=>runMbForce(document.getElementById('autofill-mb-input').value.trim(),null));
+on('autofill-mb-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();runMbForce(e.target.value.trim(),null);}});
+on('quick-add-mb','keydown',async e=>{
+  if(e.key!=='Enter')return;e.preventDefault();
+  const raw=e.target.value.trim();e.target.value='';
+  await runMbForce(raw,()=>{editingId=null;resetForm();openPanel('add');});
 });
 
-// Search clear button
-const searchInput = document.getElementById('filter-search');
-const searchClear = document.getElementById('search-clear');
-searchInput.addEventListener('input', () => {
-  searchClear.style.display = searchInput.value ? 'block' : 'none';
+on('filter-search','input',e=>{
+  const cl=document.getElementById('search-clear');
+  if(cl)cl.style.display=e.target.value?'block':'none';
   render();
 });
-searchClear.addEventListener('click', () => {
-  searchInput.value = '';
-  searchClear.style.display = 'none';
-  render();
-  searchInput.focus();
+on('search-clear','click',()=>{
+  const si=document.getElementById('filter-search');
+  si.value='';render();si.focus();
+  const cl=document.getElementById('search-clear');if(cl)cl.style.display='none';
 });
 
-// Close add modal on overlay click
-document.getElementById('add-modal').addEventListener('click',e=>{if(e.target.id==='add-modal')closePanel();});
+on('add-modal','click',e=>{if(e.target.id==='add-modal')closePanel();});
+on('delete-confirm','click',doDelete);
+on('delete-cancel','click',()=>{document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;});
+on('delete-modal','click',e=>{if(e.target.id==='delete-modal'){document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;}});
 
-document.getElementById('delete-confirm').addEventListener('click',doDelete);
-document.getElementById('delete-cancel').addEventListener('click',()=>{document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;});
-document.getElementById('delete-modal').addEventListener('click',e=>{if(e.target.id==='delete-modal'){document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;}});
-// Rescan modal: no click-outside-to-close (would lose review decisions)
+// CSV import drop zone
 const dropZone=document.getElementById('csv-drop-zone');
-dropZone.addEventListener('click',()=>document.getElementById('csv-file-input').click());
-dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.style.borderColor='var(--accent)';});
-dropZone.addEventListener('dragleave',()=>{dropZone.style.borderColor='';});
-dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.style.borderColor='';handleCSVFiles(e.dataTransfer.files);});
-document.getElementById('csv-file-input').addEventListener('change',e=>{handleCSVFiles(e.target.files);e.target.value='';});
-document.getElementById('btn-do-import').addEventListener('click',doImport);
-document.getElementById('btn-cancel-import').addEventListener('click',closeImportPanel);
-document.getElementById('btn-rescan').addEventListener('click',startRescan);
-document.getElementById('btn-gap-scan').addEventListener('click',startGapScan);
-document.getElementById('btn-pause-global').addEventListener('click',togglePause);
-document.getElementById('btn-stop-global').addEventListener('click',()=>{scanAbort=true;scanPaused=false;});
-document.getElementById('btn-export').addEventListener('click',()=>{
+if(dropZone){
+  dropZone.addEventListener('click',()=>document.getElementById('csv-file-input').click());
+  dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.style.borderColor='var(--accent)';});
+  dropZone.addEventListener('dragleave',()=>{dropZone.style.borderColor='';});
+  dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.style.borderColor='';handleCSVFiles(e.dataTransfer.files);});
+}
+on('csv-file-input','change',e=>{handleCSVFiles(e.target.files);e.target.value='';});
+on('btn-do-import','click',doImport);
+on('btn-cancel-import','click',closeImportPanel);
+on('btn-rescan','click',startRescan);
+on('btn-gap-scan','click',startGapScan);
+on('btn-pause-global','click',togglePause);
+on('btn-stop-global','click',()=>{scanAbort=true;scanPaused=false;});
+on('btn-export','click',()=>{
   const blob=new Blob([JSON.stringify(albums,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ListenLog-${new Date().toISOString().slice(0,10)}.json`;a.click();
 });
-document.getElementById('btn-json-import-trigger').addEventListener('click',()=>document.getElementById('btn-json-import').click());
-document.getElementById('btn-json-import').addEventListener('change',e=>{
+on('btn-json-import-trigger','click',()=>document.getElementById('btn-json-import').click());
+on('btn-json-import','change',e=>{
   const file=e.target.files[0];if(!file)return;
   const r=new FileReader();
   r.onload=ev=>{
@@ -2936,6 +2865,36 @@ updateRescanButton();
 rebuildOriginalIdIndex();
 syncMobileSort();
 } // end initApp
+
+function applyMbResult(result) {
+  document.getElementById('f-artist').value = result.matchedArtist||'';
+  document.getElementById('f-album').value  = result.matchedAlbum||'';
+  document.getElementById('f-date').value   = result.date||'';
+  pendingArtUrl = result.art||'';
+  document.getElementById('autofill-artist').textContent     = result.matchedArtist||'';
+  document.getElementById('autofill-album-name').textContent = result.matchedAlbum||'';
+  document.getElementById('autofill-date').textContent       = result.date||'—';
+  document.getElementById('autofill-conf').innerHTML         = '<span class="conf-pill conf-high-pill">100%</span>';
+  document.getElementById('autofill-src').textContent        = 'MB';
+  document.getElementById('autofill-src').className          = 'src-badge src-mb';
+  const artEl = document.getElementById('autofill-art');
+  if (result.art) { artEl.src=result.art; artEl.style.display='block'; artEl.onerror=()=>artEl.style.display='none'; }
+  else artEl.style.display='none';
+  document.getElementById('autofill-card').style.display='block';
+  document.getElementById('autofill-search-panel').style.display='none';
+  document.getElementById('autofill-mb-input').value='';
+}
+
+async function runMbForce(raw, onOpen) {
+  if (!raw) return;
+  const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
+  if (!mbid) { alert('No valid MusicBrainz ID found in that link.'); return; }
+  if (document.getElementById('form-error')) document.getElementById('form-error').textContent = '';
+  const result = await mbidLookup(mbid);
+  if (!result) { alert('MusicBrainz lookup failed — check the link and try again.'); return; }
+  if (onOpen) onOpen();
+  applyMbResult(result);
+}
 
 function rebuildOriginalIdIndex() {
   let changed = false;
