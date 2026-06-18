@@ -959,7 +959,7 @@ function buildDropdown(field, wrap) {
           const item = document.createElement('div');
           item.className = 'ms-item';
           item.innerHTML = `<span class="tri-check ${allInclude?'tri-include':allExclude?'tri-exclude':someActive?'tri-mixed':''}"></span><span>${esc(decade)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">${albumCount} albums</span>`;
-          item.addEventListener('click', () => {
+          item.addEventListener('click', e => { e.stopPropagation();
             const cur = allInclude ? 'include' : allExclude ? 'exclude' : someActive ? 'include' : null;
             const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
             if (next) years.forEach(y => map.set(y, next));
@@ -977,7 +977,7 @@ function buildDropdown(field, wrap) {
           const item = document.createElement('div');
           item.className = 'ms-item';
           item.innerHTML = `<span class="tri-check ${state==='include'?'tri-include':state==='exclude'?'tri-exclude':''}"></span><span${val==='no-date'?' style="color:var(--muted);font-style:italic"':''}>${esc(label)}</span>`;
-          item.addEventListener('click', () => {
+          item.addEventListener('click', e => { e.stopPropagation();
             const cur = map.get(val) || null;
             const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
             if (next) map.set(val, next); else map.delete(val);
@@ -1029,7 +1029,7 @@ function buildDropdown(field, wrap) {
       const item = document.createElement('div');
       item.className = 'ms-item';
       item.innerHTML = `<span class="tri-check ${state==='include'?'tri-include':state==='exclude'?'tri-exclude':''}"></span><span>${esc(label)}</span>`;
-      item.addEventListener('click', () => {
+      item.addEventListener('click', e => { e.stopPropagation();
         const cur = map.get(val) || null;
         const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
         if (next) map.set(val, next); else map.delete(val);
