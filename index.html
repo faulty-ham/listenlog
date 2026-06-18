@@ -164,7 +164,7 @@ td{padding:7px 10px;vertical-align:middle}
 }
 
 /* ── TEXT CELLS ── */
-.td-artist{font-weight:500;color:var(--text-hi);max-width:180px;font-size:13px}
+.td-artist{font-weight:500;color:var(--text-hi);max-width:180px;font-size:13px;text-decoration:none;-webkit-text-decoration:none}
 .td-album{font-family:'Playfair Display',serif;font-style:italic;font-size:15px;color:var(--muted);max-width:220px}
 .td-date{color:var(--muted);white-space:nowrap;font-size:12px}
 .td-notes{color:var(--muted);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1475,7 +1475,8 @@ async function runAutofillSearch() {
     const srcLabels={lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'};
     document.getElementById('f-artist').value  = cand.matchedArtist||document.getElementById('f-artist').value;
     document.getElementById('f-album').value   = cand.matchedAlbum||document.getElementById('f-album').value;
-    document.getElementById('f-date').value    = cand.date||cand._releaseYear||'';
+    const newDate = cand.date||cand._releaseYear||'';
+    if (newDate) document.getElementById('f-date').value = newDate;
     pendingArtUrl = cand.art||'';
     document.getElementById('autofill-artist').textContent     = cand.matchedArtist||'';
     document.getElementById('autofill-album-name').textContent = cand.matchedAlbum||'';
@@ -2875,7 +2876,7 @@ syncMobileSort();
 function applyMbResult(result) {
   document.getElementById('f-artist').value = result.matchedArtist||'';
   document.getElementById('f-album').value  = result.matchedAlbum||'';
-  document.getElementById('f-date').value   = result.date||'';
+  if (result.date) document.getElementById('f-date').value = result.date;
   pendingArtUrl = result.art||'';
   document.getElementById('autofill-artist').textContent     = result.matchedArtist||'';
   document.getElementById('autofill-album-name').textContent = result.matchedAlbum||'';
