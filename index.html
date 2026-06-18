@@ -366,12 +366,13 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
 /* ── AUTOFILL CARD ── */
 .autofill-card-inner{
-  display:grid;grid-template-columns:72px 1fr 120px;
+  display:grid;grid-template-columns:minmax(0,72px) minmax(0,1fr) 120px;
   background:var(--surface2);border:1px solid var(--border);border-radius:6px;
   overflow:hidden;transition:border-color .15s;min-height:72px;
 }
 #autofill-card:hover .autofill-card-inner{border-color:var(--accent)}
-.autofill-art{width:72px;height:72px;object-fit:cover;display:block;border-right:1px solid var(--border);flex-shrink:0}
+.autofill-art-slot{width:72px;height:72px;flex-shrink:0;border-right:1px solid var(--border);background:var(--surface);overflow:hidden}
+.autofill-art{width:72px;height:72px;object-fit:cover;display:block}
 .autofill-info{padding:10px 14px;display:flex;flex-direction:column;justify-content:center;min-width:0;overflow:hidden}
 .autofill-main-artist{font-weight:600;color:var(--text-hi);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .autofill-main-album{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
@@ -593,8 +594,10 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <!-- AUTO-FILL RESULT CARD — clickable, acts as the trigger -->
     <div id="autofill-card" style="margin-bottom:10px;cursor:pointer" title="Click to auto-fill from MusicBrainz / Last.fm / iTunes">
       <div class="autofill-card-inner" id="autofill-card-inner">
-        <!-- Left: art -->
-        <img id="autofill-art" class="autofill-art" alt="">
+        <!-- Left: art slot — always occupies 72px -->
+        <div class="autofill-art-slot" id="autofill-art-slot">
+          <img id="autofill-art" class="autofill-art" alt="" style="display:none">
+        </div>
         <!-- Center: info -->
         <div class="autofill-info">
           <div id="autofill-artist" class="autofill-main-artist"></div>
@@ -1326,7 +1329,7 @@ function showAutofillCard(found) {
     document.getElementById('autofill-src').textContent        = srcLabels[found.source]||found.source||'';
     document.getElementById('autofill-src').className          = 'src-badge'+srcClass;
     const artEl = document.getElementById('autofill-art');
-    if (art) { artEl.src=art; artEl.style.cssText='width:72px;height:72px;object-fit:cover;display:block;border-right:1px solid var(--border)'; }
+    if (art) { artEl.src=art; artEl.style.display='block'; }
     else { artEl.style.display='none'; }
     document.getElementById('autofill-hint-text').textContent = '✓ Applied — click to search alternatives';
     document.getElementById('autofill-hint-text').style.color = 'var(--good)';
