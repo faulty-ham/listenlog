@@ -2769,8 +2769,11 @@ on('autofill-card','click',async e=>{
   const hasResult=!!document.getElementById('autofill-card').dataset.found;
   if(hasResult){
     const sp=document.getElementById('autofill-search-panel');
-    if(sp.style.display==='none'){sp.style.display='block';document.getElementById('autofill-search-input').value=artist+'  '+album;}
-    else sp.style.display='none';
+    if(sp.style.display==='none'){
+      sp.style.display='block';
+      document.getElementById('autofill-search-input').value=artist+'  '+album;
+      runAutofillSearch();
+    } else sp.style.display='none';
     return;
   }
   if(!artist||!album){document.getElementById('form-error').textContent='Enter artist and album first.';return;}
