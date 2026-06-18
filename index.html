@@ -1166,8 +1166,9 @@ function getSorted(list) {
 // RENDER
 // ════════════════════════════════════════════════════════════
 function render() {
-  const list  = getSorted(getFiltered());
   const tbody = document.getElementById('album-tbody');
+  if (!tbody) return; // DOM not ready yet
+  const list = getSorted(getFiltered());
   tbody.innerHTML = '';
 
   const rated = albums.filter(a=>a.rating);
@@ -1978,6 +1979,7 @@ function clearScanProgress() {
 function updateRescanButton() {
   const prog = loadScanProgress();
   const btn  = document.getElementById('btn-rescan');
+  if (!btn) return;
   if (prog && prog.scannedIds.size > 0 && prog.scannedIds.size < albums.length) {
     btn.textContent = `⟳ Resume Scan (${prog.scannedIds.size}/${albums.length})`;
     btn.title = `${prog.scannedIds.size} albums already scanned — click to continue from where you left off`;
@@ -2680,7 +2682,16 @@ let _appInited = false;
 function initApp() {
   if (_appInited) return;
   _appInited = true;
+  // Defer until DOM is fully painted and app-wrap is visible
+  requestAnimationFrame(() => _initAppDOM());
+}
 
+function _initAppDOM() {
+  // Safety check — if key elements still don't exist, retry once
+  if (!document.getElementById('btn-rescan')) {
+    setTimeout(_initAppDOM, 100);
+    return;
+  }
 // Bulk select
 document.getElementById('btn-bulk-mode').addEventListener('click', () => bulkMode ? exitBulkMode() : enterBulkMode());
 document.getElementById('btn-bulk-cancel').addEventListener('click', exitBulkMode);
@@ -2934,7 +2945,7 @@ render();
 updateRescanButton();
 rebuildOriginalIdIndex();
 syncMobileSort();
-} // end initApp
+} // end _initAppDOM
 
 function rebuildOriginalIdIndex() {
   let changed = false;
