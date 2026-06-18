@@ -2984,14 +2984,17 @@ async function pushToCloud(retrying=false) {
   try {
     const { error } = await _sb.from('listenlog_data')
       .upsert({ user_id:_userId, albums, originals }, { onConflict:'user_id' });
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase upsert error:', error.code, error.message, error.details);
+      throw error;
+    }
     setSyncStatus('ok', 'synced');
   } catch(e) {
-    console.error('Sync error:', e);
+    console.error('Sync error full:', JSON.stringify(e));
     if (!retrying) {
       setTimeout(() => pushToCloud(true), 3000);
     } else {
-      setSyncStatus('err', 'sync failed');
+      setSyncStatus('err', 'sync error');
     }
   }
 }
