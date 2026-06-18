@@ -322,7 +322,16 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 }
 .ms-item:hover{background:var(--surface2)}
 .ms-item input[type=checkbox]{accent-color:var(--accent);flex-shrink:0}
-.ms-item.selected{color:var(--accent)}
+/* Three-state check indicator */
+.tri-check{width:14px;height:14px;border-radius:3px;border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;line-height:1;transition:all .1s}
+.tri-include{background:var(--accent);border-color:var(--accent);color:#0d1117}
+.tri-include::after{content:'✓'}
+.tri-exclude{background:var(--danger);border-color:var(--danger);color:#fff}
+.tri-exclude::after{content:'−'}
+.tri-mixed{border-style:dashed;border-color:var(--accent)}
+/* NOT pill */
+.filter-pill-not{background:rgba(201,122,122,.12);border-color:rgba(201,122,122,.35)}
+.not-label{font-size:9px;font-weight:700;letter-spacing:.06em;background:var(--danger);color:#fff;border-radius:2px;padding:1px 3px;margin-right:2px;vertical-align:middle}
 .ms-footer{
   border-top:1px solid var(--border);padding:6px 10px;
   display:flex;justify-content:space-between;align-items:center;font-size:11px;
@@ -810,7 +819,7 @@ function starsHTML(n) {
 // MULTI-SELECT FILTER SYSTEM
 // ════════════════════════════════════════════════════════════
 // activeFilters: { artist: Set, year: Set, type: Set, rating: Set, tags: Set }
-const activeFilters = { artist: new Set(), year: new Set(), rating: new Set(), tags: new Set() };
+const activeFilters = { artist: new Map(), year: new Map(), rating: new Map(), tags: new Map() };
 
 const RATING_OPTIONS = [
   { value:'5',      label:'★★★★★ (5)' },
@@ -830,40 +839,46 @@ const TAG_OPTIONS = [
 function extractYear(d) { const m = String(d||'').match(/\d{4}/); return m ? m[0] : ''; }
 
 function getFiltered() {
-  const q = document.getElementById('filter-search').value.trim().toLowerCase();
+  const q = document.getElementById('filter-search')?.value.trim().toLowerCase() || '';
+
+  // Helper: test a value against a filter Map
+  // Returns true if the album should be kept
+  function passesFilter(map, testFn) {
+    if (!map.size) return true;
+    const includes = [...map].filter(([,v]) => v === 'include').map(([k]) => k);
+    const excludes = [...map].filter(([,v]) => v === 'exclude').map(([k]) => k);
+    // Exclude: if album matches ANY excluded value → reject
+    if (excludes.length && excludes.some(val => testFn(val))) return false;
+    // Include: if any includes exist, album must match at least one
+    if (includes.length && !includes.some(val => testFn(val))) return false;
+    return true;
+  }
+
   return albums.filter(a => {
     if (q && !(a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))) return false;
-    if (activeFilters.artist.size && !activeFilters.artist.has(a.artist)) return false;
-    if (activeFilters.year.size) {
+
+    if (!passesFilter(activeFilters.artist, val => a.artist === val)) return false;
+
+    if (!passesFilter(activeFilters.year, val => {
       const yr = extractYear(a.date||'');
-      const matched = [...activeFilters.year].some(val => {
-        if (val === 'no-date') return !yr;
-        if (/^\d{4}s$/.test(val)) {
-          const decade = parseInt(val);
-          const y = parseInt(yr);
-          return y >= decade && y < decade + 10;
-        }
-        return yr === val;
-      });
-      if (!matched) return false;
-    }
-    if (activeFilters.rating.size) {
-      const matched = [...activeFilters.rating].some(rat => {
-        if (rat === 'unrated') return !a.rating;
-        return Math.round(a.rating||0) === parseInt(rat);
-      });
-      if (!matched) return false;
-    }
-    if (activeFilters.tags.size) {
-      const matched = [...activeFilters.tags].some(tag => {
-        if (tag === 'want')      return !!a.wantToListen;
-        if (tag === 'hard')      return !!a.hardToFind;
-        if (tag === 'listened')  return !a.wantToListen && !a.unmatched;
-        if (tag === 'unmatched') return !!a.unmatched;
-        return false;
-      });
-      if (!matched) return false;
-    }
+      if (val === 'no-date') return !yr;
+      if (/^\d{4}s$/.test(val)) { const d = parseInt(val), y = parseInt(yr); return y >= d && y < d + 10; }
+      return yr === val;
+    })) return false;
+
+    if (!passesFilter(activeFilters.rating, val => {
+      if (val === 'unrated') return !a.rating;
+      return Math.round(a.rating||0) === parseInt(val);
+    })) return false;
+
+    if (!passesFilter(activeFilters.tags, val => {
+      if (val === 'want')      return !!a.wantToListen;
+      if (val === 'hard')      return !!a.hardToFind;
+      if (val === 'listened')  return !a.wantToListen && !a.unmatched;
+      if (val === 'unmatched') return !!a.unmatched;
+      return false;
+    })) return false;
+
     return true;
   });
 }
@@ -889,15 +904,14 @@ let openDropdown = null;
 function buildDropdown(field, wrap) {
   const existing = wrap.querySelector('.ms-dropdown');
   if (existing) existing.remove();
-
-  const sel = activeFilters[field];
-  const dd  = document.createElement('div');
+  const dd = document.createElement('div');
   dd.className = 'ms-dropdown open';
 
   // ── Year field: decade/year toggle mode ──────────────────────
   if (field === 'year') {
-    const allYears = getOptions('year'); // sorted desc
-    let mode = 'decade'; // 'decade' | 'year'
+    const allYears = getOptions('year');
+    const map = activeFilters[field];
+    let mode = 'decade';
 
     function renderYear() {
       dd.innerHTML = '';
@@ -926,48 +940,44 @@ function buildDropdown(field, wrap) {
           decades[key].push(y);
         });
         Object.entries(decades).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([decade, years]) => {
-          const allSelected = years.every(y => sel.has(y));
-          const someSelected = years.some(y => sel.has(y));
-          // Count albums in this decade (not distinct years)
           const decadeStart = parseInt(decade);
           const albumCount = albums.filter(a => {
             const y = parseInt(extractYear(a.date||''));
             return y >= decadeStart && y < decadeStart + 10;
           }).length;
-          const item = document.createElement('label');
-          item.className = 'ms-item' + (someSelected ? ' selected' : '');
-          item.innerHTML = `<input type="checkbox" ${allSelected?'checked':''} data-decade="${decade}"><span>${esc(decade)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">${albumCount} albums</span>`;
-          const cb = item.querySelector('input');
-          if (someSelected && !allSelected) cb.indeterminate = true;
-          cb.addEventListener('change', e => {
-            if (e.target.checked) years.forEach(y => sel.add(y));
-            else years.forEach(y => sel.delete(y));
-            updateFilterButton(field, wrap); updateFilterPills(); render();
-            renderYear();
+          // Decade state: 'include' if all years included, 'exclude' if all excluded, else mixed
+          const states = years.map(y => map.get(y));
+          const allInclude = states.every(s => s === 'include');
+          const allExclude = states.every(s => s === 'exclude');
+          const someActive = states.some(s => s);
+          const item = document.createElement('div');
+          item.className = 'ms-item';
+          item.innerHTML = `<span class="tri-check ${allInclude?'tri-include':allExclude?'tri-exclude':someActive?'tri-mixed':''}"></span><span>${esc(decade)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">${albumCount} albums</span>`;
+          item.querySelector('.tri-check').addEventListener('click', e => {
+            e.stopPropagation();
+            const cur = allInclude ? 'include' : allExclude ? 'exclude' : someActive ? 'include' : null;
+            const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
+            if (next) years.forEach(y => map.set(y, next));
+            else years.forEach(y => map.delete(y));
+            updateFilterButton(field, wrap); updateFilterPills(); render(); renderYear();
           });
           list.appendChild(item);
         });
       } else {
-        // "No date" option first
+        // "No date" first
         const noDateVal = 'no-date';
-        const ndItem = document.createElement('label');
-        ndItem.className = 'ms-item' + (sel.has(noDateVal) ? ' selected' : '');
-        ndItem.innerHTML = `<input type="checkbox" ${sel.has(noDateVal)?'checked':''}><span style="color:var(--muted);font-style:italic">No date</span>`;
-        ndItem.querySelector('input').addEventListener('change', e => {
-          if (e.target.checked) sel.add(noDateVal); else sel.delete(noDateVal);
-          ndItem.classList.toggle('selected', sel.has(noDateVal));
-          updateFilterButton(field, wrap); updateFilterPills(); render();
-        });
-        list.appendChild(ndItem);
-
-        allYears.forEach(val => {
-          const item = document.createElement('label');
-          item.className = 'ms-item' + (sel.has(val) ? ' selected' : '');
-          item.innerHTML = `<input type="checkbox" ${sel.has(val)?'checked':''}><span>${esc(val)}</span>`;
-          item.querySelector('input').addEventListener('change', e => {
-            if (e.target.checked) sel.add(val); else sel.delete(val);
-            item.classList.toggle('selected', sel.has(val));
-            updateFilterButton(field, wrap); updateFilterPills(); render();
+        ['no-date', ...allYears].forEach(val => {
+          const label = val === 'no-date' ? 'No date' : val;
+          const state = map.get(val) || null;
+          const item = document.createElement('div');
+          item.className = 'ms-item';
+          item.innerHTML = `<span class="tri-check ${state==='include'?'tri-include':state==='exclude'?'tri-exclude':''}"></span><span${val==='no-date'?' style="color:var(--muted);font-style:italic"':''}>${esc(label)}</span>`;
+          item.querySelector('.tri-check').addEventListener('click', e => {
+            e.stopPropagation();
+            const cur = map.get(val) || null;
+            const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
+            if (next) map.set(val, next); else map.delete(val);
+            updateFilterButton(field, wrap); updateFilterPills(); render(); renderYear();
           });
           list.appendChild(item);
         });
@@ -979,7 +989,7 @@ function buildDropdown(field, wrap) {
       footer.className = 'ms-footer';
       footer.innerHTML = `<button class="ms-clear">Clear</button><button class="ms-done">Done</button>`;
       footer.querySelector('.ms-clear').addEventListener('click', () => {
-        sel.clear(); updateFilterButton(field, wrap); updateFilterPills(); render(); closeDropdown();
+        map.clear(); updateFilterButton(field, wrap); updateFilterPills(); render(); closeDropdown();
       });
       footer.querySelector('.ms-done').addEventListener('click', closeDropdown);
       dd.appendChild(footer);
@@ -994,7 +1004,8 @@ function buildDropdown(field, wrap) {
 
   // ── All other fields ─────────────────────────────────────────
   const opts      = getOptions(field);
-  const hasSearch = field === 'artist'; // only artist needs search
+  const hasSearch = field === 'artist';
+  const map       = activeFilters[field];
 
   if (hasSearch) {
     dd.innerHTML = `<div class="ms-search-wrap"><input class="ms-search" placeholder="Search…" type="text"></div>`;
@@ -1010,15 +1021,19 @@ function buildDropdown(field, wrap) {
       : opts;
     filtered.forEach(val => {
       const label = getLabel(field, val);
-      const item = document.createElement('label');
-      item.className = 'ms-item' + (sel.has(val) ? ' selected' : '');
-      item.innerHTML = `<input type="checkbox" ${sel.has(val)?'checked':''}><span>${esc(label)}</span>`;
-      item.querySelector('input').addEventListener('change', e => {
-        if (e.target.checked) sel.add(val); else sel.delete(val);
-        item.classList.toggle('selected', sel.has(val));
+      const state = map.get(val) || null;
+      const item = document.createElement('div');
+      item.className = 'ms-item';
+      item.innerHTML = `<span class="tri-check ${state==='include'?'tri-include':state==='exclude'?'tri-exclude':''}"></span><span>${esc(label)}</span>`;
+      item.querySelector('.tri-check').addEventListener('click', e => {
+        e.stopPropagation();
+        const cur = map.get(val) || null;
+        const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
+        if (next) map.set(val, next); else map.delete(val);
         updateFilterButton(field, wrap);
         updateFilterPills();
         render();
+        renderItems(filter);
       });
       list.appendChild(item);
     });
@@ -1030,7 +1045,6 @@ function buildDropdown(field, wrap) {
   if (hasSearch) {
     const searchEl = dd.querySelector('.ms-search');
     searchEl.addEventListener('input', e => renderItems(e.target.value));
-    // Auto-focus after dropdown is in DOM
     setTimeout(() => searchEl.focus(), 0);
   }
 
@@ -1038,7 +1052,7 @@ function buildDropdown(field, wrap) {
   footer.className = 'ms-footer';
   footer.innerHTML = `<button class="ms-clear">Clear</button><button class="ms-done">Done</button>`;
   footer.querySelector('.ms-clear').addEventListener('click', () => {
-    sel.clear(); updateFilterButton(field, wrap); updateFilterPills(); render(); closeDropdown();
+    map.clear(); updateFilterButton(field, wrap); updateFilterPills(); render(); closeDropdown();
   });
   footer.querySelector('.ms-done').addEventListener('click', closeDropdown);
   dd.appendChild(footer);
@@ -1062,11 +1076,10 @@ function closeDropdown() {
 
 function updateFilterButton(field, wrap) {
   const btn = wrap.querySelector('.ms-btn');
-  const sel = activeFilters[field];
-  btn.classList.toggle('has-selection', sel.size > 0);
-  // Update button label
+  const map = activeFilters[field];
+  btn.classList.toggle('has-selection', map.size > 0);
   const fieldLabel = { artist:'Artist', year:'Release Date', rating:'Rating', tags:'Tags' }[field];
-  const countBadge = sel.size ? `<span class="ms-count">${sel.size}</span>` : '';
+  const countBadge = map.size ? `<span class="ms-count">${map.size}</span>` : '';
   btn.innerHTML = `${fieldLabel} ${countBadge}<span class="ms-arrow">▾</span>`;
 }
 
@@ -1090,15 +1103,16 @@ function updateFilterPills() {
   const container = document.getElementById('filter-pills');
   container.innerHTML = '';
   let any = false;
-  Object.entries(activeFilters).forEach(([field, sel]) => {
-    sel.forEach(val => {
+  Object.entries(activeFilters).forEach(([field, map]) => {
+    map.forEach((state, val) => {
       any = true;
       const label = getLabel(field, val);
+      const isExclude = state === 'exclude';
       const pill = document.createElement('span');
-      pill.className = 'filter-pill';
-      pill.innerHTML = `<span>${esc(label)}</span><button title="Remove">×</button>`;
+      pill.className = 'filter-pill' + (isExclude ? ' filter-pill-not' : '');
+      pill.innerHTML = `<span>${isExclude ? '<span class="not-label">NOT</span> ' : ''}${esc(label)}</span><button title="Remove">×</button>`;
       pill.querySelector('button').addEventListener('click', () => {
-        sel.delete(val);
+        map.delete(val);
         const wrap = document.getElementById(`ms-${field}`);
         if (wrap) updateFilterButton(field, wrap);
         updateFilterPills(); render();
