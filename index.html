@@ -1811,7 +1811,8 @@ function addOrUpdateAlbum() {
     notes:existing.notes||null,
     wantToListen:existing.wantToListen||false,
     hardToFind:existing.hardToFind||false,
-    unmatched:existing.unmatched||false,
+    // Clear unmatched if a match was applied (autofill result present, or art was set)
+    unmatched:existing.unmatched&&!document.getElementById('autofill-card').dataset.found&&!pendingArtUrl||false,
     artUrl:pendingArtUrl||existing.artUrl||'',
     added:existing.added||Date.now(),
   };
