@@ -2682,16 +2682,6 @@ let _appInited = false;
 function initApp() {
   if (_appInited) return;
   _appInited = true;
-  // Defer until DOM is fully painted and app-wrap is visible
-  requestAnimationFrame(() => _initAppDOM());
-}
-
-function _initAppDOM() {
-  // Safety check — if key elements still don't exist, retry once
-  if (!document.getElementById('btn-rescan')) {
-    setTimeout(_initAppDOM, 100);
-    return;
-  }
 // Bulk select
 document.getElementById('btn-bulk-mode').addEventListener('click', () => bulkMode ? exitBulkMode() : enterBulkMode());
 document.getElementById('btn-bulk-cancel').addEventListener('click', exitBulkMode);
@@ -2945,7 +2935,7 @@ render();
 updateRescanButton();
 rebuildOriginalIdIndex();
 syncMobileSort();
-} // end _initAppDOM
+} // end initApp
 
 function rebuildOriginalIdIndex() {
   let changed = false;
@@ -3086,8 +3076,8 @@ function showApp(user) {
   document.getElementById('auth-screen').classList.remove('visible');
   document.getElementById('app-wrap').classList.add('visible');
   document.getElementById('sync-indicator').style.display = 'flex';
-  initApp();
-  pullFromCloud();
+  initApp();       // guarded by _appInited — safe to call multiple times
+  pullFromCloud(); // always re-sync data on auth state change
 }
 function showAuth() {
   _userId = null;
