@@ -411,22 +411,26 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
 /* ── MOBILE TOOLBAR ── */
 .mobile-hidden{display:inline-flex}
+/* Desktop: rows display as a single flex line */
+.toolbar-top-row,.toolbar-filter-row{display:contents}
 @media(max-width:700px){
-  /* Viewport: prevent zoom, fit to screen */
-  .mobile-sort-select { display:block; font-size:11px; padding:4px 8px }
+  .mobile-sort-select{display:block;font-size:10px;padding:4px 2px}
   header,.panel,.filter-count,#bulk-bar,#filter-pills{padding-left:12px;padding-right:12px}
-  .toolbar{gap:6px;padding:8px 12px;flex-wrap:wrap}
   .table-wrap{padding:0 0 80px}
   header{padding:12px 12px 10px}
   .header-title h1{font-size:26px}
   .header-stats{display:none}
-  .ms-btn{font-size:11px;padding:4px 7px}
-  /* Hide utility buttons on mobile */
-  .mobile-hidden{display:none}
-  /* Make Add and Search more prominent */
-  #btn-toggle-add{font-size:14px;padding:8px 16px}
-  .search-wrap input{flex:1;width:auto;font-size:12px}
-  .search-wrap{flex:1}
+  .mobile-hidden{display:none!important}
+  /* Toolbar: two clean rows */
+  .toolbar{padding:6px 12px;gap:0;flex-direction:column;align-items:stretch}
+  .toolbar-top-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .toolbar-filter-row{display:flex;gap:4px;align-items:center}
+  .toolbar-top-row .search-wrap{flex:1}
+  .toolbar-top-row .search-wrap input{width:100%;font-size:12px}
+  /* Filter buttons fill row evenly */
+  .toolbar-filter-row .ms-wrap{flex:1;min-width:0}
+  .toolbar-filter-row .ms-btn{width:100%;font-size:10px;padding:4px 2px;justify-content:center}
+  .toolbar-filter-row #mobile-sort{flex:1;min-width:0;font-size:10px;padding:4px 2px}
   /* Card layout for table rows */
   table thead{display:none}
   table,tbody,tr.album-row,td{display:block;width:100%}
@@ -501,42 +505,43 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 </header>
 
 <div class="toolbar">
-  <button class="btn-primary" id="btn-toggle-add">+ Add Album</button>
-  <button class="btn-ghost mobile-hidden" id="btn-toggle-import">⬆ Import CSV</button>
-  <div class="toolbar-sep"></div>
-  <div class="search-wrap">
-    <span class="search-icon">⌕</span>
-    <input type="text" id="filter-search" placeholder="Search artist or album…">
-    <button id="search-clear" title="Clear search" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;line-height:1">✕</button>
+  <div class="toolbar-top-row">
+    <button class="btn-primary" id="btn-toggle-add">+ Add Album</button>
+    <button class="btn-ghost mobile-hidden" id="btn-toggle-import">⬆ Import CSV</button>
+    <div class="toolbar-sep mobile-hidden"></div>
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="filter-search" placeholder="Search artist or album…">
+      <button id="search-clear" title="Clear search" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;line-height:1">✕</button>
+    </div>
+    <div class="mobile-hidden" style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:2px 4px 2px 8px">
+      <span style="font-size:10px;color:var(--muted);white-space:nowrap;text-transform:uppercase;letter-spacing:.08em">Quick Add</span>
+      <input type="text" id="quick-add-mb" placeholder="Paste MB link…" style="background:none;border:none;outline:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);width:160px;padding:3px 4px">
+    </div>
   </div>
-  <!-- Quick Add: desktop only, paste MB link → opens add modal prefilled -->
-  <div class="mobile-hidden" style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:2px 4px 2px 8px">
-    <span style="font-size:10px;color:var(--muted);white-space:nowrap;text-transform:uppercase;letter-spacing:.08em">Quick Add</span>
-    <input type="text" id="quick-add-mb" placeholder="Paste MB link…" style="background:none;border:none;outline:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);width:160px;padding:3px 4px">
-  </div>
-  <!-- Multi-select filter dropdowns -->
-  <div class="ms-wrap" id="ms-artist"><button class="ms-btn" data-field="artist">Artist <span class="ms-arrow">▾</span></button></div>
-  <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year">Release Date <span class="ms-arrow">▾</span></button></div>
-  <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating">Rating <span class="ms-arrow">▾</span></button></div>
-  <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
-  <div class="toolbar-sep"></div>
-  <!-- Sort dropdown: always visible on mobile since column headers are hidden -->
-  <select id="mobile-sort" class="mobile-sort-select" title="Sort by">
-    <option value="date-desc">Release ↓</option>
-    <option value="date-asc">Release ↑</option>
-    <option value="artist-asc">Artist A–Z</option>
-    <option value="artist-desc">Artist Z–A</option>
-    <option value="album-asc">Album A–Z</option>
-    <option value="rating-desc">Rating ↓</option>
-    <option value="rating-asc">Rating ↑</option>
-  </select>
-  <button class="btn-ghost mobile-hidden" id="btn-gap-scan" title="Find and fix albums with missing art, incomplete dates, or Jan 1 placeholder dates">◎ Scan for Gaps</button>
-  <div class="toolbar-sep mobile-hidden"></div>
-  <div class="io-row mobile-hidden">
-    <button class="btn-ghost" id="btn-export">Export</button>
-    <button class="btn-ghost" id="btn-json-import-trigger">Import JSON</button>
-    <input type="file" id="btn-json-import" accept=".json" style="display:none">
-    <button class="btn-danger-ghost" id="btn-bulk-mode">☐ Select</button>
+  <div class="toolbar-filter-row">
+    <div class="ms-wrap" id="ms-artist"><button class="ms-btn" data-field="artist">Artist <span class="ms-arrow">▾</span></button></div>
+    <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year">Date <span class="ms-arrow">▾</span></button></div>
+    <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating">Rating <span class="ms-arrow">▾</span></button></div>
+    <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
+    <select id="mobile-sort" class="mobile-sort-select" title="Sort by">
+      <option value="date-desc">Release ↓</option>
+      <option value="date-asc">Release ↑</option>
+      <option value="artist-asc">Artist A–Z</option>
+      <option value="artist-desc">Artist Z–A</option>
+      <option value="album-asc">Album A–Z</option>
+      <option value="rating-desc">Rating ↓</option>
+      <option value="rating-asc">Rating ↑</option>
+    </select>
+    <div class="toolbar-sep mobile-hidden"></div>
+    <button class="btn-ghost mobile-hidden" id="btn-gap-scan" title="Find and fix albums with missing art, incomplete dates, or Jan 1 placeholder dates">◎ Scan for Gaps</button>
+    <div class="toolbar-sep mobile-hidden"></div>
+    <div class="io-row mobile-hidden">
+      <button class="btn-ghost" id="btn-export">Export</button>
+      <button class="btn-ghost" id="btn-json-import-trigger">Import JSON</button>
+      <input type="file" id="btn-json-import" accept=".json" style="display:none">
+      <button class="btn-danger-ghost" id="btn-bulk-mode">☐ Select</button>
+    </div>
   </div>
 </div>
 
@@ -1083,7 +1088,7 @@ function updateFilterButton(field, wrap) {
   const btn = wrap.querySelector('.ms-btn');
   const map = activeFilters[field];
   btn.classList.toggle('has-selection', map.size > 0);
-  const fieldLabel = { artist:'Artist', year:'Release Date', rating:'Rating', tags:'Tags' }[field];
+  const fieldLabel = { artist:'Artist', year:'Date', rating:'Rating', tags:'Tags' }[field];
   const countBadge = map.size ? `<span class="ms-count">${map.size}</span>` : '';
   btn.innerHTML = `${fieldLabel} ${countBadge}<span class="ms-arrow">▾</span>`;
 }
