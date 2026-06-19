@@ -576,6 +576,7 @@ let albums    = JSON.parse(localStorage.getItem('listenLog')    || '[]');
 let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
 let editingId = null, pendingDeleteId = null;
+const bulkMode = false, selectedIds = new Set(); // bulk select removed but render still checks these
 let pendingArtUrl = '';
 let sortKey = 'date', sortDir = -1;
 
@@ -1003,7 +1004,8 @@ function render() {
   // Update bulk count
   if (bulkMode) {
     const vis = list.filter(a=>selectedIds.has(a.id)).length;
-    document.getElementById('bulk-count').textContent = `${selectedIds.size} selected`;
+    const bc = document.getElementById('bulk-count');
+    if (bc) bc.textContent = `${selectedIds.size} selected`;
     document.getElementById('th-check-cb').indeterminate = vis > 0 && vis < list.length;
     document.getElementById('th-check-cb').checked = list.length > 0 && vis === list.length;
   }
