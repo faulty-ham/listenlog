@@ -567,33 +567,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     </div>
   </div>
 </div>
-<div class="modal-overlay" <!-- Auto-approved section -->
-    <div id="rescan-auto-section" style="display:none">
-      <div class="rescan-section-head">
-        <span class="rescan-section-label auto-label">✓ Auto-approved <span id="rescan-auto-count"></span></span>
-        <span style="font-size:11px;color:var(--muted)">High confidence matches applied automatically</span>
-      </div>
-    </div>
-
-    <!-- Manual review section -->
-    <div id="rescan-review-section" style="display:none">
-      <div class="rescan-section-head" style="margin-top:16px">
-        <span class="rescan-section-label">Needs review <span id="rescan-pending-count"></span></span>
-        <span style="font-size:11px;color:var(--muted)">👍 accept match &nbsp;·&nbsp; 👎 revert to original sheet data</span>
-      </div>
-      <div id="rescan-cards"></div>
-    </div>
-
-    <div id="rescan-no-changes" class="rescan-no-changes" style="display:none">✓ All matches were high-confidence and have been applied automatically.</div>
-
-    <div class="modal-actions">
-      <span id="rescan-review-progress" style="font-size:11px;color:var(--muted);margin-right:auto"></span>
-      <button class="btn-ghost" id="rescan-cancel">Close</button>
-      <button class="btn-primary" id="rescan-apply">Done</button>
-    </div>
-  </div>
-</div>
-
 <script>
 // ════════════════════════════════════════════════════════════
 // STATE
@@ -1185,8 +1158,9 @@ function addOrUpdateAlbum() {
     // New entries default to "want to listen"; existing entries preserve their tags
     wantToListen:editingId ? (existing.wantToListen||false) : true,
     hardToFind:existing.hardToFind||false,
-    // Clear unmatched if a match was applied (autofill result present, or art was set)
-    unmatched:existing.unmatched&&!    artUrl:pendingArtUrl||existing.artUrl||'',
+    // Clear unmatched when art is set (MB match applied)
+    unmatched:existing.unmatched&&!pendingArtUrl||false,
+    artUrl:pendingArtUrl||existing.artUrl||'',
     added:existing.added||Date.now(),
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
