@@ -1233,64 +1233,6 @@ let   lastReqTime     = 0;
 
 
 
-// ── Serial worker — processes one album at a time ────────────
-// (Parallel workers each fire multiple requests = rate limiting death)
-
-
-// Keep batchedMap as alias for import compat (now just calls serialMap)
-) {
-  return serialMap(items, fn, opts);
-}
-
-// ════════════════════════════════════════════════════════════
-// RE-SCAN LIBRARY  — with resume support
-// ════════════════════════════════════════════════════════════
-
-// Scan progress is stored in localStorage so Stop → Resume works across page loads.
-// Schema: { scannedIds: Set<id>, results: rescanResult[] }
-const SCAN_PROGRESS_KEY = 'listenLogScanProgress';
-
-
-
-
-
-
-
-async 
-
-// ── Gap detection helpers ─────────────────────────────────────
-
-
-
-
-
-// ════════════════════════════════════════════════════════════
-
-
-// ── RESCAN REVIEW MODAL ──────────────────────────────────────
-const HIGH_CONF = 0.78; // threshold for auto-approval
-
-
-
-
-
-
-
-
-
-// ════════════════════════════════════════════════════════════
-
-
-
-
-
-
-
-
-
-
-
-// ════════════════════════════════════════════════════════════
 // SORT & EVENTS
 // ════════════════════════════════════════════════════════════
 document.querySelectorAll('th[data-sort]').forEach(th=>{
