@@ -1037,12 +1037,12 @@ function buildDropdown(field, wrap) {
   const list = document.createElement('div');
   list.className = 'ms-list';
 
-  function renderItems(filter='') {
+  function renderItems(filter='', focusIndex=-1) {
     list.innerHTML = '';
     const filtered = hasSearch
       ? opts.filter(o => o.toLowerCase().includes(filter.toLowerCase()))
       : opts;
-    filtered.forEach(val => {
+    filtered.forEach((val, idx) => {
       const label = getLabel(field, val);
       const state = map.get(val) || null;
       const item = document.createElement('div');
@@ -1056,7 +1056,7 @@ function buildDropdown(field, wrap) {
         updateFilterButton(field, wrap);
         updateFilterPills();
         render();
-        renderItems(filter);
+        renderItems(filter, idx); // restore focus to this item after rebuild
       };
       item.addEventListener('click', e => { e.stopPropagation(); toggleItem(); });
       item.addEventListener('keydown', e => {
@@ -1065,6 +1065,11 @@ function buildDropdown(field, wrap) {
       });
       list.appendChild(item);
     });
+    // Restore focus if requested
+    if (focusIndex >= 0) {
+      const items = list.querySelectorAll('.ms-item');
+      if (items[focusIndex]) items[focusIndex].focus();
+    }
   }
 
   renderItems();
