@@ -113,28 +113,11 @@ button{font-family:'DM Mono',monospace;font-size:12px;border:none;cursor:pointer
 .tag-toggle.unmatch.on{background:var(--danger);color:#fff;border-color:var(--danger)}
 
 /* ── IMPORT PANEL ── */
-.import-instructions{font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:12px}
-.import-instructions code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:10px}
-.import-box{border:1px dashed var(--border);border-radius:var(--radius);padding:18px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;transition:border-color .15s}
-.import-box:hover{border-color:var(--accent);color:var(--accent)}
-.import-col-map{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;align-items:center}
-.import-col-map label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.import-col-map select{font-size:11px;padding:4px 8px}
-.import-preview table{width:100%;border-collapse:collapse;margin-top:6px}
-.import-preview th,.import-preview td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);font-size:11px}
-.import-preview th{color:var(--muted);font-weight:400}
-.import-actions{display:flex;gap:8px;margin-top:12px;align-items:center}
-#import-status{font-size:11px;color:var(--muted)}
-#import-status.ok{color:var(--good)}#import-status.err{color:var(--danger)}
-
+#import-status.ok{color:var(--good)}
 /* ── PROGRESS BAR ── */
-.progress-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s ease;width:0%}
-.btn-pause{font-size:11px;padding:3px 8px;margin-left:6px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:var(--radius);cursor:pointer;font-family:'DM Mono',monospace;transition:all .15s}
 .btn-pause:hover{border-color:var(--accent);color:var(--accent)}
 
 /* ── GLOBAL PROGRESS BAR ── */
-#global-progress{display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:var(--surface);border-top:1px solid var(--border);padding:10px 40px;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
 
 /* ── TABLE — Letterboxd style ── */
 .table-wrap{overflow-x:auto;padding:0 40px 100px}
@@ -192,7 +175,6 @@ td{padding:7px 10px;vertical-align:middle}
 
 /* ── BULK BAR ── */
 #bulk-bar{display:none;position:sticky;top:44px;z-index:9;background:var(--surface2);border-bottom:1px solid var(--border);padding:7px 40px;align-items:center;gap:10px;font-size:11px;color:var(--muted)}
-#bulk-bar.visible{display:flex}
 input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;flex-shrink:0}
 
 /* ── MODAL ── */
@@ -205,37 +187,16 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .modal p{color:var(--muted);font-size:12px;margin-bottom:16px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 
-/* ── RESCAN MODAL — card review ── */
-.rescan-summary{display:flex;gap:10px;margin-bottom:14px;font-size:11px;flex-wrap:wrap}
-.rescan-summary span{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 10px}
-.rescan-summary span b{color:var(--accent)}
-.rescan-section-head{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:8px;flex-wrap:wrap}
-.rescan-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:400}
-.auto-label{color:var(--good)}
-.rescan-cards{display:flex;flex-direction:column;gap:6px;padding:2px 0 4px}
-.rescan-card{
-  /* minmax(0,1fr) is critical — prevents text columns from overflowing their grid cell */
+/* minmax(0,1fr) is critical — prevents text columns from overflowing their grid cell */
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr) 120px;
   grid-template-rows:auto auto;
   background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden;
   transition:border-color .2s,background .2s;
 }
-.rescan-card.decided-up{border-color:var(--good);background:#0d1f10}
-.rescan-card.decided-down{border-color:var(--danger);background:#1f0d0d}
 .rescan-col{padding:12px 14px;min-width:0} /* min-width:0 allows grid cell to shrink below content */
-.rescan-col-label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:5px}
 /* Allow text to wrap — never clip the title */
-.rescan-artist{font-weight:500;color:var(--text-hi);font-size:13px;word-break:break-word;line-height:1.3}
-.rescan-album-name{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:13px;word-break:break-word;line-height:1.4;margin-top:1px}
-.rescan-meta{font-size:10px;color:var(--muted);margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
 /* Actions: fixed 120px column, never shrinks, buttons centered and large */
-.rescan-actions{
-  grid-row:1;grid-column:3;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:10px;padding:12px 0;background:rgba(0,0,0,.2);
-  min-width:120px;flex-shrink:0;
-}
 .thumb-btn{
   width:44px;height:44px;border-radius:50%;border:2px solid var(--border);
   background:transparent;font-size:22px;cursor:pointer;
@@ -247,39 +208,9 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .thumb-btn.active.up{background:var(--good);border-color:var(--good);color:#0d1117}
 .thumb-btn.active.down{background:var(--danger);border-color:var(--danger);color:#fff}
 /* Search panel spans full width below the 3 columns */
-.rescan-search-panel{
-  grid-column:1/-1;grid-row:2;
-  border-top:1px solid var(--border);
-  padding:10px 12px;display:none;flex-direction:column;gap:8px;
-  background:var(--surface);
-}
-.rescan-search-panel.open{display:flex}
-.rescan-search-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.rescan-search-input{
-  flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);
-  color:var(--text);font-family:'DM Mono',monospace;font-size:12px;
-  padding:5px 9px;border-radius:var(--radius);outline:none;
-}
-.rescan-search-input:focus{border-color:var(--accent)}
-.rescan-alts{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto}
-.rescan-alt{
-  display:flex;align-items:center;gap:8px;padding:6px 8px;
-  background:var(--surface2);border:1px solid var(--border);border-radius:4px;
-  font-size:11px;transition:border-color .15s;
-}
-.rescan-alt:hover{border-color:var(--accent)}
-.rescan-alt-info{flex:1;min-width:0}
-.rescan-alt-artist{font-weight:500;color:var(--text-hi);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rescan-alt-album{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rescan-alt-meta{display:flex;gap:5px;align-items:center;flex-shrink:0}
-.rescan-search-empty{font-size:11px;color:var(--muted);padding:6px 2px}
-.conf-pill{font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-radius:20px;padding:2px 6px;font-family:'DM Mono',monospace;white-space:nowrap}
 .conf-high-pill{background:rgba(0,192,48,.15);color:var(--good);border:1px solid rgba(0,192,48,.3)}
 .conf-med-pill{background:rgba(232,201,122,.12);color:var(--accent);border:1px solid rgba(232,201,122,.25)}
 .conf-low-pill{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
-.src-badge{font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:1px 5px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
-.src-mb{border-color:rgba(122,176,201,.4);color:var(--want)}
-.rescan-no-changes{text-align:center;padding:30px;color:var(--muted);font-size:12px}
 .field-old{color:var(--muted)}.field-new{color:var(--text-hi);font-weight:500}
 .change-arrow{color:var(--muted);margin:0 3px;font-size:10px}
 
@@ -367,21 +298,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 }
 
 /* ── AUTOFILL CARD ── */
-.autofill-card-inner{
-  display:grid;grid-template-columns:minmax(0,72px) minmax(0,1fr) 120px;
-  background:var(--surface2);border:1px solid var(--border);border-radius:6px;
-  overflow:hidden;transition:border-color .15s;min-height:72px;
-}
-#autofill-card:hover .autofill-card-inner{border-color:var(--accent)}
-.autofill-art-slot{width:72px;height:72px;flex-shrink:0;border-right:1px solid var(--border);background:var(--surface);overflow:hidden}
-.autofill-art{width:72px;height:72px;object-fit:cover;display:block}
-.autofill-info{padding:10px 14px;display:flex;flex-direction:column;justify-content:center;min-width:0;overflow:hidden}
-.autofill-main-artist{font-weight:600;color:var(--text-hi);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.autofill-main-album{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.autofill-meta-row{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap}
-.autofill-meta-date{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
-.autofill-hint{display:flex;align-items:center;justify-content:center;padding:8px 10px;background:rgba(0,192,48,.04);border-left:1px solid var(--border);text-align:center}
-#autofill-hint-text{font-size:11px;color:var(--muted);line-height:1.4}
 
 /* ── FORM ACTION BAR ── */
 .form-actions-bar{
@@ -416,8 +332,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .toolbar-top-row,.toolbar-filter-row{display:contents}
 @media(max-width:700px){
   .mobile-sort-select{display:block;font-size:10px;padding:4px 2px}
-  header,.panel,.filter-count,#bulk-bar,#filter-pills{padding-left:12px;padding-right:12px}
-  .table-wrap{padding:0 0 80px}
+  header,.panel,.filter-count,  .table-wrap{padding:0 0 80px}
   header{padding:12px 12px 10px}
   .header-title h1{font-size:26px}
   .header-stats{display:none}
@@ -455,10 +370,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   tr.album-row td:nth-child(6){grid-column:3;grid-row:2/4}
   tr.album-row td:nth-child(7),tr.album-row td:nth-child(8){display:none}
   /* Rescan card stack */
-  .rescan-card{grid-template-columns:1fr}
-  .rescan-divider{width:100%;height:1px}
-  .rescan-actions{flex-direction:row;justify-content:flex-end;padding:8px 12px;border-top:1px solid var(--border)}
-  /* All modals full-width on mobile */
+        /* All modals full-width on mobile */
   .modal,.modal.wide,.quick-rate-card{width:96vw!important;max-width:96vw!important;padding:16px;max-height:90vh;overflow-y:auto}
   #filter-pills{padding:5px 12px}
   .filter-pill{font-size:10px}
@@ -507,10 +419,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
 <div class="toolbar">
   <div class="toolbar-top-row">
-    <button class="btn-primary" id="btn-toggle-add">+ Add Album</button>
-    <button class="btn-ghost mobile-hidden" id="btn-toggle-import">⬆ Import CSV</button>
-    <div class="toolbar-sep mobile-hidden"></div>
-    <div class="search-wrap">
+    <button class="btn-primary" id="btn-toggle-add">+ Add Album</button><div class="search-wrap">
       <span class="search-icon">⌕</span>
       <input type="text" id="filter-search" placeholder="Search artist or album…">
       <button id="search-clear" title="Clear search" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;line-height:1">✕</button>
@@ -534,40 +443,14 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <option value="rating-desc">Rating ↓</option>
       <option value="rating-asc">Rating ↑</option>
     </select>
-    <div class="toolbar-sep mobile-hidden"></div>
-    <button class="btn-ghost mobile-hidden" id="btn-gap-scan" title="Find and fix albums with missing art, incomplete dates, or Jan 1 placeholder dates">◎ Scan for Gaps</button>
-    <div class="toolbar-sep mobile-hidden"></div>
-    <div class="io-row mobile-hidden">
-      <button class="btn-ghost" id="btn-export">Export</button>
-      <button class="btn-ghost" id="btn-json-import-trigger">Import JSON</button>
-      <input type="file" id="btn-json-import" accept=".json" style="display:none">
-      <button class="btn-danger-ghost" id="btn-bulk-mode">☐ Select</button>
-    </div>
   </div>
 </div>
 
-<!-- BULK ACTION BAR -->
-<div id="bulk-bar">
-  <input type="checkbox" id="select-all-cb" title="Select all visible">
-  <span id="bulk-count">0 selected</span>
-  <button class="btn-ghost btn-sm" id="btn-bulk-delete" style="color:var(--danger);border-color:var(--border)">Delete selected</button>
-  <button class="btn-danger-ghost btn-sm" id="btn-nuke" style="margin-left:auto">🗑 Delete entire library…</button>
-  <button class="btn-ghost btn-sm" id="btn-bulk-cancel">Cancel</button>
 </div>
 
 <!-- ACTIVE FILTER PILLS -->
 <div id="filter-pills"></div>
 
-<!-- GLOBAL PROGRESS BAR -->
-<div id="global-progress">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-    <span style="font-size:11px;color:var(--muted)">
-      <span id="gprogress-label">Scanning…</span>
-      <button class="btn-pause" id="btn-pause-global">Pause</button>
-      <button class="btn-pause" id="btn-stop-global" style="color:var(--danger);margin-left:4px">Stop</button>
-    </span>
-    <strong style="font-size:11px" id="gprogress-pct">0%</strong>
-  </div>
   <div class="progress-track"><div class="progress-fill" id="gprogress-fill"></div></div>
   <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--muted)">
     <span><span style="color:var(--good)" id="gprog-found">0</span> matched &nbsp;
@@ -596,41 +479,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
         <label>Release Date</label>
         <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="width:100%">
       </div>
-    </div>
-
-    <!-- AUTO-FILL RESULT CARD — clickable, acts as the trigger -->
-    <div id="autofill-card" style="margin-bottom:10px;cursor:pointer" title="Click to auto-fill from MusicBrainz / Last.fm / iTunes">
-      <div class="autofill-card-inner" id="autofill-card-inner">
-        <!-- Left: art slot — always occupies 72px -->
-        <div class="autofill-art-slot" id="autofill-art-slot">
-          <img id="autofill-art" class="autofill-art" alt="" style="display:none">
-        </div>
-        <!-- Center: info -->
-        <div class="autofill-info">
-          <div id="autofill-artist" class="autofill-main-artist"></div>
-          <div id="autofill-album-name" class="autofill-main-album"></div>
-          <div class="autofill-meta-row">
-            <span id="autofill-date" class="autofill-meta-date"></span>
-            <span id="autofill-conf"></span>
-            <span id="autofill-src" class="src-badge"></span>
-          </div>
-        </div>
-        <!-- Right: status/hint -->
-        <div class="autofill-hint" id="autofill-hint">
-          <span id="autofill-hint-text">🔍 Click to auto-fill</span>
-        </div>
-      </div>
-      <!-- Search panel (shown after click when no result yet, or to search alternatives) -->
-      <div id="autofill-search-panel" style="display:none;margin-top:6px">
-        <div style="display:flex;gap:6px;margin-bottom:6px">
-          <input class="rescan-search-input" id="autofill-search-input" placeholder="Artist  Album  (two spaces)" style="flex:1" value="">
-          <button class="btn-ghost btn-sm" id="autofill-search-btn">Search</button>
-        </div>
-        <div id="autofill-alts" class="rescan-alts" style="max-height:180px;overflow-y:auto"></div>
-      </div>
-    </div>
-
-    <!-- MB LINK -->
+    </div><!-- MB LINK -->
     <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
       <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">MB link</label>
       <input class="rescan-search-input" id="autofill-mb-input" placeholder="Paste MusicBrainz URL or release ID" style="flex:1;font-size:11px;padding:5px 8px">
@@ -649,27 +498,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 </div>
 
 <!-- CSV IMPORT PANEL -->
-<div class="panel" id="import-panel">
-  <div class="panel-title">— Import from Google Sheets / CSV</div>
-  <p class="import-instructions">
-    Export each tab as <code>File → Download → CSV</code>. Drop multiple files at once — duplicates are skipped, existing entries are updated.<br>
-    Map your column headers below. Ratings like <code>4</code> or <code>4.5</code> are supported. After import, use <strong>Re-scan Library</strong> to look up full dates and fix any field issues.
-  </p>
-  <div style="margin-top:12px">
-    <div class="import-box" id="csv-drop-zone">Click to select CSV file(s), or drag &amp; drop here</div>
-    <input type="file" id="csv-file-input" accept=".csv,.tsv,.txt" multiple style="display:none">
-  </div>
-  <div id="import-mapping" style="display:none;margin-top:12px">
-    <div class="panel-title" style="margin-bottom:6px">— Map columns</div>
-    <div class="import-col-map" id="col-map-row"></div>
-    <div id="import-preview" class="import-preview"></div>
-    <div class="import-actions">
-      <button class="btn-primary" id="btn-do-import">Import Albums</button>
-      <button class="btn-ghost" id="btn-cancel-import">Cancel</button>
-      <span id="import-status"></span>
-    </div>
-  </div>
-</div>
 
 <!-- FILTER COUNT -->
 <div class="filter-count" id="filter-count" style="display:none"></div>
@@ -711,15 +539,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   </div>
 </div>
 
-<!-- NUKE MODAL -->
-<div class="modal-overlay" id="nuke-modal">
-  <div class="modal">
-    <h3>Delete entire library?</h3>
-    <p>This will permanently erase all <span id="nuke-count"></span> albums. Export a backup first if you might want this data later.</p>
-    <div class="modal-actions">
-      <button class="btn-ghost" id="nuke-cancel">Cancel</button>
-      <button class="btn-primary" id="nuke-confirm" style="background:var(--danger);color:#fff">Yes, delete everything</button>
-    </div>
   </div>
 </div>
 
@@ -748,13 +567,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     </div>
   </div>
 </div>
-<div class="modal-overlay" id="rescan-modal">
-  <div class="modal wide">
-    <h3>Re-scan Results</h3>
-    <p id="rescan-modal-desc"></p>
-    <div class="rescan-summary" id="rescan-summary"></div>
-
-    <!-- Auto-approved section -->
+<div class="modal-overlay" <!-- Auto-approved section -->
     <div id="rescan-auto-section" style="display:none">
       <div class="rescan-section-head">
         <span class="rescan-section-label auto-label">✓ Auto-approved <span id="rescan-auto-count"></span></span>
@@ -792,14 +605,10 @@ let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 let editingId = null, pendingDeleteId = null;
 let pendingArtUrl = '';
 let sortKey = 'date', sortDir = -1;
-let bulkMode = false;
-let selectedIds = new Set();
 
 // CSV parse state
-let csvRows = [], csvHeaders = [], csvColMap = {artist:'',album:'',date:'',rating:''};
 
 // Rescan state
-let rescanResults = []; // array of {album, match, score, proposedChanges, accepted}
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 function origKey(artist, album) {
@@ -1303,28 +1112,9 @@ function esc(s) {
 // ════════════════════════════════════════════════════════════
 // BULK SELECT MODE
 // ════════════════════════════════════════════════════════════
-function enterBulkMode() {
-  bulkMode = true; selectedIds.clear();
-  document.getElementById('bulk-bar').classList.add('visible');
-  document.getElementById('th-check').style.display = '';
-  document.getElementById('btn-bulk-mode').textContent = '☑ Selecting';
-  document.getElementById('btn-bulk-mode').classList.add('btn-primary');
-  document.getElementById('btn-bulk-mode').classList.remove('btn-danger-ghost');
-  render();
-}
-function exitBulkMode() {
-  bulkMode = false; selectedIds.clear();
-  document.getElementById('bulk-bar').classList.remove('visible');
-  document.getElementById('th-check').style.display = 'none';
-  document.getElementById('btn-bulk-mode').textContent = '☐ Select';
-  document.getElementById('btn-bulk-mode').classList.remove('btn-primary');
-  document.getElementById('btn-bulk-mode').classList.add('btn-danger-ghost');
-  render();
-}
-function updateBulkBar() {
-  document.getElementById('bulk-count').textContent = `${selectedIds.size} selected`;
-  document.getElementById('btn-bulk-delete').disabled = selectedIds.size === 0;
-}
+
+
+
 
 // ════════════════════════════════════════════════════════════
 // FORM MODAL
@@ -1344,488 +1134,36 @@ function resetForm() {
   ['f-artist','f-album','f-date'].forEach(id => document.getElementById(id).value='');
   document.getElementById('autofill-mb-input').value='';
   pendingArtUrl='';
-  showAutofillCard(null);
 }
 
 // ── Autofill card display ────────────────────────────────────
-function showAutofillCard(found) {
-  const r = found ? found.result : null;
-  const date = r ? (r.releaseDate || r._mbDate || '') : '';
-  const art  = r ? (r.artworkUrl100 || '') : '';
-  const srcLabels = {lastfm:'Last.fm', itunes:'iTunes', musicbrainz:'MB', discogs:'Discogs'};
-  const srcClass  = found?.source==='musicbrainz' ? ' src-mb' : '';
 
-  if (r) {
-    document.getElementById('autofill-artist').textContent     = r.artistName||'';
-    document.getElementById('autofill-album-name').textContent = r.collectionName||'';
-    document.getElementById('autofill-date').textContent       = date||'';
-    document.getElementById('autofill-conf').innerHTML         = (found.score < 0.99) ? confPill(found.score) : '';
-    document.getElementById('autofill-src').textContent        = srcLabels[found.source]||found.source||'';
-    document.getElementById('autofill-src').className          = 'src-badge'+srcClass;
-    const artEl = document.getElementById('autofill-art');
-    if (art) { artEl.src=art; artEl.style.display='block'; }
-    else { artEl.style.display='none'; }
-    document.getElementById('autofill-hint-text').textContent = '✓ Applied — click to search alternatives';
-    document.getElementById('autofill-hint-text').style.color = 'var(--good)';
-    if (date && !document.getElementById('f-date').value) document.getElementById('f-date').value = date;
-    pendingArtUrl = art;
-  } else {
-    document.getElementById('autofill-artist').textContent     = '';
-    document.getElementById('autofill-album-name').textContent = '';
-    document.getElementById('autofill-date').textContent       = '';
-    document.getElementById('autofill-conf').innerHTML         = '';
-    document.getElementById('autofill-src').textContent        = '';
-    document.getElementById('autofill-art').style.display      = 'none';
-    document.getElementById('autofill-hint-text').textContent  = '🔍 Click to auto-fill';
-    document.getElementById('autofill-hint-text').style.color  = '';
-  }
-  document.getElementById('autofill-card').style.display         = 'block';
-  document.getElementById('autofill-search-panel').style.display = 'none';
-  document.getElementById('form-error').textContent              = '';
-  document.getElementById('autofill-card').dataset.found         = found ? JSON.stringify(found) : '';
-}
 
-// ════════════════════════════════════════════════════════════
-// SHARED SEARCH — used by both autofill panel and rescan review
-// ════════════════════════════════════════════════════════════
-// Searches Last.fm, iTunes, and MusicBrainz in parallel.
-// Calls onPick(cand) when the user selects a result.
-async function searchAlbums(sArtist, sAlbum, altsEl, onPick) {
-  altsEl.innerHTML = '<div class="rescan-search-empty"><span class="spinner"></span> Searching…</div>';
-  const dc = d => !d?0:d.length>=10?3:d.length===7?2:1;
-  const LFM_KEY = 'd8bc1f03ef025f5833d88fd19d603883';
-  const candidates = [];
-  const seen = new Set();
-  function addCand(c) {
-    if (!c?.matchedAlbum) return;
-    const k = `${(c.matchedArtist||'').toLowerCase().trim()}|||${(c.matchedAlbum||'').toLowerCase().trim()}`;
-    if (seen.has(k)) return; seen.add(k); candidates.push(c);
-  }
-
-  await Promise.all([
-    // Last.fm: album.search → getinfo for each result
-    (async()=>{ try {
-      const lfd = await(await rateLimitedFetch(
-        `https://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(sAlbum)}&api_key=${LFM_KEY}&format=json&limit=15`
-      )).json();
-      await Promise.all((lfd?.results?.albummatches?.album||[]).slice(0,10).map(async a=>{ try {
-        const id = await(await rateLimitedFetch(
-          `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.name)}&api_key=${LFM_KEY}&format=json`
-        )).json();
-        const al = id?.album; if(!al) return;
-        let date=null;
-        const pub=al.wiki?.published||'';
-        const dm=pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
-        if(dm){const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};date=`${dm[3]}-${mo[dm[2]]||'01'}-${dm[1].padStart(2,'0')}`;}
-        else{const ym=pub.match(/\d{4}/);if(ym)date=ym[0];}
-        const yr=date?date.slice(0,4):null;
-        const art=al.image?.find(i=>i.size==='extralarge')?.['#text']||null;
-        const asSim=similarity(al.name||'',sAlbum); if(asSim<0.15) return;
-        const score=asSim*0.65+Math.min(similarity(al.artist||'',sArtist),0.55)*0.30;
-        addCand({matchedArtist:al.artist,matchedAlbum:al.name,date,
-          art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
-          score,sourceName:'lastfm',_releaseYear:yr});
-      } catch(e){} }));
-    } catch(e){} })(),
-
-    // iTunes: artist+album AND album-only
-    (async()=>{ try {
-      const [r1,r2]=await Promise.all([itunesSearch(`${sArtist} ${sAlbum}`,15),itunesSearch(sAlbum,10)]);
-      [...r1,...r2].forEach(r=>{
-        const asSim=similarity(r.collectionName||'',sAlbum); if(asSim<0.15) return;
-        const yr=r.releaseDate?r.releaseDate.slice(0,4):null;
-        addCand({matchedArtist:r.artistName,matchedAlbum:r.collectionName,
-          date:r.releaseDate?r.releaseDate.split('T')[0]:null,
-          art:r.artworkUrl100?r.artworkUrl100.replace('100x100','600x600'):null,
-          score:asSim*0.65+Math.min(similarity(r.artistName||'',sArtist),0.55)*0.30,
-          sourceName:'itunes',_releaseYear:yr});
-      });
-    } catch(e){} })(),
-
-    // MusicBrainz: exact then album-only query
-    (async()=>{ try {
-      for (const mbq of [
-        `release:"${norm(sAlbum).replace(/"/g,'')}" AND artist:"${norm(sArtist).replace(/"/g,'')}"`,
-        `release:"${norm(sAlbum).replace(/"/g,'')}"`,
-      ]) {
-        const mbd=await(await rateLimitedFetch(
-          `https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(mbq)}&limit=10&fmt=json`,
-          {headers:{'User-Agent':'ListenLog/1.0'}}
-        )).json();
-        for (const rel of (mbd.releases||[])) {
-          const ra=rel['artist-credit']?.[0]?.artist?.name||'';
-          const rd=rel['first-release-date']||rel.date||'';
-          const yr=rd?rd.slice(0,4):null;
-          const asSim=similarity(rel.title||'',sAlbum); if(asSim<0.15) continue;
-          const score=asSim*0.65+Math.min(similarity(ra,sArtist),0.55)*0.30;
-          const key=`${ra.toLowerCase().trim()}|||${(rel.title||'').toLowerCase().trim()}`;
-          const ex=candidates.find(c=>`${(c.matchedArtist||'').toLowerCase().trim()}|||${(c.matchedAlbum||'').toLowerCase().trim()}`===key);
-          if(ex){if(dc(rd||null)>dc(ex.date||null)){ex.date=rd||null;ex._releaseYear=yr;ex.mbid=rel.id;}}
-          else addCand({matchedArtist:ra,matchedAlbum:rel.title,date:rd||null,art:null,
-            score,sourceName:'musicbrainz',_releaseYear:yr,mbid:rel.id});
-        }
-      }
-    } catch(e){} })(),
-  ]);
-
-  candidates.sort((a,b)=>{
-    const sd=b.score-a.score; if(Math.abs(sd)>0.04) return sd;
-    return parseInt(a._releaseYear||'9999')-parseInt(b._releaseYear||'9999');
-  });
-
-  if(!candidates.length){
-    altsEl.innerHTML='<div class="rescan-search-empty">No results found. Try different keywords.</div>';
-    return;
-  }
-  altsEl.innerHTML='';
-  const srcLabel={lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'};
-  candidates.forEach(cand=>{
-    const row=document.createElement('div'); row.className='rescan-alt';
-    row.innerHTML=`
-      <div class="rescan-alt-info">
-        <div class="rescan-alt-artist">${esc(cand.matchedArtist||'')}</div>
-        <div class="rescan-alt-album">${esc(cand.matchedAlbum||'')}</div>
-      </div>
-      <div class="rescan-alt-meta">
-        <span style="font-size:10px;color:var(--muted)">${esc((cand.date||cand._releaseYear||'').slice(0,4)||'—')}</span>
-        ${confPill(cand.score)}
-        <span class="src-badge${cand.sourceName==='musicbrainz'?' src-mb':''}">${srcLabel[cand.sourceName]||cand.sourceName}</span>
-        <button class="thumb-btn up" style="width:26px;height:26px;font-size:12px" title="Use this">👍</button>
-      </div>`;
-    row.querySelector('.thumb-btn.up').addEventListener('click',()=>onPick(cand));
-    altsEl.appendChild(row);
-  });
-}
-
-async function runAutofillSearch() {
-  const q = document.getElementById('autofill-search-input').value.trim();
-  if (!q) return;
-  const twoSpace = q.match(/^(.+?)\s{2,}(.+)$/);
-  const sArtist  = twoSpace ? twoSpace[1].trim() : document.getElementById('f-artist').value.trim();
-  const sAlbum   = twoSpace ? twoSpace[2].trim() : q;
-  const altsEl   = document.getElementById('autofill-alts');
-  await searchAlbums(sArtist, sAlbum, altsEl, cand => {
-    const srcLabels={lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'};
-    document.getElementById('f-artist').value  = cand.matchedArtist||document.getElementById('f-artist').value;
-    document.getElementById('f-album').value   = cand.matchedAlbum||document.getElementById('f-album').value;
-    const newDate = cand.date||cand._releaseYear||'';
-    if (newDate) document.getElementById('f-date').value = newDate;
-    pendingArtUrl = cand.art||'';
-    document.getElementById('autofill-artist').textContent     = cand.matchedArtist||'';
-    document.getElementById('autofill-album-name').textContent = cand.matchedAlbum||'';
-    document.getElementById('autofill-date').textContent       = cand.date||cand._releaseYear||'—';
-    document.getElementById('autofill-src').textContent = srcLabels[cand.sourceName]||cand.sourceName;
-    document.getElementById('autofill-src').className   = 'src-badge'+(cand.sourceName==='musicbrainz'?' src-mb':'');
-    const artEl = document.getElementById('autofill-art');
-    if (cand.art){artEl.src=cand.art;artEl.style.display='block';}else artEl.style.display='none';
-    document.getElementById('autofill-card').style.display='block';
-    document.getElementById('autofill-search-panel').style.display='none';
-  });
-}
-
-// ── Release type helper ───────────────────────────────────────
-function resolveReleaseType(primaryType, secondaryTypes=[]) {
-  if (!primaryType) return null;
-  if (secondaryTypes.includes('Live'))             return 'Live';
-  if (secondaryTypes.includes('Compilation'))      return 'Compilation';
-  if (secondaryTypes.includes('Soundtrack'))       return 'Soundtrack';
-  if (secondaryTypes.includes('Demo'))             return 'Demo';
-  if (secondaryTypes.includes('Mixtape/Street'))   return 'Mixtape';
-  if (primaryType === 'Album')    return 'Album';
-  if (primaryType === 'Single')   return 'Single';
-  if (primaryType === 'EP')       return 'EP';
-  if (primaryType === 'Broadcast')return 'Other';
-  return primaryType || null;
-}
-
-function norm(s) {
-  return String(s||'').toLowerCase()
-    .replace(/[\(\[（【][^\)\]）】]{0,60}[\)\]）】]/g,'')
-    .replace(/\b(deluxe|expanded|remaster(ed)?|reissue|anniversary|edition|version|ep|ost|soundtrack|vol\.?\s*\d+)\b/gi,'')
-    .replace(/^the\s+/,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-}
-function similarity(a,b) {
-  const na=norm(a), nb=norm(b);
-  if(!na&&!nb)return 1; if(!na||!nb)return 0; if(na===nb)return 1;
-  if(na.includes(nb)||nb.includes(na))return 0.85;
-
-  // Bigram Dice coefficient
-  const bigrams=s=>{const m=new Map();for(let i=0;i<s.length-1;i++){const bg=s.slice(i,i+2);m.set(bg,(m.get(bg)||0)+1);}return m;};
-  const ba=bigrams(na),bb=bigrams(nb); let x=0;
-  for(const[k,v]of ba)x+=Math.min(v,bb.get(k)||0);
-  const dice=(2*x)/(na.length+nb.length-2);
-
-  // Normalized Levenshtein — catches single-char typos that bigrams miss
-  const la=na.length, lb=nb.length;
-  const dp=Array.from({length:la+1},(_,i)=>Array.from({length:lb+1},(_,j)=>i===0?j:j===0?i:0));
-  for(let i=1;i<=la;i++)for(let j=1;j<=lb;j++)
-    dp[i][j]=na[i-1]===nb[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
-  const lev=1-dp[la][lb]/Math.max(la,lb);
-
-  // Take the higher of the two — whichever method scores the string pair better
-  return Math.max(dice, lev);
-}
-// ── Scoring: album name first, artist second, year tiebreaker ─
-function scoreResult(result, tArtist, tAlbum, hintYear) {
-  const rArtist = result.artistName||'';
-  const rAlbum  = result.collectionName||'';
-
-  const albumSim  = similarity(rAlbum,  tAlbum);
-  const artistSim = similarity(rArtist, tArtist);
-
-  // Hard reject: album title must be at least somewhat similar
-  // Threshold raised to 0.55 because Levenshtein is more generous than pure bigrams
-  if (albumSim < 0.55) return -1;
-
-  // Hard reject: swap detection
-  if (similarity(rArtist, tAlbum)  > albumSim  + 0.25) return -1;
-  if (similarity(rAlbum,  tArtist) > artistSim + 0.25) return -1;
-
-  // Hard reject: artist must be at least minimally plausible
-  if (artistSim < 0.20) return -1;
-
-  // Base score: album name carries most weight, artist second
-  let score = albumSim * 0.65 + Math.min(artistSim, 0.55) * 0.30;
-
-  // Year: meaningful tiebreaker, bigger penalty for very wrong years
-  if (hintYear && result._releaseYear) {
-    const yearDiff = Math.abs(parseInt(hintYear) - parseInt(result._releaseYear));
-    if (yearDiff === 0)       score += 0.06;
-    else if (yearDiff <= 2)   score += 0.02;
-    else if (yearDiff >= 10)  score -= 0.05;
-    else if (yearDiff >= 5)   score -= 0.02;
-  }
-
-  return score;
-}
 
 // ════════════════════════════════════════════════════════════
 // LOOKUP ENGINE — all sources run in parallel, MusicBrainz primary
 // ════════════════════════════════════════════════════════════
 
 // ── MusicBrainz (best date accuracy) ─────────────────────────
-async function musicBrainzLookup(artist, album, hintYear) {
-  try {
-    const q = `release:"${norm(album).replace(/"/g,'')}" AND artist:"${norm(artist).replace(/"/g,'')}"`;
-    const r = await rateLimitedFetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&limit=10&fmt=json&inc=release-groups`,{headers:{'User-Agent':'ListenLog/1.0'}});
-    if (!r.ok) return null;
-    const data = await r.json();
 
-    const scored = (data.releases||[]).map(rel => {
-      const relArtist = rel['artist-credit']?.[0]?.artist?.name||'';
-      const relDate   = rel['first-release-date']||rel.date||'';
-      const yr = relDate.slice(0,4)||null;
-      const s = scoreResult({artistName:relArtist, collectionName:rel.title, _releaseYear:yr}, artist, album, hintYear);
-      // Extract release type from release-group
-      const rg = rel['release-group']||{};
-      const primaryType = rg['primary-type']||null;
-      const secondaryTypes = rg['secondary-types']||[];
-      const releaseType = resolveReleaseType(primaryType, secondaryTypes);
-      return {...rel, _yr:yr, _artist:relArtist, _date:relDate||null, _score:s, _type:releaseType};
-    }).filter(r => r._score >= 0);
-
-    if (!scored.length) return null;
-
-    const bestScore = Math.max(...scored.map(r => r._score));
-    const dateCompleteness = d => !d ? 0 : d.length >= 10 ? 3 : d.length === 7 ? 2 : 1;
-    const candidates = scored.filter(r => r._score >= bestScore - 0.05);
-    candidates.sort((a, b) => {
-      const dc = dateCompleteness(b._date) - dateCompleteness(a._date);
-      if (dc !== 0) return dc;
-      return a._score - b._score;
-    });
-
-    const best = candidates[0];
-    return { date:best._date, art:null, matchedArtist:best._artist||artist,
-             matchedAlbum:best.title||album, score:bestScore, _releaseYear:best._yr,
-             mbid:best.id, releaseType:best._type };
-  } catch(e) { return null; }
-}
 
 // ── Last.fm (best art, large catalog) ────────────────────────
-async function lastfmLookup(artist, album, hintYear) {
-  try {
-    const sd = await (await rateLimitedFetch(
-      `https://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(album)}&api_key=d8bc1f03ef025f5833d88fd19d603883&format=json&limit=10`
-    )).json();
-    const matches = (sd?.results?.albummatches?.album||[])
-      .filter(a => similarity(a.name||'', album) >= 0.20)
-      .slice(0, 5);
-    if (!matches.length) return null;
-    const infos = await Promise.all(matches.map(async m => {
-      try {
-        const id = await (await rateLimitedFetch(
-          `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&artist=${encodeURIComponent(m.artist)}&album=${encodeURIComponent(m.name)}&autocorrect=1&format=json&api_key=d8bc1f03ef025f5833d88fd19d603883`
-        )).json();
-        const al = id?.album; if (!al) return null;
-        let date = null;
-        const pub = al.wiki?.published||'';
-        const dm = pub.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
-        if (dm) {
-          const mo={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
-          date = `${dm[3]}-${mo[dm[2]]||'01'}-${dm[1].padStart(2,'0')}`;
-        } else { const ym=pub.match(/\d{4}/); if(ym) date=ym[0]; }
-        const yr  = date ? date.slice(0,4) : null;
-        const art = al.image?.find(i=>i.size==='extralarge')?.['#text']||null;
-        const score = scoreResult({artistName:al.artist, collectionName:al.name, _releaseYear:yr}, artist, album, hintYear);
-        if (score < 0) return null;
-        return { date, art:(art&&!art.includes('2a96cbd8b46e442fc41c2b86b821562f'))?art:null,
-                 matchedArtist:al.artist, matchedAlbum:al.name, score, _releaseYear:yr };
-      } catch(e) { return null; }
-    }));
-    const valid = infos.filter(Boolean);
-    if (!valid.length) return null;
-    valid.sort((a,b) => {
-      const sd = b.score - a.score;
-      if (Math.abs(sd) > 0.05) return sd;
-      return parseInt(a._releaseYear||'9999') - parseInt(b._releaseYear||'9999');
-    });
-    return valid[0];
-  } catch(e) { return null; }
-}
+
 
 // ── iTunes ────────────────────────────────────────────────────
-async function itunesLookupBest(artist, album, hintYear) {
-  const na=norm(artist), nb=norm(album);
-  const queries=[...new Set([`${artist} ${album}`,`${na} ${nb}`,nb,na])].filter(q=>q.trim().length>1);
-  let bestResult=null, bestScore=-Infinity;
-  for (const q of queries) {
-    try {
-      const results = await itunesSearch(q);
-      for (const r of results) {
-        // Hard floor: album title must be similar — prevents completely wrong albums
-        if (similarity(r.collectionName||'', album) < 0.25) continue;
-        const yr = r.releaseDate ? r.releaseDate.slice(0,4) : null;
-        const s = scoreResult({artistName:r.artistName, collectionName:r.collectionName, _releaseYear:yr}, artist, album, hintYear);
-        if (s > bestScore) { bestScore=s; bestResult={...r, _releaseYear:yr}; }
-      }
-      if (bestScore>=0.72) break;
-    } catch(e) { if(e.message==='aborted') return null; }
-  }
-  if (bestScore>=0.28 && bestResult) return {
-    date: bestResult.releaseDate ? bestResult.releaseDate.split('T')[0] : null,
-    art: bestResult.artworkUrl100 ? bestResult.artworkUrl100.replace('100x100','600x600') : null,
-    matchedArtist: bestResult.artistName, matchedAlbum: bestResult.collectionName,
-    score: bestScore, _releaseYear: bestResult._releaseYear,
-  };
-  return null;
-}
+
 
 // ── Discogs ───────────────────────────────────────────────────
-async function discogsLookup(artist, album, hintYear) {
-  try {
-    const q = encodeURIComponent(`${norm(artist)} ${norm(album)}`);
-    const r = await rateLimitedFetch(`https://api.discogs.com/database/search?q=${q}&type=release&format=Album&per_page=8`,{headers:{'User-Agent':'ListenLog/1.0'}});
-    if (!r.ok) return null;
-    const data = await r.json();
-    let best=null, bestScore=-Infinity;
-    for (const res of (data.results||[])) {
-      const parts = String(res.title||'').split(' - ');
-      const rArtist=parts[0]||'', rAlbum=parts.slice(1).join(' - ')||res.title;
-      const yr = res.year ? String(res.year) : null;
-      const s = scoreResult({artistName:rArtist, collectionName:rAlbum, _releaseYear:yr}, artist, album, hintYear);
-      if (s > bestScore) { bestScore=s; best={...res, _rArtist:rArtist, _rAlbum:rAlbum, _yr:yr}; }
-    }
-    if (!best||bestScore<0.25) return null;
-    return { date:best._yr, art:best.cover_image&&!best.cover_image.includes('spacer.gif')?best.cover_image:null,
-             matchedArtist:best._rArtist, matchedAlbum:best._rAlbum, score:bestScore, _releaseYear:best._yr };
-  } catch(e) { return null; }
-}
+
 
 // ── Force-match: paste a MusicBrainz release URL or bare MBID ─
-async function mbidLookup(mbid) {
-  try {
-    const r = await rateLimitedFetch(
-      `https://musicbrainz.org/ws/2/release/${mbid}?inc=artist-credits+release-groups&fmt=json`,
-      {headers:{'User-Agent':'ListenLog/1.0'}}
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    const artist = data['artist-credit']?.[0]?.artist?.name||'';
-    const album  = data.title||'';
-    const date   = data['first-release-date']||data.date||null;
-    const rg = data['release-group']||{};
-    const releaseType = resolveReleaseType(rg['primary-type']||null, rg['secondary-types']||[]);
-    const rgid = rg.id || null;
-    // Use release-group CAA URL if available (more stable), fall back to release URL
-    const art = rgid
-      ? `https://coverartarchive.org/release-group/${rgid}/front`
-      : `https://coverartarchive.org/release/${mbid}/front`;
-    return { date, art, matchedArtist:artist, matchedAlbum:album,
-             score:1.0, _releaseYear:date?date.slice(0,4):null, mbid, releaseType };
-  } catch(e) { return null; }
-}
+
 
 // ── Master: all sources run in parallel ──────────────────────
-async function lookupBest(artist, album, hintYear) {
-  // Run all 4 in parallel — fastest wins nothing but all contribute candidates
-  const [mbResult, lfResult, itResult, dcResult] = await Promise.all([
-    musicBrainzLookup(artist, album, hintYear).catch(()=>null),
-    lastfmLookup(artist, album, hintYear).catch(()=>null),
-    itunesLookupBest(artist, album, hintYear).catch(()=>null),
-    discogsLookup(artist, album, hintYear).catch(()=>null),
-  ]);
 
-  const sourceMap = [
-    {res:mbResult, name:'musicbrainz'},
-    {res:lfResult, name:'lastfm'},
-    {res:itResult, name:'itunes'},
-    {res:dcResult, name:'discogs'},
-  ];
-
-  const allCandidates = sourceMap.filter(s=>s.res).map(s=>({...s.res, sourceName:s.name}));
-
-  let bestResult=null, bestScore=-Infinity, bestSource=null;
-  for (const {res, name} of sourceMap) {
-    if (res && res.score > bestScore) { bestScore=res.score; bestResult=res; bestSource=name; }
-  }
-
-  if (!bestResult || bestScore < 0.28) return null;
-  if (similarity(bestResult.matchedAlbum||'', album) < 0.55) return null;
-
-  // If winner has no full date, borrow the most complete date from any source
-  if (!bestResult.date || bestResult.date.length < 10) {
-    const dateCompleteness = d => !d ? 0 : d.length >= 10 ? 3 : d.length === 7 ? 2 : 1;
-    const current = dateCompleteness(bestResult.date||null);
-    const withBetterDates = allCandidates.filter(c =>
-      dateCompleteness(c.date||null) > current &&
-      similarity(c.matchedAlbum||'', album) >= 0.25
-    );
-    if (withBetterDates.length) {
-      // Among candidates with better dates, prefer earliest year then fullest date
-      withBetterDates.sort((a,b) => {
-        const ya = parseInt(a._releaseYear||'9999'), yb = parseInt(b._releaseYear||'9999');
-        if (ya !== yb) return ya - yb;
-        return dateCompleteness(b.date) - dateCompleteness(a.date);
-      });
-      bestResult = {...bestResult, date:withBetterDates[0].date, _releaseYear:withBetterDates[0]._releaseYear};
-    }
-  }
-
-  // Prefer Last.fm art if available
-  const lfArt = lfResult?.art;
-
-  return {
-    result: {
-      releaseDate:   bestResult.date&&bestResult.date.length>4 ? bestResult.date : null,
-      _mbDate:       bestResult.date,
-      primaryGenreName: '',
-      artworkUrl100: lfArt || bestResult.art || null,
-      collectionName: bestResult.matchedAlbum||album,
-      artistName:    bestResult.matchedArtist||artist,
-      releaseType:   bestResult.releaseType || mbResult?.releaseType || null,
-    },
-    score:      bestScore,
-    source:     bestSource,
-    candidates: allCandidates,
-  };
-}
 
 // Shim used by manual auto-fill button
-async function itunesLookup(artist, album) {
-  const found = await lookupBest(artist, album, null);
-  return found ? found.result : null;
-}
+
 
 
 
@@ -1848,8 +1186,7 @@ function addOrUpdateAlbum() {
     wantToListen:editingId ? (existing.wantToListen||false) : true,
     hardToFind:existing.hardToFind||false,
     // Clear unmatched if a match was applied (autofill result present, or art was set)
-    unmatched:existing.unmatched&&!document.getElementById('autofill-card').dataset.found&&!pendingArtUrl||false,
-    artUrl:pendingArtUrl||existing.artUrl||'',
+    unmatched:existing.unmatched&&!    artUrl:pendingArtUrl||existing.artUrl||'',
     added:existing.added||Date.now(),
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
@@ -1864,17 +1201,6 @@ function editAlbum(id) {
   document.getElementById('f-date').value=a.date||'';
   pendingArtUrl=a.artUrl||'';
   // Show existing art/data in autofill card
-  if(a.artUrl){
-    document.getElementById('autofill-card').style.display='block';
-    document.getElementById('autofill-artist').textContent=a.artist;
-    document.getElementById('autofill-album-name').textContent=a.album;
-    document.getElementById('autofill-date').textContent=a.date||'';
-    document.getElementById('autofill-conf').innerHTML='';
-    document.getElementById('autofill-src').textContent='saved';
-    document.getElementById('autofill-src').className='src-badge';
-    const artEl=document.getElementById('autofill-art');
-    artEl.src=a.artUrl; artEl.style.display='block';
-  }
   openPanel('edit');
 }
 
@@ -1924,63 +1250,21 @@ function doDelete() {
 // — iTunes 429s silently (returns 0 results). We serialize all
 //   HTTP requests through one queue with a minimum gap + jitter.
 // ════════════════════════════════════════════════════════════
-let scanRunning=false, scanPaused=false, scanAbort=false;
-function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
 
 const REQ_INTERVAL_MS = 120;   // min ms between any two HTTP requests
-const RETRY_DELAY_MS  = 2000;  // back-off when we get 0 results (likely throttled)
-const MAX_RETRIES     = 2;
 let   lastReqTime     = 0;
 
-async function rateLimitedFetch(url, opts) {
-  // honour pause
-  while (scanPaused && !scanAbort) await delay(200);
-  if (scanAbort) throw new Error('aborted');
 
-  const now  = Date.now();
-  const wait = REQ_INTERVAL_MS - (now - lastReqTime);
-  if (wait > 0) await delay(wait + Math.random() * 40); // small jitter
-  lastReqTime = Date.now();
 
-  return fetch(url, opts);
-}
 
-async function itunesSearch(q, limit=12) {
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const r    = await rateLimitedFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=album&limit=${limit}`);
-      const data = await r.json();
-      const results = data.results || [];
-      // 0 results from a query that should have results = likely throttled → retry
-      if (results.length === 0 && attempt < MAX_RETRIES) {
-        await delay(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-      return results;
-    } catch(e) {
-      if (e.message === 'aborted') throw e;
-      if (attempt < MAX_RETRIES) await delay(RETRY_DELAY_MS);
-    }
-  }
-  return [];
-}
 
 // ── Serial worker — processes one album at a time ────────────
 // (Parallel workers each fire multiple requests = rate limiting death)
-async function serialMap(items, fn, { onProgress } = {}) {
-  const results = [];
-  for (let i = 0; i < items.length; i++) {
-    while (scanPaused && !scanAbort) await delay(200);
-    if (scanAbort) break;
-    try { results.push(await fn(items[i], i)); }
-    catch(e) { results.push(null); }
-    if (onProgress) onProgress(i+1, items.length);
-  }
-  return results;
-}
+
 
 // Keep batchedMap as alias for import compat (now just calls serialMap)
-async function batchedMap(items, fn, opts={}) {
+) {
   return serialMap(items, fn, opts);
 }
 
@@ -1992,707 +1276,45 @@ async function batchedMap(items, fn, opts={}) {
 // Schema: { scannedIds: Set<id>, results: rescanResult[] }
 const SCAN_PROGRESS_KEY = 'listenLogScanProgress';
 
-function loadScanProgress() {
-  try {
-    const raw = localStorage.getItem(SCAN_PROGRESS_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw);
-    p.scannedIds = new Set(p.scannedIds);
-    return p;
-  } catch(e) { return null; }
-}
-function saveScanProgress(scannedIds, results) {
-  localStorage.setItem(SCAN_PROGRESS_KEY, JSON.stringify({
-    scannedIds: [...scannedIds],
-    results,
-    savedAt: Date.now(),
-  }));
-}
-function clearScanProgress() {
-  localStorage.removeItem(SCAN_PROGRESS_KEY);
-}
 
-function updateRescanButton() {
-  const prog = loadScanProgress();
-  const btn  = document.getElementById('btn-rescan');
-  if (!btn) return;
-  if (prog && prog.scannedIds.size > 0 && prog.scannedIds.size < albums.length) {
-    btn.textContent = `⟳ Resume Scan (${prog.scannedIds.size}/${albums.length})`;
-    btn.title = `${prog.scannedIds.size} albums already scanned — click to continue from where you left off`;
-  } else {
-    btn.textContent = '⟳ Re-scan Library';
-    btn.title = 'Re-scan all albums against original source data';
-  }
-}
 
-async function startRescan() {
-  if (scanRunning) return;
-  if (!albums.length) { alert('No albums to scan.'); return; }
 
-  // Check for existing partial progress
-  const existingProgress = loadScanProgress();
-  const hasPartial = existingProgress && existingProgress.scannedIds.size > 0
-                  && existingProgress.scannedIds.size < albums.length;
 
-  let scannedIds   = new Set();
-  let partialResults = [];
 
-  if (hasPartial) {
-    const resume = confirm(
-      `Resume previous scan?\n\n` +
-      `${existingProgress.scannedIds.size} of ${albums.length} albums already scanned.\n\n` +
-      `OK = Resume from where you left off\nCancel = Start fresh`
-    );
-    if (resume) {
-      scannedIds     = existingProgress.scannedIds;
-      partialResults = existingProgress.results || [];
-    } else {
-      clearScanProgress();
-    }
-  }
 
-  const bar     = document.getElementById('global-progress');
-  const fillEl  = document.getElementById('gprogress-fill');
-  const pctEl   = document.getElementById('gprogress-pct');
-  const foundEl = document.getElementById('gprog-found');
-  const skipEl  = document.getElementById('gprog-skipped');
-  const failEl  = document.getElementById('gprog-failed');
-  const etaEl   = document.getElementById('gprog-eta');
-
-  document.getElementById('gprogress-label').textContent = 'Re-scanning library…';
-  document.getElementById('btn-pause-global').textContent = 'Pause';
-
-  bar.style.display = 'block';
-  document.getElementById('btn-rescan').disabled = true;
-  document.getElementById('btn-rescan').textContent = '⟳ Scanning…';
-
-  scanAbort=false; scanPaused=false; scanRunning=true;
-
-  // Seed counts from already-completed results
-  rescanResults = [...partialResults];
-  let countFound   = rescanResults.filter(r=>r.changes?.length>0).length;
-  let countSkipped = rescanResults.filter(r=>!r.changes?.length&&!r.notFound).length;
-  let countFailed  = rescanResults.filter(r=>r.notFound).length;
-
-  // Only scan albums not yet covered
-  const toScan = albums.filter(a => !scannedIds.has(a.id));
-  const totalAlbums = albums.length;
-
-  const updateProgress = () => {
-    const pct = Math.min(100, Math.round(scannedIds.size / totalAlbums * 100));
-    fillEl.style.width = pct+'%'; pctEl.textContent = pct+'%';
-    foundEl.textContent = countFound; skipEl.textContent = countSkipped; failEl.textContent = countFailed;
-  };
-  updateProgress();
-
-  const startTime = Date.now();
-
-  await serialMap(toScan, async (a) => {
-    if (scanAbort) return;
-
-    const origRec = originals[`id:${a.id}`]
-                 || originals[origKey(a.artist, a.album)]
-                 || originals[origKey(a.album, a.artist)];
-    const searchArtist = origRec ? origRec.artist : a.artist;
-    const searchAlbum  = origRec ? origRec.album  : a.album;
-    const hintYear     = origRec ? extractYear(origRec.date||'') : extractYear(a.date||'');
-
-    const found = await lookupBest(searchArtist, searchAlbum, hintYear||null);
-
-    if (found) {
-      const r = found.result;
-      const newDate  = r.releaseDate ? r.releaseDate.split('T')[0] : (r._mbDate||null);
-      const newArt   = r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null;
-      const newGenre = r.primaryGenreName||null;
-
-      const changes = [];
-      if (origRec && (a.artist !== origRec.artist || a.album !== origRec.album)) {
-        changes.push({ field:'artist/album', old:`${a.artist} / ${a.album}`, newVal:`${origRec.artist} / ${origRec.album}`, action:'restore_fields' });
-      }
-      if (newDate && newDate !== a.date) changes.push({field:'date', old:a.date||'', newVal:newDate, action:'set_date'});
-      if (newArt && !a.artUrl)           changes.push({field:'art',  old:'',         newVal:newArt,  action:'set_art'});
-
-      rescanResults.push({albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
-        matchedArtist:r.artistName||null, matchedAlbum:r.collectionName||null,
-        score:found.score, source:found.source, changes, accepted:changes.length>0,
-        candidates: found.candidates||[]});
-      if (changes.length>0) countFound++; else countSkipped++;
-    } else {
-      rescanResults.push({albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
-        matchedArtist:null, matchedAlbum:null, score:0, source:null, changes:[], accepted:false, notFound:true});
-      countFailed++;
-    }
-
-    scannedIds.add(a.id);
-
-    // Save progress every 10 albums so resume is granular
-    if (scannedIds.size % 10 === 0) saveScanProgress(scannedIds, rescanResults);
-
-  }, {
-    onProgress(doneSoFar, total) {
-      if (scanAbort) return;
-      updateProgress();
-      const elapsed = (Date.now()-startTime)/1000, rate = doneSoFar/elapsed, remain = (total-doneSoFar);
-      if (rate>0 && remain>0) {
-        const s = Math.round(remain/rate);
-        etaEl.textContent = `~${Math.floor(s/60)>0?Math.floor(s/60)+'m ':''}${s%60}s · ${rate.toFixed(1)}/s`;
-      }
-    }
-  });
-
-  scanRunning = false;
-  bar.style.display = 'none';
-  document.getElementById('btn-rescan').disabled = false;
-
-  if (scanAbort) {
-    // Save partial progress for later resume
-    saveScanProgress(scannedIds, rescanResults);
-    updateRescanButton();
-    // Still show modal for whatever was scanned
-    if (rescanResults.length > 0) {
-      const doReview = confirm(`Scan stopped at ${scannedIds.size}/${totalAlbums} albums.\nProgress saved — you can resume later.\n\nReview results so far?`);
-      if (doReview) showRescanModal();
-    }
-  } else {
-    // Completed fully — clear saved progress
-    clearScanProgress();
-    updateRescanButton();
-    showRescanModal();
-  }
-}
-
-function togglePause() {
-  if (!scanRunning) return;
-  scanPaused = !scanPaused;
-  document.getElementById('btn-pause-global').textContent = scanPaused ? 'Resume' : 'Pause';
-}
+async 
 
 // ── Gap detection helpers ─────────────────────────────────────
-function isJan1(dateStr) {
-  if (!dateStr) return false;
-  // Matches YYYY-01-01 exactly
-  return /^\d{4}-01-01$/.test(dateStr);
-}
-function hasIncompleteDate(dateStr) {
-  if (!dateStr) return true;                    // no date at all
-  if (/^\d{4}$/.test(dateStr)) return true;     // bare year only
-  if (isJan1(dateStr)) return true;             // Jan 1 placeholder
-  return false;
-}
-function hasGap(a) {
-  return !a.artUrl || hasIncompleteDate(a.date||'');
-}
+
+
+
+
 
 // ════════════════════════════════════════════════════════════
-// SCAN FOR GAPS
-// ════════════════════════════════════════════════════════════
-async function startGapScan() {
-  if (scanRunning) return;
-  if (!albums.length) { alert('No albums to scan.'); return; }
 
-  const toScan = albums.filter(hasGap);
-  if (!toScan.length) {
-    alert('No gaps found — all albums have art and complete release dates!');
-    return;
-  }
-
-  const confirmed = confirm(
-    `Found ${toScan.length} album${toScan.length>1?'s':''} with gaps:\n\n` +
-    `• Missing art\n• Incomplete date (year-only)\n• Jan 1 placeholder date\n\n` +
-    `Scan them now?`
-  );
-  if (!confirmed) return;
-
-  const bar     = document.getElementById('global-progress');
-  const fillEl  = document.getElementById('gprogress-fill');
-  const pctEl   = document.getElementById('gprogress-pct');
-  const foundEl = document.getElementById('gprog-found');
-  const skipEl  = document.getElementById('gprog-skipped');
-  const failEl  = document.getElementById('gprog-failed');
-  const etaEl   = document.getElementById('gprog-eta');
-
-  fillEl.style.width='0%'; pctEl.textContent='0%';
-  foundEl.textContent=skipEl.textContent=failEl.textContent='0'; etaEl.textContent='';
-
-  document.getElementById('gprogress-label').textContent = 'Scanning for gaps…';
-  document.getElementById('btn-pause-global').textContent = 'Pause';
-
-  bar.style.display = 'block';
-  document.getElementById('btn-gap-scan').disabled = true;
-  document.getElementById('btn-gap-scan').textContent = '◎ Scanning…';
-
-  scanAbort=false; scanPaused=false; scanRunning=true;
-  rescanResults = [];
-
-  let countFound=0, countSkipped=0, countFailed=0;
-  const startTime = Date.now();
-
-  await serialMap(toScan, async (a) => {
-    if (scanAbort) return;
-
-    // Use stored original name for searching if available
-    const origRec    = originals[`id:${a.id}`] || originals[origKey(a.artist,a.album)];
-    const searchArtist = origRec ? origRec.artist : a.artist;
-    const searchAlbum  = origRec ? origRec.album  : a.album;
-    const hintYear     = extractYear(a.date||'') || (origRec ? extractYear(origRec.date||'') : null);
-
-    const found = await lookupBest(searchArtist, searchAlbum, hintYear||null);
-
-    if (found) {
-      const r = found.result;
-      const newDate = r.releaseDate ? r.releaseDate.split('T')[0] : (r._mbDate||null);
-      const newArt  = r.artworkUrl100 ? r.artworkUrl100.replace('100x100','600x600') : null;
-
-      const changes = [];
-
-      // Only propose date change if it actually fills a gap
-      if (newDate) {
-        const needsDate = hasIncompleteDate(a.date||'');
-        const fullDateAvailable = newDate.length >= 10; // YYYY-MM-DD
-        if (needsDate && fullDateAvailable) {
-          // Flag Jan 1 dates differently in the label
-          const oldLabel = isJan1(a.date) ? `${a.date} (Jan 1 placeholder)` : (a.date||'none');
-          changes.push({field:'date', old:oldLabel, newVal:newDate, action:'set_date'});
-        }
-      }
-
-      // Art: only propose if currently missing
-      if (newArt && !a.artUrl) {
-        changes.push({field:'art', old:'', newVal:newArt, action:'set_art'});
-      }
-
-      // Type: fill if missing
-
-      rescanResults.push({
-        albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
-        matchedArtist:r.artistName||null, matchedAlbum:r.collectionName||null,
-        score:found.score, source:found.source, changes, accepted:changes.length>0,
-        candidates:found.candidates||[],
-        gapScan:true, // flag so review modal knows this came from gap scan
-      });
-      if (changes.length>0) countFound++; else countSkipped++;
-    } else {
-      rescanResults.push({
-        albumId:a.id, origArtist:searchArtist, origAlbum:searchAlbum,
-        matchedArtist:null, matchedAlbum:null, score:0, source:null,
-        changes:[], accepted:false, notFound:true, gapScan:true,
-      });
-      countFailed++;
-    }
-
-    // Update progress
-    const done = rescanResults.length;
-    const pct  = Math.min(100, Math.round(done / toScan.length * 100));
-    fillEl.style.width=pct+'%'; pctEl.textContent=pct+'%';
-    foundEl.textContent=countFound; skipEl.textContent=countSkipped; failEl.textContent=countFailed;
-    const elapsed=(Date.now()-startTime)/1000, rate=done/elapsed, remain=toScan.length-done;
-    if (rate>0&&remain>0) {
-      const s=Math.round(remain/rate);
-      etaEl.textContent=`~${Math.floor(s/60)>0?Math.floor(s/60)+'m ':''}${s%60}s · ${rate.toFixed(1)}/s`;
-    }
-  });
-
-  scanRunning=false;
-  bar.style.display='none';
-  document.getElementById('btn-gap-scan').disabled=false;
-  document.getElementById('btn-gap-scan').textContent='◎ Scan for Gaps';
-
-  if (scanAbort && rescanResults.length===0) return;
-
-  // Show same review modal — it handles gap scan results identically
-  showRescanModal();
-}
 
 // ── RESCAN REVIEW MODAL ──────────────────────────────────────
 const HIGH_CONF = 0.78; // threshold for auto-approval
 
-function confPill(score) {
-  if (score >= HIGH_CONF) return `<span class="conf-pill conf-high-pill">${Math.round(score*100)}%</span>`;
-  if (score >= 0.5)       return `<span class="conf-pill conf-med-pill">${Math.round(score*100)}%</span>`;
-  return                         `<span class="conf-pill conf-low-pill">${Math.round(score*100)}%</span>`;
-}
-function srcBadge(source) {
-  const labels = {lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'};
-  const cls = source==='musicbrainz' ? ' src-mb' : '';
-  return source ? `<span class="src-badge${cls}">${labels[source]||source}</span>` : '';
-}
 
-function showRescanModal() {
-  const autoApproved = rescanResults.filter(r => r.changes.length>0 && r.score>=HIGH_CONF);
-  const needsReview  = rescanResults.filter(r => r.changes.length>0 && r.score<HIGH_CONF);
-  const notFound     = rescanResults.filter(r => r.notFound);
-  const unchanged    = rescanResults.filter(r => !r.changes.length && !r.notFound);
 
-  // Auto-apply high-confidence matches immediately
-  let autoAppliedCount = 0;
-  autoApproved.forEach(res => {
-    const a = albums.find(x=>x.id===res.albumId); if(!a) return;
-    res.changes.forEach(c => applyChange(a, res, c));
-    a.unmatched = false;
-    autoAppliedCount++;
-  });
-  if (autoAppliedCount) { save(); render(); }
 
-  const isGapScan = rescanResults.some(r => r.gapScan);
-  const totalScanned = rescanResults.length;
-  document.getElementById('rescan-modal-desc').textContent = isGapScan
-    ? `Gap scan complete — reviewed ${totalScanned} album${totalScanned!==1?'s':''} with missing art or incomplete dates.`
-    : `Scanned ${totalScanned} albums.`;
-  document.getElementById('rescan-summary').innerHTML = `
-    <span><b>${autoAppliedCount}</b> auto-approved</span>
-    <span><b>${needsReview.length}</b> need review</span>
-    <span><b>${unchanged.length}</b> already correct</span>
-    <span><b>${notFound.length}</b> not found</span>`;
 
-  document.getElementById('rescan-auto-section').style.display = autoAppliedCount ? 'block' : 'none';
-  document.getElementById('rescan-auto-count').textContent = `(${autoAppliedCount})`;
 
-  const reviewSec  = document.getElementById('rescan-review-section');
-  const cardsWrap  = document.getElementById('rescan-cards');
-  cardsWrap.innerHTML = '';
 
-  document.getElementById('rescan-no-changes').style.display =
-    (needsReview.length===0 && autoAppliedCount===0) ? 'block' : 'none';
 
-  if (needsReview.length > 0) {
-    reviewSec.style.display = 'block';
-    needsReview.forEach(r => { r.decision = null; });
-    // Queue-based: show one card at a time
-    let queueIdx = 0;
-    function showNext() {
-      cardsWrap.innerHTML = '';
-      if (queueIdx >= needsReview.length) {
-        reviewSec.style.display = 'none';
-        document.getElementById('rescan-pending-count').textContent = '';
-        updateReviewProgress(needsReview);
-        return;
-      }
-      const res = needsReview[queueIdx];
-      document.getElementById('rescan-pending-count').textContent =
-        `(${queueIdx+1} / ${needsReview.length})`;
-      updateReviewProgress(needsReview);
-      const card = buildReviewCard(res, needsReview, () => {
-        queueIdx++;
-        showNext();
-      });
-      cardsWrap.appendChild(card);
-    }
-    showNext();
-  } else {
-    reviewSec.style.display = 'none';
-  }
-
-  document.getElementById('rescan-modal').classList.add('open');
-}
-
-function updateReviewProgress(needsReview) {
-  const decided = needsReview.filter(r=>r.decision!==null).length;
-  const total   = needsReview.length;
-  document.getElementById('rescan-review-progress').textContent =
-    total ? `${decided} / ${total} reviewed` : '';
-}
-
-function buildReviewCard(res, needsReview, onAdvance) {
-  const card = document.createElement('div');
-  card.className = 'rescan-card';
-  card.dataset.albumId = res.albumId;
-
-  // Get original year from originals store
-  const origRec = originals[`id:${res.albumId}`];
-  const sheetYear = origRec ? extractYear(origRec.date||'') : '';
-
-  const changesHTML = res.changes
-    .filter(c=>c.field!=='art')
-    .map(c=>`<span class="field-old">${esc(c.old||'—')}</span><span class="change-arrow">→</span><span class="field-new">${esc(c.newVal)}</span>`)
-    .join('<br>');
-  const hasArt = res.changes.some(c=>c.field==='art');
-
-  card.innerHTML = `
-    <div class="rescan-col">
-      <div class="rescan-col-label">Your sheet</div>
-      <div class="rescan-artist">${esc(res.origArtist)}</div>
-      <div class="rescan-album-name">${esc(res.origAlbum)}</div>
-      ${sheetYear ? `<div class="rescan-meta"><span style="color:var(--muted)">${esc(sheetYear)}</span></div>` : ''}
-    </div>
-    <div class="rescan-col">
-      <div class="rescan-col-label">Match found</div>
-      <div class="rescan-artist">${esc(res.matchedArtist||res.origArtist)}</div>
-      <div class="rescan-album-name">${esc(res.matchedAlbum||res.origAlbum)}</div>
-      <div class="rescan-meta">
-        ${changesHTML ? `<span>${changesHTML}</span>` : ''}
-        ${hasArt ? '<span style="color:var(--good);font-size:10px">+ art</span>' : ''}
-        ${confPill(res.score)}
-        ${srcBadge(res.source)}
-      </div>
-    </div>
-    <div class="rescan-actions">
-      <button class="thumb-btn up" title="Accept match">👍</button>
-      <button class="thumb-btn down" title="Wrong — search alternatives">👎</button>
-    </div>
-    <div class="rescan-search-panel">
-      <div class="rescan-search-row">
-        <input class="rescan-search-input" placeholder="Artist  Album  (two spaces to separate)" value="${esc(res.origArtist+'  '+res.origAlbum)}">
-        <button class="btn-ghost btn-sm" style="white-space:nowrap" data-action="search">Search</button>
-        <button class="btn-ghost btn-sm" style="color:var(--muted)" data-action="skip">Mark missing info</button>
-      </div>
-      <div class="rescan-search-row" style="margin-top:4px">
-        <input class="rescan-mb-input" placeholder="MusicBrainz URL or release ID (force match)" style="flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:4px 9px;border-radius:var(--radius);outline:none">
-        <button class="btn-ghost btn-sm" style="white-space:nowrap;color:var(--want)" data-action="mbid">Force MB match</button>
-      </div>
-      <div class="rescan-alts"></div>
-    </div>`;
-
-  const upBtn   = card.querySelector('.thumb-btn.up');
-  const downBtn = card.querySelector('.thumb-btn.down');
-  const panel   = card.querySelector('.rescan-search-panel');
-  const altsEl  = card.querySelector('.rescan-alts');
-  const searchInput = card.querySelector('.rescan-search-input');
-
-  function commit(decision, overrideChanges) {
-    res.decision = decision;
-    const a = albums.find(x=>x.id===res.albumId);
-    if (a) {
-      if (decision === 'up') {
-        const changes = overrideChanges || res.changes;
-        changes.forEach(c => applyChange(a, res, c));
-        a.unmatched = false;
-      } else if (decision === 'down' || decision === 'skip') {
-        const orig = originals[`id:${a.id}`];
-        if (orig) { a.artist=orig.artist; a.album=orig.album; if(orig.date) a.date=orig.date; }
-        a.unmatched = true;
-      }
-      save();
-    }
-    updateReviewProgress(needsReview);
-    // Animate out then advance
-    card.style.transition = 'opacity .2s, transform .2s';
-    card.style.opacity = '0';
-    card.style.transform = decision==='up' ? 'translateX(20px)' : 'translateX(-20px)';
-    setTimeout(onAdvance, 200);
-  }
-
-  function renderAlts(candidates) {
-    altsEl.innerHTML = '';
-    const sorted = [...candidates]
-      .filter(c => c.score >= 0)
-      .sort((a,b) => {
-        const sd = b.score - a.score;
-        if (Math.abs(sd) > 0.04) return sd;
-        return parseInt(a._releaseYear||'9999') - parseInt(b._releaseYear||'9999');
-      });
-    if (!sorted.length) {
-      altsEl.innerHTML = '<div class="rescan-search-empty">No results found. Try a different search.</div>';
-      return;
-    }
-    const srcLabel={lastfm:'Last.fm',itunes:'iTunes',musicbrainz:'MB',discogs:'Discogs'};
-    sorted.forEach(cand => {
-      const row = document.createElement('div');
-      row.className = 'rescan-alt';
-      row.innerHTML = `
-        <div class="rescan-alt-info">
-          <div class="rescan-alt-artist">${esc(cand.matchedArtist||'')}</div>
-          <div class="rescan-alt-album">${esc(cand.matchedAlbum||'')}</div>
-        </div>
-        <div class="rescan-alt-meta">
-          <span class="rescan-alt-year" style="font-size:10px;color:var(--muted)">${esc((cand.date||cand._releaseYear||'').slice(0,4)||'—')}</span>
-          ${confPill(cand.score)}
-          <span class="src-badge${cand.sourceName==='musicbrainz'?' src-mb':''}">${srcLabel[cand.sourceName]||cand.sourceName||'?'}</span>
-          <button class="thumb-btn up" style="width:26px;height:26px;font-size:12px" title="Use this match">👍</button>
-        </div>`;
-      // If no date, try MusicBrainz async and update in place
-      if (!cand.date && !cand._releaseYear) {
-        const yearEl = row.querySelector('.rescan-alt-year');
-        yearEl.textContent = '…';
-        musicBrainzLookup(cand.matchedArtist||'', cand.matchedAlbum||'', null)
-          .then(mb => {
-            yearEl.textContent = mb?.date ? mb.date.slice(0,4) : '—';
-            if (mb?.date) { cand._releaseYear=mb.date.slice(0,4); cand.date=mb.date; }
-          }).catch(()=>{ yearEl.textContent='—'; });
-      }
-      row.querySelector('.thumb-btn.up').addEventListener('click', () => {
-        const newChanges = [];
-        if (cand.date) newChanges.push({field:'date', old:'', newVal:cand.date, action:'set_date'});
-        if (cand.art)  newChanges.push({field:'art',  old:'', newVal:cand.art,  action:'set_art'});
-        res.matchedArtist = cand.matchedArtist;
-        res.matchedAlbum  = cand.matchedAlbum;
-        commit('up', newChanges);
-      });
-      altsEl.appendChild(row);
-    });
-  }
-
-  downBtn.addEventListener('click', () => {
-    if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
-    panel.classList.add('open');
-    doSearch();
-  });
-
-  async function doSearch() {
-    const q = searchInput.value.trim();
-    if (!q) return;
-    const twoSpace = q.match(/^(.+?)\s{2,}(.+)$/);
-    const sArtist = twoSpace ? twoSpace[1].trim() : res.origArtist;
-    const sAlbum  = twoSpace ? twoSpace[2].trim() : q;
-    await searchAlbums(sArtist, sAlbum, altsEl, cand => {
-      const newChanges = [];
-      if (cand.date) newChanges.push({field:'date', old:'', newVal:cand.date, action:'set_date'});
-      if (cand.art)  newChanges.push({field:'art',  old:'', newVal:cand.art,  action:'set_art'});
-      res.matchedArtist = cand.matchedArtist;
-      res.matchedAlbum  = cand.matchedAlbum;
-      commit('up', newChanges);
-    });
-  }
-
-  upBtn.addEventListener('click', () => {
-    panel.classList.remove('open');
-    commit('up');
-  });
-
-  card.querySelector('[data-action="search"]').addEventListener('click', doSearch);
-  searchInput.addEventListener('keydown', e => { if (e.key==='Enter') doSearch(); });
-  card.querySelector('[data-action="skip"]').addEventListener('click', () => {
-    panel.classList.remove('open');
-    commit('skip');
-  });
-  card.querySelector('[data-action="mbid"]').addEventListener('click', async () => {
-    const raw = card.querySelector('.rescan-mb-input').value.trim();
-    if (!raw) return;
-    // Accept full URL like https://musicbrainz.org/release/abc-123 or bare MBID
-    const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
-    if (!mbid) { altsEl.innerHTML = '<div class="rescan-search-empty">Couldn\'t find a valid MusicBrainz ID in that URL.</div>'; panel.classList.add('open'); return; }
-    altsEl.innerHTML = '<div class="rescan-search-empty"><span class="spinner"></span> Looking up MusicBrainz ID…</div>';
-    panel.classList.add('open');
-    const result = await mbidLookup(mbid);
-    if (!result) { altsEl.innerHTML = '<div class="rescan-search-empty">MusicBrainz lookup failed — check the ID.</div>'; return; }
-    renderAlts([{...result, sourceName:'musicbrainz'}]);
-  });
-
-  return card;
-}
-
-function applyChange(a, res, c) {
-  if (c.action==='restore_fields') { a.artist=res.origArtist; a.album=res.origAlbum; }
-  if (c.action==='set_date')  a.date        = c.newVal;
-  if (c.action==='set_art')   a.artUrl      = c.newVal;
-}
 
 // ════════════════════════════════════════════════════════════
-// CSV IMPORT
-// ════════════════════════════════════════════════════════════
-function openImportPanel()  { closePanel(); document.getElementById('import-panel').classList.add('open'); }
-function closeImportPanel() {
-  if(scanRunning){scanAbort=true;scanRunning=false;}
-  document.getElementById('import-panel').classList.remove('open');
-  document.getElementById('import-mapping').style.display='none';
-  document.getElementById('import-status').textContent='';
-  csvRows=[];csvHeaders=[];csvColMap={artist:'',album:'',date:'',rating:''};
-}
 
-function parseCSV(text) {
-  return text.split(/\r?\n/).filter(l=>l.trim()).map(line=>{
-    const cells=[]; let cur='',inQ=false;
-    for(let i=0;i<line.length;i++){
-      const c=line[i];
-      if(c==='"'&&!inQ){inQ=true;continue;}
-      if(c==='"'&&inQ){if(line[i+1]==='"'){cur+='"';i++;}else inQ=false;continue;}
-      if((c===','||c==='\t')&&!inQ){cells.push(cur.trim());cur='';continue;}
-      cur+=c;
-    }
-    cells.push(cur.trim()); return cells;
-  });
-}
-function guessColMap(headers) {
-  const h=headers.map(x=>x.toLowerCase().replace(/[^a-z0-9]/g,''));
-  const find=(...cc)=>{for(const c of cc){const i=h.findIndex(x=>x.includes(c));if(i!==-1)return headers[i];}return '';};
-  return {artist:find('artist','band','performer'),album:find('album','title','record'),date:find('year','date','release'),rating:find('rating','score','stars')};
-}
 
-function handleCSVFiles(files) {
-  if(!files.length)return;
-  Promise.all([...files].map(f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsText(f);})))
-  .then(texts=>{
-    let allRows=[],sharedHeaders=null;
-    texts.forEach(text=>{
-      const rows=parseCSV(text);if(rows.length<2)return;
-      const hdrs=rows[0];const data=rows.slice(1).filter(r=>r.some(c=>c.trim()));
-      if(!sharedHeaders)sharedHeaders=hdrs;
-      allRows=allRows.concat(data.map(row=>{const m={};hdrs.forEach((h,i)=>{m[h]=row[i]||'';});return m;}));
-    });
-    if(!sharedHeaders||!allRows.length){
-      document.getElementById('import-status').textContent='No data found.';
-      document.getElementById('import-status').className='err'; return;
-    }
-    csvHeaders=sharedHeaders; csvRows=allRows; csvColMap=guessColMap(sharedHeaders);
-    buildColMapUI(); buildPreview();
-    document.getElementById('import-mapping').style.display='block';
-  });
-}
-function buildColMapUI() {
-  const wrap=document.getElementById('col-map-row'); wrap.innerHTML='';
-  [{key:'artist',label:'Artist'},{key:'album',label:'Album'},{key:'date',label:'Year/Date'},{key:'rating',label:'Rating (opt)'}].forEach(f=>{
-    const g=document.createElement('div');g.className='form-group';
-    const lbl=document.createElement('label');lbl.textContent=f.label;
-    const sel=document.createElement('select');
-    sel.innerHTML='<option value="">(none)</option>'+csvHeaders.map(h=>`<option value="${esc(h)}"${csvColMap[f.key]===h?' selected':''}>${esc(h)}</option>`).join('');
-    sel.addEventListener('change',()=>{csvColMap[f.key]=sel.value;buildPreview();});
-    g.appendChild(lbl);g.appendChild(sel);wrap.appendChild(g);
-  });
-}
-function buildPreview() {
-  let html='<p style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin:8px 0 4px">Preview</p><table>';
-  html+='<tr><th>Artist</th><th>Album</th><th>Date</th><th>Rating</th></tr>';
-  csvRows.slice(0,5).forEach(r=>{
-    html+=`<tr><td>${esc(csvColMap.artist?r[csvColMap.artist]||'':'')}</td><td>${esc(csvColMap.album?r[csvColMap.album]||'':'')}</td><td>${esc(csvColMap.date?r[csvColMap.date]||'':'')}</td><td>${esc(csvColMap.rating?r[csvColMap.rating]||'':'')}</td></tr>`;
-  });
-  html+='</table>';
-  document.getElementById('import-preview').innerHTML=html;
-}
 
-async function doImport() {
-  if(!csvColMap.artist||!csvColMap.album){
-    document.getElementById('import-status').textContent='Map Artist and Album columns.';
-    document.getElementById('import-status').className='err'; return;
-  }
-  const statusEl=document.getElementById('import-status');
-  statusEl.textContent='Processing…'; statusEl.className='';
-  const keyOf=a=>`${a.artist.toLowerCase().trim()}|||${a.album.toLowerCase().trim()}`;
-  const existingMap=new Map(albums.map(a=>[keyOf(a),a]));
-  const parsed=csvRows.map(r=>({
-    rawArtist:(r[csvColMap.artist]||'').trim(),
-    rawAlbum:(r[csvColMap.album]||'').trim(),
-    rawDate:csvColMap.date?(r[csvColMap.date]||'').trim():'',
-    rawRating:csvColMap.rating?(r[csvColMap.rating]||'').trim():'',
-  })).filter(r=>r.rawArtist&&r.rawAlbum);
 
-  let added=0,updated=0;
-  parsed.forEach(r=>{
-    const k=`${r.rawArtist.toLowerCase()}|||${r.rawAlbum.toLowerCase()}`;
-    let rating=null;
-    if(r.rawRating){const p=parseFloat(r.rawRating);if(!isNaN(p)&&p>=0&&p<=5)rating=p;}
-    const origRec={artist:r.rawArtist,album:r.rawAlbum,date:r.rawDate,rating:r.rawRating};
-    // Index by both directions so swapped entries are still found
-    originals[k]=origRec;
-    originals[`${r.rawAlbum.toLowerCase()}|||${r.rawArtist.toLowerCase()}`]=origRec;
-    if(existingMap.has(k)){
-      const ex=existingMap.get(k); let changed=false;
-      // Also index by album ID for fast reliable lookup
-      originals[`id:${ex.id}`]=origRec;
-      if(r.rawDate&&!ex.date){ex.date=r.rawDate;changed=true;}
-      if(rating!==null&&!ex.rating){ex.rating=rating;ex.wantToListen=false;changed=true;}
-      if(changed)updated++;
-    }else{
-      const newId=uid();
-      originals[`id:${newId}`]=origRec;
-      albums.push({id:newId,artist:r.rawArtist,album:r.rawAlbum,date:r.rawDate,genre:'',rating,notes:'',wantToListen:!rating,hardToFind:false,artUrl:'',added:Date.now()});
-      added++;
-    }
-  });
-  save(); saveOriginals(); render();
-  const summary=[added?`${added} added`:'',updated?`${updated} updated`:''].filter(Boolean).join(', ');
-  if(!added&&!updated){statusEl.textContent='Nothing new to import.';statusEl.className='err';return;}
-  statusEl.textContent=`✓ ${summary}. Use "Re-scan Library" to look up full dates and fix any issues.`;
-  statusEl.className='ok';
-}
+
+
+
+
+
+
 
 // ════════════════════════════════════════════════════════════
 // SORT & EVENTS
@@ -2722,45 +1344,6 @@ function initApp() {
     const el = document.getElementById(id);
     if (el) el.addEventListener(evt, fn);
   }
-
-// Bulk select — th-check-cb and select-all-cb are dynamically rendered, use delegation
-on('btn-bulk-mode', 'click', () => bulkMode ? exitBulkMode() : enterBulkMode());
-on('btn-bulk-cancel', 'click', exitBulkMode);
-document.addEventListener('change', e => {
-  if (e.target.id === 'th-check-cb' || e.target.id === 'select-all-cb') {
-    const list = getSorted(getFiltered());
-    if (e.target.checked) list.forEach(a => selectedIds.add(a.id)); else selectedIds.clear();
-    updateBulkBar(); render();
-  }
-});
-on('btn-bulk-delete', 'click', () => {
-  if (!selectedIds.size) return;
-  if (!confirm(`Delete ${selectedIds.size} selected album${selectedIds.size>1?'s':''}?`)) return;
-  albums = albums.filter(a => !selectedIds.has(a.id)); save(); exitBulkMode();
-});
-on('btn-nuke', 'click', () => {
-  document.getElementById('nuke-count').textContent = albums.length;
-  document.getElementById('nuke-modal').classList.add('open');
-});
-on('nuke-cancel', 'click', () => document.getElementById('nuke-modal').classList.remove('open'));
-on('nuke-confirm', 'click', () => {
-  albums = []; originals = {}; save(); saveOriginals();
-  document.getElementById('nuke-modal').classList.remove('open'); exitBulkMode();
-});
-
-// Rescan modal
-on('rescan-cancel', 'click', () => {
-  document.getElementById('rescan-modal').classList.remove('open'); rescanResults = [];
-});
-on('rescan-apply', 'click', () => {
-  document.getElementById('rescan-modal').classList.remove('open'); rescanResults = []; render();
-});
-
-// Mobile sort
-on('mobile-sort', 'change', e => {
-  const [key, dir] = e.target.value.split('-');
-  sortKey = key; sortDir = dir === 'asc' ? 1 : -1; render();
-});
 
 // Build quick-rate star widget
 (function(){
@@ -2798,38 +1381,7 @@ on('quick-rate-modal','click',e=>{
 });
 
 on('btn-toggle-add','click',()=>{editingId=null;resetForm();openPanel('add');});
-on('btn-toggle-import','click',()=>{
-  const p=document.getElementById('import-panel');
-  if(p&&p.classList.contains('open')){closeImportPanel();return;}
-  openImportPanel();
-});
 
-on('autofill-card','click',async e=>{
-  if(e.target.closest('#autofill-search-panel'))return;
-  const artist=document.getElementById('f-artist').value.trim();
-  const album=document.getElementById('f-album').value.trim();
-  const hasResult=!!document.getElementById('autofill-card').dataset.found;
-  if(hasResult){
-    const sp=document.getElementById('autofill-search-panel');
-    if(sp.style.display==='none'){
-      sp.style.display='block';
-      document.getElementById('autofill-search-input').value=artist+'  '+album;
-      runAutofillSearch();
-    } else sp.style.display='none';
-    return;
-  }
-  if(!artist||!album){document.getElementById('form-error').textContent='Enter artist and album first.';return;}
-  document.getElementById('autofill-hint-text').textContent='⟳ Searching…';
-  document.getElementById('form-error').textContent='';
-  const found=await lookupBest(artist,album,null);
-  if(found)showAutofillCard(found);
-  else{
-    document.getElementById('autofill-hint-text').textContent='No match found — paste MB link or search below';
-    document.getElementById('autofill-hint-text').style.color='var(--muted)';
-    document.getElementById('autofill-search-panel').style.display='block';
-    document.getElementById('autofill-search-input').value=artist+'  '+album;
-  }
-});
 
 on('btn-cancel','click',closePanel);
 on('btn-save','click',addOrUpdateAlbum);
@@ -2839,8 +1391,6 @@ on('btn-delete-entry','click',()=>{
   if(confirm(`Delete "${a.artist} – ${a.album}"?`)){albums=albums.filter(x=>x.id!==editingId);save();closePanel();render();}
 });
 
-on('autofill-search-btn','click',runAutofillSearch);
-on('autofill-search-input','keydown',e=>{if(e.key==='Enter')runAutofillSearch();});
 on('autofill-mb-btn','click',()=>runMbForce(document.getElementById('autofill-mb-input').value.trim(),null));
 on('autofill-mb-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur();runMbForce(e.target.value.trim(),null);}});
 on('quick-add-mb','keydown',async e=>{
@@ -2902,43 +1452,6 @@ on('delete-modal','click',e=>{
   else e.stopPropagation();
 });
 
-// CSV import drop zone
-const dropZone=document.getElementById('csv-drop-zone');
-if(dropZone){
-  dropZone.addEventListener('click',()=>document.getElementById('csv-file-input').click());
-  dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.style.borderColor='var(--accent)';});
-  dropZone.addEventListener('dragleave',()=>{dropZone.style.borderColor='';});
-  dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.style.borderColor='';handleCSVFiles(e.dataTransfer.files);});
-}
-on('csv-file-input','change',e=>{handleCSVFiles(e.target.files);e.target.value='';});
-on('btn-do-import','click',doImport);
-on('btn-cancel-import','click',closeImportPanel);
-on('btn-rescan','click',startRescan);
-on('btn-gap-scan','click',startGapScan);
-on('btn-pause-global','click',togglePause);
-on('btn-stop-global','click',()=>{scanAbort=true;scanPaused=false;});
-on('btn-export','click',()=>{
-  const blob=new Blob([JSON.stringify(albums,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ListenLog-${new Date().toISOString().slice(0,10)}.json`;a.click();
-});
-on('btn-json-import-trigger','click',()=>document.getElementById('btn-json-import').click());
-on('btn-json-import','change',e=>{
-  const file=e.target.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    try{
-      const data=JSON.parse(ev.target.result);
-      if(Array.isArray(data)){
-        if(confirm(`Merge ${data.length} albums?`)){
-          const ids=new Set(albums.map(a=>a.id));
-          data.forEach(a=>{if(!ids.has(a.id))albums.push(a);});
-          save();render();
-        }
-      }else alert('Invalid file.');
-    }catch{alert('Could not read file.');}
-  };
-  r.readAsText(file);e.target.value='';
-});
 
 render();
 updateRescanButton();
@@ -2960,8 +1473,6 @@ function applyMbResult(result) {
   const artEl = document.getElementById('autofill-art');
   if (result.art) { artEl.src=result.art; artEl.style.display='block'; artEl.onerror=()=>artEl.style.display='none'; }
   else artEl.style.display='none';
-  document.getElementById('autofill-card').style.display='block';
-  document.getElementById('autofill-search-panel').style.display='none';
   document.getElementById('autofill-mb-input').value='';
 }
 
@@ -3056,8 +1567,7 @@ async function pullFromCloud(retrying=false) {
     }
     setSyncStatus('ok', 'synced');
     render();
-    updateRescanButton();
-    rebuildOriginalIdIndex();
+      rebuildOriginalIdIndex();
   } catch(e) {
     console.error('Pull error:', e);
     if (!retrying) {
