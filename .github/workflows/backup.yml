@@ -1,0 +1,62 @@
+name: Daily Backup
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 6am UTC daily (11pm Pacific / 2am Eastern)
+  workflow_dispatch:        # also allows manual trigger from GitHub Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Export data from Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          mkdir -p backups
+
+          # Fetch albums + originals from listenlog_data
+          curl -s \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            "$SUPABASE_URL/rest/v1/listenlog_data?select=albums,originals" \
+            | python3 -c "
+          import json, sys, datetime
+          data = json.load(sys.stdin)
+          if not data:
+              print('No data found')
+              sys.exit(1)
+          row = data[0]
+          albums = row.get('albums', [])
+          originals = row.get('originals', {})
+          out = {
+              'exported_at': datetime.datetime.utcnow().isoformat() + 'Z',
+              'album_count': len(albums),
+              'albums': albums,
+              'originals': originals
+          }
+          print(json.dumps(out, indent=2))
+          " > backups/latest.json
+
+          # Also save a dated copy (keeps last 30 days)
+          DATE=$(date +%Y-%m-%d)
+          cp backups/latest.json "backups/$DATE.json"
+
+          # Remove backups older than 30 days
+          find backups -name "????-??-??.json" -mtime +30 -delete
+
+          echo "Backed up $(cat backups/latest.json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[\"album_count\"])') albums"
+
+      - name: Commit backup
+        run: |
+          git config user.name  "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add backups/
+          # Only commit if something changed
+          git diff --staged --quiet || git commit -m "Backup $(date +%Y-%m-%d)"
+          git push
