@@ -497,7 +497,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 <div id="app-wrap">
 
 <header>
-  <div class="header-title"><h1>Listen<em>Log</em></h1></div>
+  <div class="header-title"><h1 onclick="location.reload()" style="cursor:pointer" title="Reload">Listen<em>Log</em></h1></div>
   <div class="header-stats">
     <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Albums</div></div>
     <div class="stat"><div class="stat-num" id="stat-want">0</div><div class="stat-label">Want to Hear</div></div>
@@ -737,7 +737,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="qr-tags">
       <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
       <button class="tag-toggle hard" id="qr-hard-toggle" style="display:none">📦 Hard to find</button>
-      <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:11px">⚠ Unmatched</button>
+      <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:11px">⚠ Missing info</button>
     </div>
     <div class="qr-notes-row">
       <input type="text" id="qr-notes" class="qr-notes-input" placeholder="Notes…">
@@ -846,7 +846,7 @@ const TAG_OPTIONS = [
   { value:'want',      label:'🎧 Want to listen' },
   { value:'hard',      label:'📦 Hard to find' },
   { value:'listened',  label:'✓ Listened' },
-  { value:'unmatched', label:'⚠ Unmatched' },
+  { value:'unmatched', label:'⚠ Missing info' },
 ];
 
 function extractYear(d) { const m = String(d||'').match(/\d{4}/); return m ? m[0] : ''; }
@@ -1260,7 +1260,7 @@ function render() {
     const tags = [
       a.wantToListen ? '<span class="badge badge-want">🎧 want</span>' : '',
       a.hardToFind   ? '<span class="badge badge-hard">📦 hard</span>' : '',
-      a.unmatched    ? '<span class="badge badge-unmatch">⚠ unmatched</span>' : '',
+      a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
     ].filter(Boolean).join(' ');
 
     const checkCell = bulkMode
@@ -2059,7 +2059,7 @@ async function startRescan() {
   const failEl  = document.getElementById('gprog-failed');
   const etaEl   = document.getElementById('gprog-eta');
 
-  labelEl.textContent = 'Re-scanning library…';
+  document.getElementById('gprogress-label').textContent = 'Re-scanning library…';
   document.getElementById('btn-pause-global').textContent = 'Pause';
 
   bar.style.display = 'block';
@@ -2214,7 +2214,7 @@ async function startGapScan() {
   fillEl.style.width='0%'; pctEl.textContent='0%';
   foundEl.textContent=skipEl.textContent=failEl.textContent='0'; etaEl.textContent='';
 
-  labelEl.textContent = 'Scanning for gaps…';
+  document.getElementById('gprogress-label').textContent = 'Scanning for gaps…';
   document.getElementById('btn-pause-global').textContent = 'Pause';
 
   bar.style.display = 'block';
@@ -2433,7 +2433,7 @@ function buildReviewCard(res, needsReview, onAdvance) {
       <div class="rescan-search-row">
         <input class="rescan-search-input" placeholder="Artist  Album  (two spaces to separate)" value="${esc(res.origArtist+'  '+res.origAlbum)}">
         <button class="btn-ghost btn-sm" style="white-space:nowrap" data-action="search">Search</button>
-        <button class="btn-ghost btn-sm" style="color:var(--muted)" data-action="skip">Mark unmatched</button>
+        <button class="btn-ghost btn-sm" style="color:var(--muted)" data-action="skip">Mark missing info</button>
       </div>
       <div class="rescan-search-row" style="margin-top:4px">
         <input class="rescan-mb-input" placeholder="MusicBrainz URL or release ID (force match)" style="flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:4px 9px;border-radius:var(--radius);outline:none">
