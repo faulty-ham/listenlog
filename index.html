@@ -2863,12 +2863,13 @@ on('add-modal','mousedown',e=>{_modalMousedownOnOverlay = e.target.id==='add-mod
 // Enter key submits the active modal's primary action
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  // Don't intercept Enter inside textareas or when modifier keys held
   if (e.target.tagName === 'TEXTAREA') return;
   if (e.metaKey || e.ctrlKey) return;
   // Don't intercept inside search/filter inputs
   if (e.target.id === 'filter-search' || e.target.id === 'autofill-search-input' ||
       e.target.id === 'autofill-mb-input' || e.target.id === 'quick-add-mb') return;
+  // Don't intercept if a filter dropdown is open (item keydown handles it)
+  if (document.querySelector('.ms-dropdown.open')) return;
   // Find the open modal and click its primary button
   if (document.getElementById('add-modal').classList.contains('open')) {
     e.preventDefault(); document.getElementById('btn-save').click(); return;
