@@ -322,6 +322,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   font-size:12px;color:var(--text);cursor:pointer;transition:background .1s;
 }
 .ms-item:hover{background:var(--surface2)}
+.ms-item:focus{background:var(--surface2);outline:1px solid var(--accent);outline-offset:-1px}
 .ms-item input[type=checkbox]{accent-color:var(--accent);flex-shrink:0}
 /* Three-state check indicator */
 .tri-check{width:14px;height:14px;border-radius:3px;border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;line-height:1;transition:all .1s}
@@ -964,13 +965,19 @@ function buildDropdown(field, wrap) {
           const someActive = states.some(s => s);
           const item = document.createElement('div');
           item.className = 'ms-item';
+          item.tabIndex = 0;
           item.innerHTML = `<span class="tri-check ${allInclude?'tri-include':allExclude?'tri-exclude':someActive?'tri-mixed':''}"></span><span>${esc(decade)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">${albumCount} albums</span>`;
-          item.addEventListener('click', e => { e.stopPropagation();
+          const toggleDecade = () => {
             const cur = allInclude ? 'include' : allExclude ? 'exclude' : someActive ? 'include' : null;
             const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
             if (next) years.forEach(y => map.set(y, next));
             else years.forEach(y => map.delete(y));
             updateFilterButton(field, wrap); updateFilterPills(); render(); renderYear();
+          };
+          item.addEventListener('click', e => { e.stopPropagation(); toggleDecade(); });
+          item.addEventListener('keydown', e => {
+            if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleDecade(); }
+            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); closeDropdown(); }
           });
           list.appendChild(item);
         });
@@ -982,12 +989,18 @@ function buildDropdown(field, wrap) {
           const state = map.get(val) || null;
           const item = document.createElement('div');
           item.className = 'ms-item';
+          item.tabIndex = 0;
           item.innerHTML = `<span class="tri-check ${state==='include'?'tri-include':state==='exclude'?'tri-exclude':''}"></span><span${val==='no-date'?' style="color:var(--muted);font-style:italic"':''}>${esc(label)}</span>`;
-          item.addEventListener('click', e => { e.stopPropagation();
+          const toggleYear = () => {
             const cur = map.get(val) || null;
             const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
             if (next) map.set(val, next); else map.delete(val);
             updateFilterButton(field, wrap); updateFilterPills(); render(); renderYear();
+          };
+          item.addEventListener('click', e => { e.stopPropagation(); toggleYear(); });
+          item.addEventListener('keydown', e => {
+            if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleYear(); }
+            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); closeDropdown(); }
           });
           list.appendChild(item);
         });
@@ -1034,8 +1047,9 @@ function buildDropdown(field, wrap) {
       const state = map.get(val) || null;
       const item = document.createElement('div');
       item.className = 'ms-item';
+      item.tabIndex = 0;
       item.innerHTML = `<span class="tri-check ${state==='include'?'tri-include':state==='exclude'?'tri-exclude':''}"></span><span>${esc(label)}</span>`;
-      item.addEventListener('click', e => { e.stopPropagation();
+      const toggleItem = () => {
         const cur = map.get(val) || null;
         const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
         if (next) map.set(val, next); else map.delete(val);
@@ -1043,6 +1057,11 @@ function buildDropdown(field, wrap) {
         updateFilterPills();
         render();
         renderItems(filter);
+      };
+      item.addEventListener('click', e => { e.stopPropagation(); toggleItem(); });
+      item.addEventListener('keydown', e => {
+        if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleItem(); }
+        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); closeDropdown(); }
       });
       list.appendChild(item);
     });
@@ -1054,7 +1073,10 @@ function buildDropdown(field, wrap) {
   if (hasSearch) {
     const searchEl = dd.querySelector('.ms-search');
     searchEl.addEventListener('input', e => renderItems(e.target.value));
-    searchEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchEl.blur(); } });
+    searchEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); searchEl.blur(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); list.querySelector('.ms-item')?.focus(); }
+    });
     setTimeout(() => { searchEl.focus(); }, 50);
   }
 
