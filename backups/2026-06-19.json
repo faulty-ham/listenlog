@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-06-19T00:17:18.110431Z",
+  "exported_at": "2026-06-19T16:19:46.467811Z",
   "album_count": 2319,
   "albums": [
     {
@@ -18156,14 +18156,14 @@
       "added": 1781457501423,
       "album": "Songs From A Room",
       "genre": "",
-      "notes": "",
+      "notes": null,
       "artUrl": "https://lastfm.freetls.fastly.net/i/u/300x300/ca42773e930c435a9ca700bfa4e87774.png",
       "artist": "Leonard Cohen",
-      "rating": null,
+      "rating": 4,
       "unmatched": false,
       "hardToFind": false,
       "releaseType": "Album",
-      "wantToListen": true
+      "wantToListen": false
     },
     {
       "id": "mqe1stf32qrikjszmf7",
@@ -18171,14 +18171,14 @@
       "added": 1781457501423,
       "album": "Songs of Leonard Cohen",
       "genre": "",
-      "notes": "",
+      "notes": null,
       "artUrl": "https://lastfm.freetls.fastly.net/i/u/300x300/714bb7c07755e002d49f144bfcdfcdc7.jpg",
       "artist": "Leonard Cohen",
-      "rating": null,
+      "rating": 4,
       "unmatched": false,
       "hardToFind": false,
       "releaseType": "Album",
-      "wantToListen": true
+      "wantToListen": false
     },
     {
       "id": "mqe1stf3sa83sa8me8g",
@@ -18186,14 +18186,14 @@
       "added": 1781457501423,
       "album": "Songs of Love and Hate",
       "genre": "",
-      "notes": "",
+      "notes": null,
       "artUrl": "https://lastfm.freetls.fastly.net/i/u/300x300/51f0001e0488514abe02b64fdff1896b.jpg",
       "artist": "Leonard Cohen",
-      "rating": null,
+      "rating": 4,
       "unmatched": false,
       "hardToFind": false,
       "releaseType": "Album",
-      "wantToListen": true
+      "wantToListen": false
     },
     {
       "id": "mqe1stf338wz6ci7mos",
@@ -26733,13 +26733,13 @@
       "added": 1781457501423,
       "album": "New Forms",
       "genre": "",
-      "notes": "",
+      "notes": null,
       "artUrl": "https://lastfm.freetls.fastly.net/i/u/300x300/1e46093fadfb50a7b1776c085d7207c8.png",
       "artist": "Roni Size & Reprazent",
-      "rating": null,
+      "rating": 3,
       "unmatched": false,
       "hardToFind": false,
-      "wantToListen": true
+      "wantToListen": false
     },
     {
       "id": "mqe1stf3d4tljx01lv",
