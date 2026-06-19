@@ -2837,8 +2837,27 @@ on('search-clear','click',()=>{
 
 // Track whether a mousedown started on the overlay itself (not inside modal content)
 // This prevents drag-to-select inside inputs from closing the modal
-let _modalMousedownOnOverlay = false;
 on('add-modal','mousedown',e=>{_modalMousedownOnOverlay = e.target.id==='add-modal';});
+// Enter key submits the active modal's primary action
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  // Don't intercept Enter inside textareas or when modifier keys held
+  if (e.target.tagName === 'TEXTAREA') return;
+  if (e.metaKey || e.ctrlKey) return;
+  // Don't intercept inside search/filter inputs
+  if (e.target.id === 'filter-search' || e.target.id === 'autofill-search-input' ||
+      e.target.id === 'autofill-mb-input' || e.target.id === 'quick-add-mb') return;
+  // Find the open modal and click its primary button
+  if (document.getElementById('add-modal').classList.contains('open')) {
+    e.preventDefault(); document.getElementById('btn-save').click(); return;
+  }
+  if (document.getElementById('quick-rate-modal').classList.contains('open')) {
+    e.preventDefault(); document.getElementById('qr-save').click(); return;
+  }
+  if (document.getElementById('delete-modal').classList.contains('open')) {
+    e.preventDefault(); document.getElementById('delete-confirm').click(); return;
+  }
+});
 on('add-modal','click',e=>{
   if(e.target.id==='add-modal' && _modalMousedownOnOverlay) closePanel();
   else e.stopPropagation();
