@@ -2814,7 +2814,7 @@ on('btn-delete-entry','click',()=>{
 on('autofill-search-btn','click',runAutofillSearch);
 on('autofill-search-input','keydown',e=>{if(e.key==='Enter')runAutofillSearch();});
 on('autofill-mb-btn','click',()=>runMbForce(document.getElementById('autofill-mb-input').value.trim(),null));
-on('autofill-mb-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();runMbForce(e.target.value.trim(),null);}});
+on('autofill-mb-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur();runMbForce(e.target.value.trim(),null);}});
 on('quick-add-mb','keydown',async e=>{
   if(e.key!=='Enter')return;e.preventDefault();
   const raw=e.target.value.trim();e.target.value='';
