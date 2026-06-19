@@ -977,7 +977,7 @@ function buildDropdown(field, wrap) {
           item.addEventListener('click', e => { e.stopPropagation(); toggleDecade(); });
           item.addEventListener('keydown', e => {
             if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleDecade(); }
-            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); closeDropdown(); }
+            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); setTimeout(closeDropdown, 0); }
           });
           list.appendChild(item);
         });
@@ -1000,7 +1000,7 @@ function buildDropdown(field, wrap) {
           item.addEventListener('click', e => { e.stopPropagation(); toggleYear(); });
           item.addEventListener('keydown', e => {
             if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleYear(); }
-            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); closeDropdown(); }
+            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); setTimeout(closeDropdown, 0); }
           });
           list.appendChild(item);
         });
@@ -1061,7 +1061,7 @@ function buildDropdown(field, wrap) {
       item.addEventListener('click', e => { e.stopPropagation(); toggleItem(); });
       item.addEventListener('keydown', e => {
         if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleItem(); }
-        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); closeDropdown(); }
+        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); setTimeout(closeDropdown, 0); }
       });
       list.appendChild(item);
     });
