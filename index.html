@@ -152,16 +152,16 @@ tr.album-row.selected{background:#1a2518}
 td{padding:7px 10px;vertical-align:middle}
 
 /* ── ART CELL ── bigger, rounded like Letterboxd ── */
-.td-art{width:64px;padding-right:6px}
+.td-art{width:98px;padding-right:6px}
 .art-thumb{
-  width:56px;height:56px;border-radius:4px;object-fit:cover;
+  width:90px;height:90px;border-radius:4px;object-fit:cover;
   display:block;box-shadow:0 1px 4px rgba(0,0,0,.5);
   border:1px solid rgba(255,255,255,.05);
 }
 .art-placeholder{
-  width:56px;height:56px;border-radius:4px;background:var(--surface2);
+  width:90px;height:90px;border-radius:4px;background:var(--surface2);
   border:1px solid var(--border);display:flex;align-items:center;
-  justify-content:center;font-size:20px;color:var(--border);
+  justify-content:center;font-size:32px;color:var(--border);
 }
 
 /* ── TEXT CELLS ── */
@@ -432,7 +432,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   table,tbody,tr.album-row,td{display:block;width:100%}
   tr.album-row{
     display:grid;
-    grid-template-columns:68px 1fr auto;
+    grid-template-columns:98px 1fr auto;
     grid-template-rows:auto auto auto;
     padding:6px 12px;gap:1px 10px;
     border-bottom:1px solid var(--border);
@@ -442,7 +442,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   tr.album-row td:nth-child(1){grid-column:1;grid-row:1/4;align-self:stretch;display:flex;align-items:center}
   /* Make art fill row on mobile */
   tr.album-row td:nth-child(1) .art-thumb,
-  tr.album-row td:nth-child(1) .art-placeholder{width:60px;height:60px;border-radius:4px}
+  tr.album-row td:nth-child(1) .art-placeholder{width:90px;height:90px;border-radius:4px}
   tr.album-row td:nth-child(2){grid-column:2;grid-row:1;font-size:13px}
   tr.album-row td:nth-child(3){grid-column:2;grid-row:2;font-size:12px}
   tr.album-row td:nth-child(4){grid-column:2;grid-row:3;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
