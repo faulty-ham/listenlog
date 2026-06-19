@@ -1844,7 +1844,8 @@ function addOrUpdateAlbum() {
     // Preserve rating/tags/notes from existing — these are managed via Quick Rate
     rating:existing.rating||null,
     notes:existing.notes||null,
-    wantToListen:existing.wantToListen||false,
+    // New entries default to "want to listen"; existing entries preserve their tags
+    wantToListen:editingId ? (existing.wantToListen||false) : true,
     hardToFind:existing.hardToFind||false,
     // Clear unmatched if a match was applied (autofill result present, or art was set)
     unmatched:existing.unmatched&&!document.getElementById('autofill-card').dataset.found&&!pendingArtUrl||false,
@@ -2846,6 +2847,8 @@ on('quick-add-mb','keydown',async e=>{
   if(e.key!=='Enter')return;e.preventDefault();
   const raw=e.target.value.trim();e.target.value='';
   await runMbForce(raw,()=>{editingId=null;resetForm();openPanel('add');});
+  // Focus save button so a second Enter submits immediately
+  setTimeout(()=>document.getElementById('btn-save')?.focus(),100);
 });
 
 on('filter-search','input',e=>{
