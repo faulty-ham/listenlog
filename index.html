@@ -2762,8 +2762,10 @@ on('qr-save','click',()=>{
   document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
 });
 on('qr-cancel','click',()=>{document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;});
+let _qrMousedownOnOverlay = false;
+on('quick-rate-modal','mousedown',e=>{_qrMousedownOnOverlay = e.target.id==='quick-rate-modal';});
 on('quick-rate-modal','click',e=>{
-  if(e.target.id==='quick-rate-modal'){document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;}
+  if(e.target.id==='quick-rate-modal' && _qrMousedownOnOverlay){document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;}
   else e.stopPropagation();
 });
 
@@ -2833,14 +2835,20 @@ on('search-clear','click',()=>{
   const cl=document.getElementById('search-clear');if(cl)cl.style.display='none';
 });
 
+// Track whether a mousedown started on the overlay itself (not inside modal content)
+// This prevents drag-to-select inside inputs from closing the modal
+let _modalMousedownOnOverlay = false;
+on('add-modal','mousedown',e=>{_modalMousedownOnOverlay = e.target.id==='add-modal';});
 on('add-modal','click',e=>{
-  if(e.target.id==='add-modal') closePanel();
-  else e.stopPropagation(); // prevent clicks inside modal reaching tr underneath
+  if(e.target.id==='add-modal' && _modalMousedownOnOverlay) closePanel();
+  else e.stopPropagation();
 });
 on('delete-confirm','click',doDelete);
 on('delete-cancel','click',()=>{document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;});
+let _delMousedownOnOverlay = false;
+on('delete-modal','mousedown',e=>{_delMousedownOnOverlay = e.target.id==='delete-modal';});
 on('delete-modal','click',e=>{
-  if(e.target.id==='delete-modal'){document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;}
+  if(e.target.id==='delete-modal' && _delMousedownOnOverlay){document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;}
   else e.stopPropagation();
 });
 
