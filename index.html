@@ -44,9 +44,7 @@
   font-family:'DM Mono',monospace;z-index:20;display:flex;align-items:center;gap:5px;
 }
 @media(max-width:700px){#sync-indicator{display:none!important}}
-.sync-dot{width:6px;height:6px;border-radius:50%;background:#738a9a;flex-shrink:0}
-.sync-dot.ok{background:#00c030}.sync-dot.err{background:#c97a7a}.sync-dot.busy{background:#e8c97a;animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+50%{opacity:.4}}
 </style>
 <style>
 :root {
@@ -115,7 +113,6 @@ button{font-family:'DM Mono',monospace;font-size:12px;border:none;cursor:pointer
 /* ── IMPORT PANEL ── */
 #import-status.ok{color:var(--good)}
 /* ── PROGRESS BAR ── */
-.btn-pause:hover{border-color:var(--accent);color:var(--accent)}
 
 /* ── GLOBAL PROGRESS BAR ── */
 
@@ -174,7 +171,6 @@ td{padding:7px 10px;vertical-align:middle}
 .clear-btn{color:var(--accent);cursor:pointer;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;padding:0;text-decoration:underline}
 
 /* ── BULK BAR ── */
-#bulk-bar{display:none;position:sticky;top:44px;z-index:9;background:var(--surface2);border-bottom:1px solid var(--border);padding:7px 40px;align-items:center;gap:10px;font-size:11px;color:var(--muted)}
 input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;flex-shrink:0}
 
 /* ── MODAL ── */
@@ -194,7 +190,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden;
   transition:border-color .2s,background .2s;
 }
-.rescan-col{padding:12px 14px;min-width:0} /* min-width:0 allows grid cell to shrink below content */
+ /* min-width:0 allows grid cell to shrink below content */
 /* Allow text to wrap — never clip the title */
 /* Actions: fixed 120px column, never shrinks, buttons centered and large */
 .thumb-btn{
@@ -304,15 +300,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);
   align-items:center;
 }
-.form-action-main{flex:2}
-.form-action-cancel{flex:1}
-.btn-danger-sm{
-  flex:1;font-family:'DM Mono',monospace;font-size:12px;
-  background:none;border:1px solid var(--danger);color:var(--danger);
-  border-radius:var(--radius);padding:6px 8px;cursor:pointer;white-space:nowrap;
-  transition:background .15s;
-}
-.btn-danger-sm:hover{background:rgba(201,122,122,.15)}
 .quick-rate-card{width:360px;max-width:95vw;padding:24px}
 .qr-album-info{display:flex;gap:12px;align-items:center;margin-bottom:20px}
 .qr-art{width:56px;height:56px;border-radius:4px;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
@@ -374,8 +361,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   .modal,.modal.wide,.quick-rate-card{width:96vw!important;max-width:96vw!important;padding:16px;max-height:90vh;overflow-y:auto}
   #filter-pills{padding:5px 12px}
   .filter-pill{font-size:10px}
-  #bulk-bar{top:0}
-  /* Quick-rate stars slightly smaller on mobile */
+    /* Quick-rate stars slightly smaller on mobile */
   .qr-stars .star-btn{font-size:52px;width:60px;height:60px}
 }
 </style>
@@ -450,16 +436,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
 <!-- ACTIVE FILTER PILLS -->
 <div id="filter-pills"></div>
-
-  <div class="progress-track"><div class="progress-fill" id="gprogress-fill"></div></div>
-  <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--muted)">
-    <span><span style="color:var(--good)" id="gprog-found">0</span> matched &nbsp;
-          <span id="gprog-skipped">0</span> unchanged &nbsp;
-          <span style="color:var(--danger)" id="gprog-failed">0</span> not found</span>
-    <span id="gprog-eta"></span>
-  </div>
-</div>
-
 <!-- ADD/EDIT MODAL -->
 <div class="modal-overlay" id="add-modal">
   <div class="modal" style="width:520px">
@@ -695,7 +671,6 @@ function getLabel(field, value) {
 }
 
 // ── Dropdown builder ─────────────────────────────────────────
-let openDropdown = null;
 
 function buildDropdown(field, wrap) {
   const existing = wrap.querySelector('.ms-dropdown');
@@ -1113,10 +1088,6 @@ function resetForm() {
 // ── Autofill card display ────────────────────────────────────
 
 
-
-// ════════════════════════════════════════════════════════════
-// LOOKUP ENGINE — all sources run in parallel, MusicBrainz primary
-// ════════════════════════════════════════════════════════════
 
 // ── MusicBrainz (best date accuracy) ─────────────────────────
 
