@@ -1095,7 +1095,6 @@ function esc(s) {
 // FORM MODAL
 // ════════════════════════════════════════════════════════════
 function openPanel(mode) {
-  closeImportPanel();
   document.getElementById('add-modal-title').textContent = mode==='edit' ? 'Edit Entry' : 'New Entry';
   document.getElementById('btn-save').textContent = mode==='edit' ? 'Update Entry' : 'Save Entry';
   document.getElementById('btn-delete-entry').style.display = mode==='edit' ? '' : 'none';
@@ -1372,7 +1371,6 @@ on('delete-modal','click',e=>{
 
 
 render();
-updateRescanButton();
 rebuildOriginalIdIndex();
 syncMobileSort();
 } // end initApp
