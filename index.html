@@ -159,6 +159,8 @@ td{padding:7px 10px;vertical-align:middle}
 .badge{font-size:9px;text-transform:uppercase;letter-spacing:.1em;border-radius:20px;padding:2px 7px;white-space:nowrap;font-family:'DM Mono',monospace}
 .badge-want{background:rgba(122,176,201,.12);color:var(--want);border:1px solid rgba(122,176,201,.25)}
 .badge-hard{background:rgba(201,153,122,.12);color:var(--hard);border:1px solid rgba(201,153,122,.25)}
+.src-badge{font-size:9px;padding:2px 6px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace}
+.src-mb{background:rgba(122,153,201,.12);border-color:rgba(122,153,201,.3);color:#7a99c9}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
 
 /* ── EMPTY STATE ── */
@@ -456,6 +458,24 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
         <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="width:100%">
       </div>
     </div><!-- MB LINK -->
+
+    <!-- MATCH RESULT — shown after MB force match -->
+    <div id="match-card" style="display:none;margin-bottom:10px">
+      <div style="display:flex;gap:12px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+        <div id="match-art-slot" style="width:64px;height:64px;border-radius:4px;background:var(--surface);border:1px solid var(--border);flex-shrink:0;overflow:hidden">
+          <img id="match-art" style="width:64px;height:64px;object-fit:cover;display:none" alt="">
+        </div>
+        <div style="min-width:0;flex:1">
+          <div id="match-artist" style="font-weight:600;color:var(--text-hi);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+          <div id="match-album-name" style="font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px"></div>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+            <span id="match-date" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace"></span>
+            <span class="src-badge src-mb">MB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
       <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">MB link</label>
       <input class="rescan-search-input" id="autofill-mb-input" placeholder="Paste MusicBrainz URL or release ID" style="flex:1;font-size:11px;padding:5px 8px">
@@ -1083,6 +1103,8 @@ function closePanel() {
 function resetForm() {
   ['f-artist','f-album','f-date'].forEach(id => document.getElementById(id).value='');
   document.getElementById('autofill-mb-input').value='';
+  document.getElementById('match-card').style.display='none';
+  document.getElementById('match-art').style.display='none';
   pendingArtUrl='';
 }
 
@@ -1147,7 +1169,18 @@ function editAlbum(id) {
   document.getElementById('f-album').value=a.album;
   document.getElementById('f-date').value=a.date||'';
   pendingArtUrl=a.artUrl||'';
-  // Show existing art/data in autofill card
+  // Show existing art if available
+  if (a.artUrl) {
+    document.getElementById('match-artist').textContent     = a.artist;
+    document.getElementById('match-album-name').textContent = a.album;
+    document.getElementById('match-date').textContent       = a.date||'';
+    const artEl = document.getElementById('match-art');
+    artEl.src = a.artUrl; artEl.style.display='block';
+    artEl.onerror = () => artEl.style.display='none';
+    document.getElementById('match-card').style.display='block';
+  } else {
+    document.getElementById('match-card').style.display='none';
+  }
   openPanel('edit');
 }
 
@@ -1352,16 +1385,17 @@ function applyMbResult(result) {
   document.getElementById('f-album').value  = result.matchedAlbum||'';
   if (result.date) document.getElementById('f-date').value = result.date;
   pendingArtUrl = result.art||'';
-  document.getElementById('autofill-artist').textContent     = result.matchedArtist||'';
-  document.getElementById('autofill-album-name').textContent = result.matchedAlbum||'';
-  document.getElementById('autofill-date').textContent       = result.date||'—';
-  document.getElementById('autofill-conf').innerHTML         = '<span class="conf-pill conf-high-pill">100%</span>';
-  document.getElementById('autofill-src').textContent        = 'MB';
-  document.getElementById('autofill-src').className          = 'src-badge src-mb';
-  const artEl = document.getElementById('autofill-art');
-  if (result.art) { artEl.src=result.art; artEl.style.display='block'; artEl.onerror=()=>artEl.style.display='none'; }
-  else artEl.style.display='none';
+  // Show match card with art
+  document.getElementById('match-artist').textContent     = result.matchedArtist||'';
+  document.getElementById('match-album-name').textContent = result.matchedAlbum||'';
+  document.getElementById('match-date').textContent       = result.date||'';
+  const artEl = document.getElementById('match-art');
+  if (result.art) { artEl.src=result.art; artEl.style.display='block'; artEl.onerror=()=>{artEl.style.display='none';}; }
+  else { artEl.style.display='none'; }
+  document.getElementById('match-card').style.display='block';
   document.getElementById('autofill-mb-input').value='';
+  const ferr = document.getElementById('form-error');
+  if (ferr) ferr.textContent='';
 }
 
 async function mbidLookup(mbid) {
