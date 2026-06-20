@@ -553,6 +553,7 @@ let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
 let editingId = null, pendingDeleteId = null;
 const bulkMode = false, selectedIds = new Set(); // bulk select removed but render still checks these
+let openDropdown = null;
 let pendingArtUrl = '';
 let sortKey = 'date', sortDir = -1;
 
