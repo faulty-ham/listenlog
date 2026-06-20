@@ -1364,6 +1364,25 @@ function applyMbResult(result) {
   document.getElementById('autofill-mb-input').value='';
 }
 
+async function mbidLookup(mbid) {
+  try {
+    const r = await fetch(
+      `https://musicbrainz.org/ws/2/release/${mbid}?inc=artist-credits+release-groups&fmt=json`,
+      { headers: { 'User-Agent': 'ListenLog/1.0' } }
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    const artist = data['artist-credit']?.[0]?.artist?.name || '';
+    const album  = data.title || '';
+    const date   = data['first-release-date'] || data.date || null;
+    const rgid   = data['release-group']?.id || null;
+    const art    = rgid
+      ? `https://coverartarchive.org/release-group/${rgid}/front`
+      : `https://coverartarchive.org/release/${mbid}/front`;
+    return { matchedArtist: artist, matchedAlbum: album, date, art };
+  } catch(e) { return null; }
+}
+
 async function runMbForce(raw, onOpen) {
   if (!raw) return;
   const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
