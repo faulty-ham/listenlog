@@ -1402,28 +1402,36 @@ async function mbidLookup(mbid) {
   try {
     const r = await fetch(
       `https://musicbrainz.org/ws/2/release/${mbid}?inc=artist-credits+release-groups&fmt=json`,
-      { headers: { 'User-Agent': 'ListenLog/1.0' } }
+      { headers: { 'User-Agent': 'ListenLog/1.0 (https://faulty-ham.github.io/listenlog)' } }
     );
-    if (!r.ok) return null;
+    if (!r.ok) {
+      console.error('MusicBrainz error:', r.status, r.statusText);
+      return null;
+    }
     const data = await r.json();
-    const artist = data['artist-credit']?.[0]?.artist?.name || '';
+    const artist = (data['artist-credit']?.[0]?.artist?.name) || (data['artist-credit']?.[0]?.name) || '';
     const album  = data.title || '';
-    const date   = data['first-release-date'] || data.date || null;
+    const date   = data.date || data['first-release-date'] || data['release-group']?.['first-release-date'] || null;
     const rgid   = data['release-group']?.id || null;
     const art    = rgid
       ? `https://coverartarchive.org/release-group/${rgid}/front`
       : `https://coverartarchive.org/release/${mbid}/front`;
     return { matchedArtist: artist, matchedAlbum: album, date, art };
-  } catch(e) { return null; }
+  } catch(e) {
+    console.error('mbidLookup error:', e);
+    return null;
+  }
 }
 
 async function runMbForce(raw, onOpen) {
   if (!raw) return;
   const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
   if (!mbid) { alert('No valid MusicBrainz ID found in that link.'); return; }
-  if (document.getElementById('form-error')) document.getElementById('form-error').textContent = '';
+  const ferr = document.getElementById('form-error');
+  if (ferr) ferr.textContent = '⟳ Looking up…';
   const result = await mbidLookup(mbid);
-  if (!result) { alert('MusicBrainz lookup failed — check the link and try again.'); return; }
+  if (ferr) ferr.textContent = '';
+  if (!result) { alert('MusicBrainz lookup failed. Check the browser console for details, or try again in a moment.'); return; }
   if (onOpen) onOpen();
   applyMbResult(result);
 }
@@ -1509,18 +1517,32 @@ async function pullFromCloud(retrying=false) {
       .single();
     if (error && error.code !== 'PGRST116') throw error;
     if (data) {
-      albums    = data.albums    || [];
-      originals = data.originals || {};
-      localStorage.setItem('listenLog',     JSON.stringify(albums));
-      localStorage.setItem('listenLogOrig', JSON.stringify(originals));
+      const remoteAlbums = data.albums || [];
+      const localAlbums  = albums; // already loaded from localStorage at startup
+      // If local has changes Supabase doesn't (e.g. unsaved edit before tab closed),
+      // check for any albums with a more recent 'added' timestamp or different data.
+      // Simple heuristic: if local has more albums, or if local has an entry that
+      // Supabase doesn't, push local up instead of pulling Supabase down.
+      const remoteIds = new Set(remoteAlbums.map(a => a.id));
+      const localHasExtra = localAlbums.some(a => !remoteIds.has(a.id));
+      const localNewer = localAlbums.length > 0 && localHasExtra;
+      if (localNewer) {
+        // Local has data Supabase doesn't — push up instead
+        console.log('Local data is ahead of Supabase — pushing up');
+        await pushToCloud();
+      } else {
+        albums    = remoteAlbums;
+        originals = data.originals || {};
+        localStorage.setItem('listenLog',     JSON.stringify(albums));
+        localStorage.setItem('listenLogOrig', JSON.stringify(originals));
+      }
     }
     setSyncStatus('ok', 'synced');
     render();
-      rebuildOriginalIdIndex();
+    rebuildOriginalIdIndex();
   } catch(e) {
     console.error('Pull error:', e);
     if (!retrying) {
-      // Silent retry after 3s before showing error
       setTimeout(() => pullFromCloud(true), 3000);
     } else {
       setSyncStatus('err', 'sync error');
