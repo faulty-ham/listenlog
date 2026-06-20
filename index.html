@@ -503,8 +503,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <table id="album-table">
     <thead>
       <tr>
-        <th class="th-check" id="th-check" style="display:none"><input type="checkbox" id="th-check-cb"></th>
-        <th class="td-art"></th>
+          <th class="td-art"></th>
         <th data-sort="artist">Artist <span class="sa">↕</span></th>
         <th data-sort="album">Album <span class="sa">↕</span></th>
         <th data-sort="date">Release <span class="sa">↕</span></th>
@@ -572,7 +571,6 @@ let albums    = JSON.parse(localStorage.getItem('listenLog')    || '[]');
 let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
 let editingId = null, pendingDeleteId = null;
-const bulkMode = false, selectedIds = new Set(); // bulk select removed but render still checks these
 let openDropdown = null;
 let pendingArtUrl = '';
 let sortKey = 'date', sortDir = -1;
@@ -997,15 +995,6 @@ function render() {
 
   document.getElementById('empty-state').style.display = list.length ? 'none' : 'block';
 
-  // Update bulk count
-  if (bulkMode) {
-    const vis = list.filter(a=>selectedIds.has(a.id)).length;
-    const bc = document.getElementById('bulk-count');
-    if (bc) bc.textContent = `${selectedIds.size} selected`;
-    document.getElementById('th-check-cb').indeterminate = vis > 0 && vis < list.length;
-    document.getElementById('th-check-cb').checked = list.length > 0 && vis === list.length;
-  }
-
   document.querySelectorAll('th[data-sort]').forEach(th => {
     th.classList.toggle('sorted', th.dataset.sort===sortKey);
     const arr=th.querySelector('.sa');
@@ -1014,28 +1003,20 @@ function render() {
 
   list.forEach(a => {
     const tr = document.createElement('tr');
-    tr.className = 'album-row' + (selectedIds.has(a.id) ? ' selected' : '');
+    tr.className = 'album-row';
     tr.addEventListener('click', e => {
-      if (bulkMode) return;
       if (e.target.closest('button,input')) return;
-      // On mobile (cards): split by horizontal position — left half = edit, right half = quick-rate
       const isMobile = window.innerWidth <= 700;
       if (isMobile) {
         const rect = tr.getBoundingClientRect();
-        const mid  = rect.left + rect.width / 2;
-        if (e.clientX >= mid) openQuickRate(a.id);
+        if (e.clientX >= rect.left + rect.width / 2) openQuickRate(a.id);
         else editAlbum(a.id);
         return;
       }
-      // Desktop: rating (col 5), tags (col 6), notes (col 7) → quick-rate
       const td = e.target.closest('td');
-      const tds = [...tr.querySelectorAll('td')];
-      const tdIdx = tds.indexOf(td);
-      if (tdIdx === 4 || tdIdx === 5 || tdIdx === 6) {
-        openQuickRate(a.id);
-      } else {
-        editAlbum(a.id);
-      }
+      const tdIdx = [...tr.querySelectorAll('td')].indexOf(td);
+      if (tdIdx === 4 || tdIdx === 5 || tdIdx === 6) openQuickRate(a.id);
+      else editAlbum(a.id);
     });
     const tags = [
       a.wantToListen ? '<span class="badge badge-want">🎧 want</span>' : '',
@@ -1043,11 +1024,7 @@ function render() {
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
     ].filter(Boolean).join(' ');
 
-    const checkCell = bulkMode
-      ? `<td><input type="checkbox" class="row-cb" data-id="${a.id}" ${selectedIds.has(a.id)?'checked':''}></td>`
-      : '';
-
-    tr.innerHTML = `${checkCell}
+    tr.innerHTML = `
       <td class="td-art">${a.artUrl
         ? `<img class="art-thumb" src="${esc(a.artUrl)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
         : `<div class="art-placeholder">♪</div>`}</td>
@@ -1056,22 +1033,9 @@ function render() {
       <td class="td-date">${esc(a.date||'—')}</td>
       <td>${a.rating ? starsHTML(a.rating) : '<span style="color:var(--border);font-size:11px">—</span>'}</td>
       <td><div class="row-tags">${tags||'<span style="color:var(--border);font-size:11px">—</span>'}</div></td>
-      <td class="td-notes" title="${esc(a.notes||'')}">${esc(a.notes||'—')}</td>
-      <td></td>`;
+      <td class="td-notes" title="${esc(a.notes||'')}">${esc(a.notes||'—')}</td>`;
     tbody.appendChild(tr);
   });
-
-  // Checkbox listeners
-  if (bulkMode) {
-    tbody.querySelectorAll('.row-cb').forEach(cb => {
-      cb.addEventListener('change', () => {
-        const id = cb.dataset.id;
-        if (cb.checked) selectedIds.add(id); else selectedIds.delete(id);
-        updateBulkBar();
-        cb.closest('tr').classList.toggle('selected', cb.checked);
-      });
-    });
-  }
 
   updateDropdowns();
 }
@@ -1083,9 +1047,6 @@ function esc(s) {
 // ════════════════════════════════════════════════════════════
 // BULK SELECT MODE
 // ════════════════════════════════════════════════════════════
-
-
-
 
 // ════════════════════════════════════════════════════════════
 // FORM MODAL
@@ -1110,30 +1071,19 @@ function resetForm() {
 
 // ── Autofill card display ────────────────────────────────────
 
-
-
 // ── MusicBrainz (best date accuracy) ─────────────────────────
-
 
 // ── Last.fm (best art, large catalog) ────────────────────────
 
-
 // ── iTunes ────────────────────────────────────────────────────
-
 
 // ── Discogs ───────────────────────────────────────────────────
 
-
 // ── Force-match: paste a MusicBrainz release URL or bare MBID ─
-
 
 // ── Master: all sources run in parallel ──────────────────────
 
-
 // Shim used by manual auto-fill button
-
-
-
 
 // ════════════════════════════════════════════════════════════
 // CRUD
@@ -1216,10 +1166,6 @@ function syncQrToggles() {
   h.classList.toggle('on', qrHard);
   u.classList.toggle('on', qrUnmatched);
 }
-function confirmDelete(id,label) {
-  pendingDeleteId=id; document.getElementById('delete-desc').textContent=`Remove "${label}"?`;
-  document.getElementById('delete-modal').classList.add('open');
-}
 function doDelete() {
   if(pendingDeleteId){albums=albums.filter(a=>a.id!==pendingDeleteId);save();render();}
   document.getElementById('delete-modal').classList.remove('open'); pendingDeleteId=null;
@@ -1228,16 +1174,6 @@ function doDelete() {
 // ════════════════════════════════════════════════════════════
 // RATE-LIMITED REQUEST QUEUE
 // — iTunes 429s silently (returns 0 results). We serialize all
-//   HTTP requests through one queue with a minimum gap + jitter.
-// ════════════════════════════════════════════════════════════
-
-
-const REQ_INTERVAL_MS = 120;   // min ms between any two HTTP requests
-let   lastReqTime     = 0;
-
-
-
-
 
 // SORT & EVENTS
 // ════════════════════════════════════════════════════════════
@@ -1303,7 +1239,6 @@ on('quick-rate-modal','click',e=>{
 });
 
 on('btn-toggle-add','click',()=>{editingId=null;resetForm();openPanel('add');});
-
 
 on('btn-cancel','click',closePanel);
 on('btn-save','click',addOrUpdateAlbum);
@@ -1373,7 +1308,6 @@ on('delete-modal','click',e=>{
   if(e.target.id==='delete-modal' && _delMousedownOnOverlay){document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;}
   else e.stopPropagation();
 });
-
 
 render();
 rebuildOriginalIdIndex();
