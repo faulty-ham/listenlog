@@ -1398,6 +1398,14 @@ const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 let _syncTimeout = null;
 let _userId = null;
 
+// Flush any pending save immediately when the tab is closed or navigated away
+window.addEventListener('beforeunload', () => {
+  if (_syncTimeout) {
+    clearTimeout(_syncTimeout);
+    pushToCloud();
+  }
+});
+
 function setSyncStatus(state, label) {
   const dot = document.getElementById('sync-dot');
   const lbl = document.getElementById('sync-label');
@@ -1409,12 +1417,12 @@ function setSyncStatus(state, label) {
 function save() {
   localStorage.setItem('listenLog', JSON.stringify(albums));
   clearTimeout(_syncTimeout);
-  _syncTimeout = setTimeout(pushToCloud, 1500);
+  _syncTimeout = setTimeout(pushToCloud, 300);
 }
 function saveOriginals() {
   localStorage.setItem('listenLogOrig', JSON.stringify(originals));
   clearTimeout(_syncTimeout);
-  _syncTimeout = setTimeout(pushToCloud, 1500);
+  _syncTimeout = setTimeout(pushToCloud, 300);
 }
 
 async function pushToCloud(retrying=false) {
