@@ -1377,6 +1377,10 @@ on('delete-modal','click',e=>{
 
 render();
 rebuildOriginalIdIndex();
+on('mobile-sort','change',e=>{
+  const [key,dir]=e.target.value.split('-');
+  sortKey=key; sortDir=dir==='asc'?1:-1; render();
+});
 syncMobileSort();
 } // end initApp
 
