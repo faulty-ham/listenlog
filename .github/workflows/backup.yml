@@ -2,7 +2,7 @@ name: Daily Backup
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # 6am UTC daily (11pm Pacific / 2am Eastern)
+    - cron: '0 11 * * *'   # 4am PDT (UTC-7)
   workflow_dispatch:        # also allows manual trigger from GitHub Actions tab
 
 permissions:
