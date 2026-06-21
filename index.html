@@ -169,7 +169,7 @@ td{padding:7px 10px;vertical-align:middle}
 .empty-state .ei{font-size:48px;margin-bottom:16px;opacity:.25}
 
 /* ── FILTER COUNT ── */
-.filter-count{font-size:11px;color:var(--muted);padding:10px 40px 0;display:flex;align-items:center;gap:8px}
+.filter-count{font-size:11px;color:var(--muted);padding:5px 40px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
 .pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:10px}
 .clear-btn{color:var(--accent);cursor:pointer;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;padding:0;text-decoration:underline}
 
@@ -441,6 +441,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
 <!-- ACTIVE FILTER PILLS -->
 <div id="filter-pills"></div>
+<div class="filter-count" id="filter-count" style="display:none"></div>
 </div><!-- /sticky-controls -->
 
 <!-- ADD/EDIT MODAL -->
@@ -499,9 +500,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 </div>
 
 <!-- CSV IMPORT PANEL -->
-
-<!-- FILTER COUNT -->
-<div class="filter-count" id="filter-count" style="display:none"></div>
 
 <!-- TABLE -->
 <div class="table-wrap">
