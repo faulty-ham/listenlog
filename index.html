@@ -120,8 +120,8 @@ button{font-family:'DM Mono',monospace;font-size:12px;border:none;cursor:pointer
 /* ── GLOBAL PROGRESS BAR ── */
 
 /* ── TABLE — Letterboxd style ── */
-.table-wrap{flex:1;min-height:0;overflow-y:auto;overflow-x:auto;display:flex;flex-direction:column}
-table{width:100%;border-collapse:collapse;table-layout:auto;align-self:flex-start;min-width:100%}
+.table-wrap{flex:1;min-height:0;overflow-y:auto;overflow-x:auto}
+table{width:100%;border-collapse:collapse}
 thead{position:sticky;top:0;z-index:5;background:var(--surface);box-shadow:0 1px 0 var(--border)}
 thead tr{border-bottom:none}
 th{text-align:left;padding:10px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:400;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s}
@@ -442,8 +442,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <option value="rating-asc">Rating ↑</option>
     </select>
   </div>
-</div>
-
 </div>
 
 <!-- ACTIVE FILTER PILLS -->
