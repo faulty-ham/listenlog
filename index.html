@@ -1027,7 +1027,7 @@ function render() {
 
     tr.innerHTML = `
       <td class="td-art">${a.artUrl
-        ? `<img class="art-thumb" src="${esc(a.artUrl)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
+        ? `<img class="art-thumb lazy" data-src="${esc(a.artUrl)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
         : `<div class="art-placeholder">♪</div>`}</td>
       <td class="td-artist">${esc(a.artist)}</td>
       <td class="td-album"><em>${esc(a.album)}</em></td>
@@ -1039,6 +1039,21 @@ function render() {
   });
 
   updateDropdowns();
+  observeLazyImages();
+}
+
+// ── Lazy image loader ─────────────────────────────────────────
+const _imgObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const img = e.target;
+    if (img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
+    _imgObserver.unobserve(img);
+  });
+}, { rootMargin: '200px' });
+
+function observeLazyImages() {
+  document.querySelectorAll('img.lazy[data-src]').forEach(img => _imgObserver.observe(img));
 }
 
 function esc(s) {
