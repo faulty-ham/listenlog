@@ -69,7 +69,8 @@ header{padding:28px 40px 20px;border-bottom:1px solid var(--border);display:flex
 .stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-top:3px}
 
 /* ── TOOLBAR ── */
-.toolbar{padding:9px 40px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10}
+.sticky-controls{position:sticky;top:0;z-index:10;background:var(--surface)}
+.toolbar{padding:9px 40px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface)}
 input[type="text"],select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 9px;border-radius:var(--radius);outline:none;transition:border-color .15s}
 input[type="text"]:focus,select:focus{border-color:var(--accent)}
 select option{background:#1f2328}
@@ -276,7 +277,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 /* ── ACTIVE FILTER PILLS (below toolbar) ── */
 #filter-pills{
   display:none;padding:6px 40px;gap:6px;flex-wrap:wrap;align-items:center;
-  background:var(--surface);border-bottom:1px solid var(--border);
+  border-bottom:1px solid var(--border);
 }
 #filter-pills.visible{display:flex}
 .filter-pill{
@@ -327,6 +328,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   .header-stats{display:none}
   .mobile-hidden{display:none!important}
   /* Toolbar: two clean rows */
+  .sticky-controls{position:sticky;top:0;z-index:10}
   .toolbar{padding:6px 12px;gap:0;flex-direction:column;align-items:stretch}
   .toolbar-top-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
   .toolbar-filter-row{display:flex;gap:4px;align-items:center}
@@ -405,6 +407,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   </div>
 </header>
 
+<div class="sticky-controls">
 <div class="toolbar">
   <div class="toolbar-top-row">
     <button class="btn-primary" id="btn-toggle-add">+ Add Album</button><div class="search-wrap">
@@ -438,6 +441,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
 <!-- ACTIVE FILTER PILLS -->
 <div id="filter-pills"></div>
+</div><!-- /sticky-controls -->
+
 <!-- ADD/EDIT MODAL -->
 <div class="modal-overlay" id="add-modal">
   <div class="modal" style="width:520px">
