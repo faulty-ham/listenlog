@@ -981,6 +981,12 @@ function render() {
   const tbody = document.getElementById('album-tbody');
   if (!tbody) return; // DOM not ready yet
   const list = getSorted(getFiltered());
+  // Snapshot already-loaded artwork so we can reuse src after re-render
+  const loadedArt = {};
+  tbody.querySelectorAll('tr[data-id]').forEach(row => {
+    const img = row.querySelector('img.art-thumb:not(.lazy)');
+    if (img?.src) loadedArt[row.dataset.id] = img.src;
+  });
   tbody.innerHTML = '';
 
   const rated = albums.filter(a=>a.rating);
@@ -1025,9 +1031,11 @@ function render() {
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
     ].filter(Boolean).join(' ');
 
+    const alreadyLoaded = loadedArt[a.id];
+    tr.dataset.id = a.id;
     tr.innerHTML = `
       <td class="td-art">${a.artUrl
-        ? `<img class="art-thumb lazy" data-src="${esc(a.artUrl)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
+        ? `<img class="art-thumb${alreadyLoaded ? '' : ' lazy'}" ${alreadyLoaded ? `src="${esc(alreadyLoaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
         : `<div class="art-placeholder">♪</div>`}</td>
       <td class="td-artist">${esc(a.artist)}</td>
       <td class="td-album"><em>${esc(a.album)}</em></td>
@@ -1050,10 +1058,19 @@ const _imgObserver = new IntersectionObserver(entries => {
     if (img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
     _imgObserver.unobserve(img);
   });
-}, { rootMargin: '200px' });
+}, { rootMargin: '600px' }); // load images 600px before they enter viewport
 
 function observeLazyImages() {
-  document.querySelectorAll('img.lazy[data-src]').forEach(img => _imgObserver.observe(img));
+  document.querySelectorAll('img.lazy[data-src]').forEach(img => {
+    // If already in or near viewport, load immediately
+    const rect = img.getBoundingClientRect();
+    if (rect.top < window.innerHeight + 600) {
+      img.src = img.dataset.src;
+      delete img.dataset.src;
+    } else {
+      _imgObserver.observe(img);
+    }
+  });
 }
 
 function esc(s) {
