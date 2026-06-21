@@ -859,7 +859,6 @@ function buildDropdown(field, wrap) {
       if (e.key === 'Enter') { e.preventDefault(); searchEl.blur(); }
       if (e.key === 'ArrowDown') { e.preventDefault(); list.querySelector('.ms-item')?.focus(); }
     });
-    setTimeout(() => { searchEl.focus(); }, 50);
   }
 
   const footer = document.createElement('div');
@@ -873,6 +872,8 @@ function buildDropdown(field, wrap) {
 
   wrap.appendChild(dd);
   openDropdown = dd;
+  // Focus search input immediately — must be synchronous within the click handler for mobile keyboard
+  if (hasSearch) dd.querySelector('.ms-search')?.focus();
   setTimeout(() => document.addEventListener('click', onOutsideClick, { once: true }), 0);
 }
 
