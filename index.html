@@ -120,16 +120,21 @@ button{font-family:'DM Mono',monospace;font-size:12px;border:none;cursor:pointer
 /* ── GLOBAL PROGRESS BAR ── */
 
 /* ── TABLE — Letterboxd style ── */
-.table-wrap{flex:1;min-height:0;overflow-y:auto;overflow-x:auto;padding:0 0 20px}
-table{width:100%;border-collapse:collapse;margin-top:4px}
-thead{position:sticky;top:0;z-index:5;background:var(--surface)}
-thead tr{border-bottom:2px solid var(--border)}
+.table-wrap{flex:1;min-height:0;overflow-y:auto;overflow-x:auto;display:flex;flex-direction:column}
+table{width:100%;border-collapse:collapse;table-layout:auto;align-self:flex-start;min-width:100%}
+thead{position:sticky;top:0;z-index:5;background:var(--surface);box-shadow:0 1px 0 var(--border)}
+thead tr{border-bottom:none}
 th{text-align:left;padding:10px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:400;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s}
 th:hover{color:var(--accent)}th.sorted{color:var(--accent)}
 th .sa{margin-left:3px;opacity:.4}th.sorted .sa{opacity:1}
 th.th-check{cursor:default;width:32px}
 
-/* ── ALBUM ROW ── */
+/* Dark scrollbar */
+.table-wrap::-webkit-scrollbar{width:8px;height:8px}
+.table-wrap::-webkit-scrollbar-track{background:var(--bg)}
+.table-wrap::-webkit-scrollbar-thumb{background:#2a3340;border-radius:4px}
+.table-wrap::-webkit-scrollbar-thumb:hover{background:#3a4a5a}
+* { scrollbar-width:thin;scrollbar-color:#2a3340 var(--bg) }
 tr.album-row{border-bottom:1px solid #1c2128;transition:background .12s;cursor:pointer}
 tr.album-row:hover{background:var(--surface)}
 tr.album-row.selected{background:#1a2518}
