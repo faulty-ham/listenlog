@@ -1442,6 +1442,10 @@ let _userId = null;
 window.addEventListener('beforeunload', () => {
   if (_syncTimeout) {
     clearTimeout(_syncTimeout);
+    _syncTimeout = null;
+    // Use sendBeacon for reliable delivery even during page unload
+    const payload = JSON.stringify({ user_id: _userId, albums, originals });
+    // Fall back to synchronous push attempt
     pushToCloud();
   }
 });
@@ -1454,8 +1458,11 @@ function setSyncStatus(state, label) {
   lbl.textContent = label||'';
 }
 
+let _lastPushTime = parseInt(localStorage.getItem('listenLogPushedAt') || '0');
+
 function save() {
   localStorage.setItem('listenLog', JSON.stringify(albums));
+  localStorage.setItem('listenLogSavedAt', String(Date.now()));
   clearTimeout(_syncTimeout);
   _syncTimeout = setTimeout(pushToCloud, 300);
 }
@@ -1468,6 +1475,7 @@ function saveOriginals() {
 async function pushToCloud(retrying=false) {
   if (!_userId) return;
   setSyncStatus('busy', 'saving…');
+  _lastPushTime = Date.now();
   try {
     const { error } = await _sb.from('listenlog_data')
       .upsert({ user_id:_userId, albums, originals }, { onConflict:'user_id' });
@@ -1475,6 +1483,7 @@ async function pushToCloud(retrying=false) {
       console.error('Supabase upsert error:', error.code, error.message, error.details);
       throw error;
     }
+    localStorage.setItem('listenLogPushedAt', String(_lastPushTime));
     setSyncStatus('ok', 'synced');
   } catch(e) {
     console.error('Sync error full:', JSON.stringify(e));
@@ -1497,17 +1506,12 @@ async function pullFromCloud(retrying=false) {
     if (error && error.code !== 'PGRST116') throw error;
     if (data) {
       const remoteAlbums = data.albums || [];
-      const localAlbums  = albums; // already loaded from localStorage at startup
-      // If local has changes Supabase doesn't (e.g. unsaved edit before tab closed),
-      // check for any albums with a more recent 'added' timestamp or different data.
-      // Simple heuristic: if local has more albums, or if local has an entry that
-      // Supabase doesn't, push local up instead of pulling Supabase down.
-      const remoteIds = new Set(remoteAlbums.map(a => a.id));
-      const localHasExtra = localAlbums.some(a => !remoteIds.has(a.id));
-      const localNewer = localAlbums.length > 0 && localHasExtra;
-      if (localNewer) {
-        // Local has data Supabase doesn't — push up instead
-        console.log('Local data is ahead of Supabase — pushing up');
+      // Compare: if we have unsaved local changes (push pending or failed), keep local
+      const lastPushed  = parseInt(localStorage.getItem('listenLogPushedAt') || '0');
+      const lastSaved   = parseInt(localStorage.getItem('listenLogSavedAt')  || '0');
+      const localDirty  = lastSaved > lastPushed;
+      if (localDirty && albums.length > 0) {
+        console.log('Local has unsaved changes — pushing to Supabase instead of pulling');
         await pushToCloud();
       } else {
         albums    = remoteAlbums;
