@@ -1294,9 +1294,16 @@ on('autofill-mb-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.ta
 on('quick-add-mb','keydown',async e=>{
   if(e.key!=='Enter')return;e.preventDefault();
   const raw=e.target.value.trim();e.target.value='';
-  await runMbForce(raw,()=>{editingId=null;resetForm();openPanel('add');});
-  // Focus save button so a second Enter submits immediately
-  setTimeout(()=>document.getElementById('btn-save')?.focus(),100);
+  const mbid=raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
+  if(!mbid){alert('No valid MusicBrainz ID found in that link.');return;}
+  // Open modal immediately — don't wait for MB response
+  editingId=null;resetForm();openPanel('add');
+  document.getElementById('form-error').textContent='⟳ Looking up MusicBrainz…';
+  const result=await mbidLookup(mbid);
+  document.getElementById('form-error').textContent='';
+  if(!result){document.getElementById('form-error').textContent='MB lookup failed — paste link again or fill manually.';return;}
+  applyMbResult(result);
+  setTimeout(()=>document.getElementById('btn-save')?.focus(),50);
 });
 
 on('filter-search','input',e=>{
@@ -1406,12 +1413,16 @@ async function runMbForce(raw, onOpen) {
   if (!raw) return;
   const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
   if (!mbid) { alert('No valid MusicBrainz ID found in that link.'); return; }
+  // Open/stay in modal immediately
+  if (onOpen) onOpen();
   const ferr = document.getElementById('form-error');
-  if (ferr) ferr.textContent = '⟳ Looking up…';
+  if (ferr) ferr.textContent = '⟳ Looking up MusicBrainz…';
   const result = await mbidLookup(mbid);
   if (ferr) ferr.textContent = '';
-  if (!result) { alert('MusicBrainz lookup failed. Check the browser console for details, or try again in a moment.'); return; }
-  if (onOpen) onOpen();
+  if (!result) {
+    if (ferr) ferr.textContent = 'MB lookup failed — check the link and try again.';
+    return;
+  }
   applyMbResult(result);
 }
 
