@@ -52,7 +52,7 @@
   --bg:#14181c; --surface:#1f2328; --surface2:#272c33; --border:#3a4048;
   --accent:#00c030; --accent-dim:#00c03022;
   --text:#c8d0d8; --text-hi:#e8edf2;
-  --muted:#738a9a;
+  --muted:#8fa3b3;
   --danger:#c97a7a; --want:#7ab0c9; --hard:#c9997a;
   --good:#00c030; --radius:4px;
   --star:#00e54b; --star-empty:#5a6472;
@@ -155,7 +155,7 @@ td{padding:7px 10px;vertical-align:middle}
 
 /* ── TEXT CELLS ── */
 .td-artist{font-weight:500;color:var(--text-hi);max-width:180px;font-size:13px;text-decoration:none;-webkit-text-decoration:none}
-.td-album{font-family:'Playfair Display',serif;font-style:italic;font-size:15px;color:var(--muted);max-width:220px}
+.td-album{font-family:'Playfair Display',serif;font-size:15px;color:var(--muted);max-width:220px}
 .td-date{color:var(--muted);white-space:nowrap;font-size:12px}
 .td-notes{color:var(--muted);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
@@ -315,7 +315,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .qr-album-info{display:flex;gap:12px;align-items:center;margin-bottom:20px}
 .qr-art{width:56px;height:56px;border-radius:4px;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
 .qr-artist{font-weight:600;color:var(--text-hi);font-size:14px}
-.qr-album{font-family:'Playfair Display',serif;font-style:italic;color:var(--muted);font-size:14px;margin-top:2px}
+.qr-album{font-family:'Playfair Display',serif;color:var(--text);font-size:16px;margin-top:2px}
 .qr-stars{display:flex;justify-content:center;gap:6px;margin-bottom:16px}
 .qr-stars .star-btn{font-size:66px;width:72px;height:72px}
 .qr-tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
@@ -334,6 +334,10 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   .header-title h1{font-size:26px}
   .header-stats{display:none}
   .mobile-hidden{display:none!important}
+  /* List text: larger on mobile */
+  .td-artist{font-size:15px}
+  .td-album{font-size:16px}
+  .td-date{font-size:13px}
   /* Toolbar: two clean rows */
   .sticky-controls{flex-shrink:0}
   .toolbar{padding:6px 12px;gap:0;flex-direction:column;align-items:stretch}
@@ -1051,7 +1055,7 @@ function render() {
         ? `<img class="art-thumb${alreadyLoaded ? '' : ' lazy'}" ${alreadyLoaded ? `src="${esc(alreadyLoaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
         : `<div class="art-placeholder">♪</div>`}</td>
       <td class="td-artist">${esc(a.artist)}</td>
-      <td class="td-album"><em>${esc(a.album)}</em></td>
+      <td class="td-album">${esc(a.album)}</td>
       <td class="td-date">${esc(a.date||'—')}</td>
       <td>${a.rating ? starsHTML(a.rating) : '<span style="color:var(--border);font-size:11px">—</span>'}</td>
       <td><div class="row-tags">${tags||'<span style="color:var(--border);font-size:11px">—</span>'}</div></td>
