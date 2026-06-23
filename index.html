@@ -449,6 +449,11 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 <div class="filter-count" id="filter-count" style="display:none"></div>
 </div><!-- /sticky-controls -->
 
+<!-- ART LIGHTBOX -->
+<div class="modal-overlay" id="art-lightbox" style="display:none;background:rgba(0,0,0,.92);cursor:zoom-out;z-index:500">
+  <img id="art-lightbox-img" style="max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.8);object-fit:contain" alt="">
+</div>
+
 <!-- ADD/EDIT MODAL -->
 <div class="modal-overlay" id="add-modal">
   <div class="modal" style="width:520px">
@@ -1042,8 +1047,8 @@ function render() {
     const alreadyLoaded = loadedArt[a.id];
     tr.dataset.id = a.id;
     tr.innerHTML = `
-      <td class="td-art">${a.artUrl
-        ? `<img class="art-thumb${alreadyLoaded ? '' : ' lazy'}" ${alreadyLoaded ? `src="${esc(alreadyLoaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
+      <td class="td-art" onclick="event.stopPropagation()">${a.artUrl
+        ? `<img class="art-thumb${alreadyLoaded ? '' : ' lazy'}" ${alreadyLoaded ? `src="${esc(alreadyLoaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none">♪</div>`
         : `<div class="art-placeholder">♪</div>`}</td>
       <td class="td-artist">${esc(a.artist)}</td>
       <td class="td-album"><em>${esc(a.album)}</em></td>
@@ -1325,6 +1330,11 @@ on('search-clear','click',()=>{
 on('add-modal','mousedown',e=>{_modalMousedownOnOverlay = e.target.id==='add-modal';});
 // Enter key submits the active modal's primary action
 document.addEventListener('keydown', e => {
+  // Escape closes lightbox first
+  if (e.key === 'Escape') {
+    const lb = document.getElementById('art-lightbox');
+    if (lb && lb.style.display !== 'none') { lb.style.display='none'; document.getElementById('art-lightbox-img').src=''; return; }
+  }
   if (e.key !== 'Enter') return;
   if (e.target.tagName === 'TEXTAREA') return;
   if (e.metaKey || e.ctrlKey) return;
@@ -1426,6 +1436,19 @@ async function runMbForce(raw, onOpen) {
   applyMbResult(result);
 }
 
+function openLightbox(url) {
+  const lb  = document.getElementById('art-lightbox');
+  const img = document.getElementById('art-lightbox-img');
+  // Use full-size image by stripping Cover Art Archive size suffix if present
+  img.src = url.replace(/\?.*$/, '');
+  lb.style.display = 'flex';
+  lb.style.alignItems = 'center';
+  lb.style.justifyContent = 'center';
+}
+document.getElementById('art-lightbox').addEventListener('click', () => {
+  document.getElementById('art-lightbox').style.display = 'none';
+  document.getElementById('art-lightbox-img').src = '';
+});
 function rebuildOriginalIdIndex() {
   let changed = false;
   albums.forEach(a => {
