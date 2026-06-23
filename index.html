@@ -450,8 +450,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 </div><!-- /sticky-controls -->
 
 <!-- ART LIGHTBOX -->
-<div class="modal-overlay" id="art-lightbox" style="display:none;background:rgba(0,0,0,.92);cursor:zoom-out;z-index:500">
-  <img id="art-lightbox-img" style="max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.8);object-fit:contain" alt="">
+<div class="modal-overlay" id="art-lightbox" style="display:none;background:rgba(0,0,0,.95);cursor:zoom-out;z-index:500;align-items:center;justify-content:center">
+  <img id="art-lightbox-img" style="width:min(90vw,90vh);height:min(90vw,90vh);border-radius:6px;box-shadow:0 8px 48px rgba(0,0,0,.9);object-fit:contain" alt="">
 </div>
 
 <!-- ADD/EDIT MODAL -->
@@ -1439,11 +1439,11 @@ async function runMbForce(raw, onOpen) {
 function openLightbox(url) {
   const lb  = document.getElementById('art-lightbox');
   const img = document.getElementById('art-lightbox-img');
-  // Use full-size image by stripping Cover Art Archive size suffix if present
-  img.src = url.replace(/\?.*$/, '');
+  // Cover Art Archive: strip any size suffix to get full-size image
+  // e.g. /front-250 → /front  or  /front?size=250 → /front
+  const fullUrl = url.replace(/-\d+(\.[a-z]+)?$/, '').replace(/[?&]size=\d+/, '');
+  img.src = fullUrl;
   lb.style.display = 'flex';
-  lb.style.alignItems = 'center';
-  lb.style.justifyContent = 'center';
 }
 document.getElementById('art-lightbox').addEventListener('click', () => {
   document.getElementById('art-lightbox').style.display = 'none';
