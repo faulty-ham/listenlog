@@ -593,7 +593,7 @@ let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
 let editingId = null, pendingDeleteId = null;
 let openDropdown = null;
-let pendingArtUrl = '';
+let pendingArtUrl = '', pendingArtFallback = '';
 let sortKey = 'date', sortDir = -1;
 
 // CSV parse state
@@ -1056,7 +1056,7 @@ function render() {
     tr.dataset.id = a.id;
     tr.innerHTML = `
       <td class="td-art" onclick="event.stopPropagation()">${a.artUrl
-        ? `<img class="art-thumb${alreadyLoaded ? '' : ' lazy'}" ${alreadyLoaded ? `src="${esc(alreadyLoaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="art-placeholder" style="display:none"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span></div>`
+        ? `<img class="art-thumb${alreadyLoaded ? '' : ' lazy'}" ${alreadyLoaded ? `src="${esc(alreadyLoaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" onerror="if(this.dataset.fb&&!this.dataset.tried){this.dataset.tried=1;this.src=this.dataset.fb;}else{this.style.display='none';this.nextElementSibling.style.display='flex';}"${a.artFallback?` data-fb="${esc(a.artFallback)}"`:``}><div class="art-placeholder" style="display:none"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span></div>`
         : `<div class="art-placeholder"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span></div>`}</td>
       <td class="td-artist">${esc(a.artist)}</td>
       <td class="td-album">${esc(a.album)}</td>
@@ -1120,7 +1120,7 @@ function resetForm() {
   document.getElementById('autofill-mb-input').value='';
   document.getElementById('match-card').style.display='none';
   document.getElementById('match-art').style.display='none';
-  pendingArtUrl='';
+  pendingArtUrl=''; pendingArtFallback='';
 }
 
 // ── Autofill card display ────────────────────────────────────
@@ -1160,6 +1160,7 @@ function addOrUpdateAlbum() {
     // Clear unmatched when art is set (MB match applied)
     unmatched:existing.unmatched&&!pendingArtUrl||false,
     artUrl:pendingArtUrl||existing.artUrl||'',
+    artFallback:pendingArtFallback||existing.artFallback||'',
     added:existing.added||Date.now(),
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
@@ -1388,14 +1389,27 @@ function applyMbResult(result) {
   document.getElementById('f-artist').value = result.matchedArtist||'';
   document.getElementById('f-album').value  = result.matchedAlbum||'';
   if (result.date) document.getElementById('f-date').value = result.date;
-  pendingArtUrl = result.art||'';
+  pendingArtUrl      = result.art||'';
+  pendingArtFallback = result.artFallback||'';
   // Show match card with art
   document.getElementById('match-artist').textContent     = result.matchedArtist||'';
   document.getElementById('match-album-name').textContent = result.matchedAlbum||'';
   document.getElementById('match-date').textContent       = result.date||'';
   const artEl = document.getElementById('match-art');
-  if (result.art) { artEl.src=result.art; artEl.style.display='block'; artEl.onerror=()=>{artEl.style.display='none';}; }
-  else { artEl.style.display='none'; }
+  if (result.art) {
+    artEl.src = result.art;
+    artEl.style.display = 'block';
+    artEl.onerror = () => {
+      if (result.artFallback) { artEl.src = result.artFallback; artEl.onerror = () => artEl.style.display='none'; }
+      else artEl.style.display='none';
+    };
+  } else if (result.artFallback) {
+    artEl.src = result.artFallback;
+    artEl.style.display = 'block';
+    artEl.onerror = () => artEl.style.display='none';
+  } else {
+    artEl.style.display = 'none';
+  }
   document.getElementById('match-card').style.display='block';
   document.getElementById('autofill-mb-input').value='';
   const ferr = document.getElementById('form-error');
@@ -1405,17 +1419,25 @@ function applyMbResult(result) {
 async function fetchItunesArt(artist, album) {
   try {
     const q = encodeURIComponent(`${artist} ${album}`);
-    const r = await fetch(`https://itunes.apple.com/search?term=${q}&entity=album&limit=5`);
+    const r = await fetch(`https://itunes.apple.com/search?term=${q}&entity=album&limit=10`);
     if (!r.ok) return null;
     const data = await r.json();
-    const match = data.results?.find(x =>
-      x.collectionName?.toLowerCase().includes(album.toLowerCase()) ||
-      album.toLowerCase().includes(x.collectionName?.toLowerCase())
-    ) || data.results?.[0];
+    if (!data.results?.length) return null;
+    // Find best match: prefer exact album name match
+    const al = album.toLowerCase();
+    const ar = artist.toLowerCase();
+    const match = data.results.find(x =>
+      x.collectionName?.toLowerCase() === al
+    ) || data.results.find(x =>
+      x.collectionName?.toLowerCase().includes(al) ||
+      al.includes(x.collectionName?.toLowerCase())
+    ) || data.results[0];
     if (!match?.artworkUrl100) return null;
-    // Upgrade to 600px artwork
     return match.artworkUrl100.replace('100x100bb', '600x600bb');
-  } catch(e) { return null; }
+  } catch(e) {
+    console.error('iTunes art fetch error:', e);
+    return null;
+  }
 }
 
 async function mbidLookup(mbid) {
@@ -1434,25 +1456,20 @@ async function mbidLookup(mbid) {
     const date   = data.date || data['first-release-date'] || data['release-group']?.['first-release-date'] || null;
     const rgid   = data['release-group']?.id || null;
 
-    // Try Cover Art Archive first
+    // Always try iTunes in parallel with CAA URL construction
+    // CAA availability is checked at display time via onerror — no HEAD request needed
     const caaUrl = rgid
       ? `https://coverartarchive.org/release-group/${rgid}/front`
       : `https://coverartarchive.org/release/${mbid}/front`;
 
-    // Verify CAA actually has art (HEAD request to avoid downloading full image)
-    let art = null;
-    try {
-      const caaCheck = await fetch(caaUrl, { method: 'HEAD' });
-      if (caaCheck.ok || caaCheck.redirected) art = caaUrl;
-    } catch(e) { /* CAA unreachable */ }
+    // Fetch iTunes art in parallel — use it as fallback stored alongside CAA url
+    const itunesArt = await fetchItunesArt(artist, album);
+    console.log(`Art sources — CAA: ${caaUrl}, iTunes: ${itunesArt || 'none'}`);
 
-    // Fall back to iTunes if CAA unavailable
-    if (!art) {
-      console.log('CAA unavailable, trying iTunes fallback…');
-      art = await fetchItunesArt(artist, album);
-    }
-
-    return { matchedArtist: artist, matchedAlbum: album, date, art };
+    // Store CAA url as primary; iTunes as fallback encoded in the url
+    // The img onerror will try the iTunes URL if CAA fails
+    const art = caaUrl; // primary
+    return { matchedArtist: artist, matchedAlbum: album, date, art, artFallback: itunesArt };
   } catch(e) {
     console.error('mbidLookup error:', e);
     return null;
