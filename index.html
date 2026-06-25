@@ -592,21 +592,22 @@ let albums    = JSON.parse(localStorage.getItem('listenLog')    || '[]');
 let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
 // Migrate hardcoded archive.org node URLs → CAA redirect URLs at startup
-(function() {
+function migrateArtUrls(arr) {
   let changed = false;
-  albums.forEach(a => {
-    if (a.artUrl && a.artUrl.includes('archive.org')) {
-      console.log('Found archive.org URL:', a.artUrl.substring(0, 80));
+  (arr||[]).forEach(a => {
+    if (a.artUrl && a.artUrl.includes('ca.archive.org')) {
       const m = a.artUrl.match(/mbid-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/);
       if (m) { a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`; changed = true; }
     }
   });
+  return changed;
+}
+(function() {
+  const changed = migrateArtUrls(albums);
   if (changed) {
     localStorage.setItem('listenLog', JSON.stringify(albums));
     localStorage.setItem('listenLogSavedAt', String(Date.now()));
     console.log('Migrated archive.org node URLs → CAA redirect URLs');
-  } else {
-    console.log('No archive.org URLs found in', albums.length, 'albums');
   }
 })();
 
@@ -1706,6 +1707,11 @@ function saveOriginals() {
 async function pushToCloud(retrying=false) {
   if (!_userId) return;
   setSyncStatus('busy', 'saving…');
+  // Migrate any bad archive.org URLs before pushing
+  if (migrateArtUrls(albums)) {
+    localStorage.setItem('listenLog', JSON.stringify(albums));
+    console.log('Migrated archive.org URLs before push');
+  }
   _lastPushTime = Date.now();
   try {
     const { error } = await _sb.from('listenlog_data')
@@ -1745,19 +1751,13 @@ async function pullFromCloud(retrying=false) {
         console.log('Local has unsaved changes — pushing to Supabase instead of pulling');
         await pushToCloud();
       } else {
-        // Migrate hardcoded archive.org node URLs → CAA redirect URLs (more resilient across nodes)
-        let migrated = false;
-        (data.albums||[]).forEach(a => {
-          if (a.artUrl?.includes('archive.org/0/items/mbid-')) {
-            const m = a.artUrl.match(/mbid-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/);
-            if (m) { a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`; migrated = true; }
-          }
-        });
+        // Migrate any bad archive.org node URLs in pulled data
+        const migrated = migrateArtUrls(data.albums||[]);
         albums    = data.albums || [];
         originals = data.originals || {};
         localStorage.setItem('listenLog',     JSON.stringify(albums));
         localStorage.setItem('listenLogOrig', JSON.stringify(originals));
-        if (migrated) { console.log('Migrated direct archive.org URLs → CAA redirect URLs'); localStorage.setItem('listenLogSavedAt', String(Date.now())); setTimeout(pushToCloud, 1000); }
+        if (migrated) { console.log('Migrated archive.org URLs after pull'); localStorage.setItem('listenLogSavedAt', String(Date.now())); setTimeout(pushToCloud, 1000); }
       }
     }
     setSyncStatus('ok', 'synced');
