@@ -1083,7 +1083,7 @@ function render() {
     tr.dataset.id = a.id;
     tr.innerHTML = `
       <td class="td-art" onclick="event.stopPropagation()">${a.artUrl
-        ? `<img class="art-thumb${alreadyLoaded ? '' : ' lazy'}" ${alreadyLoaded ? `src="${esc(alreadyLoaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" data-artist="${esc(a.artist)}" data-album="${esc(a.album)}"${a.artFallback?` data-fb="${esc(a.artFallback)}"`:``} onerror="artError(this)"><div class="art-placeholder" style="display:none"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span></div>`
+        ? `<img class="art-thumb${alreadyLoaded ? '' : ' lazy'}" ${alreadyLoaded ? `src="${esc(alreadyLoaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" data-artist="${esc(a.artist)}" data-album="${esc(a.album)}" data-caa="${esc(a.artUrl)}"${a.artFallback?` data-fb="${esc(a.artFallback)}"`:``} onerror="artError(this)"><div class="art-placeholder" style="display:none"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span></div>`
         : `<div class="art-placeholder"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span></div>`}</td>
       <td class="td-artist">${esc(a.artist)}</td>
       <td class="td-album">${esc(a.album)}</td>
@@ -1621,34 +1621,20 @@ async function artError(img) {
     return;
   }
   img.dataset.tried = '1';
-  // Try stored iTunes fallback first
   if (img.dataset.fb) { img.src = img.dataset.fb; return; }
   const artist = img.dataset.artist || '';
   const album  = img.dataset.album  || '';
-  const src = img.src || '';
-  // If stored URL is a direct archive.org URL (not a CAA redirect), try the CAA redirect
-  // which may resolve to a different, working archive.org node
-  if (src.includes('archive.org') && !src.includes('coverartarchive.org')) {
-    const rgidMatch = src.match(/mbid-([0-9a-f-]{36})/);
-    if (rgidMatch) {
-      const rgid = rgidMatch[1];
-      const caaRedirect = `https://coverartarchive.org/release-group/${rgid}/front`;
-      try {
-        // Try to fetch via CAA redirect — if it resolves to a working node, use it
-        const probe = await fetch(caaRedirect, { redirect: 'follow' });
-        if (probe.ok) {
-          const blob = await probe.blob();
-          const freshUrl = URL.createObjectURL(blob);
-          img.src = freshUrl;
-          return;
-        }
-      } catch(e) { /* CAA also down */ }
-    }
-  }
-  // Try iTunes
+  // Try iTunes first
   if (artist && album) {
     const url = await fetchItunesArt(artist, album);
     if (url) { img.src = url; return; }
+  }
+  // If iTunes has nothing and CAA failed via redirect, try the original CAA URL directly
+  // (CAA may redirect to a different, working node on a fresh request)
+  const caa = img.dataset.caa || '';
+  if (caa && caa.includes('coverartarchive.org') && img.src !== caa) {
+    img.src = caa + (caa.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    return;
   }
   img.style.display = 'none';
   if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
