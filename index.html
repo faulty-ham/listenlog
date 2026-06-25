@@ -603,6 +603,7 @@ let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
   });
   if (changed) {
     localStorage.setItem('listenLog', JSON.stringify(albums));
+    localStorage.setItem('listenLogSavedAt', String(Date.now()));
     console.log('Migrated archive.org node URLs → CAA redirect URLs');
   }
 })();
@@ -1754,7 +1755,7 @@ async function pullFromCloud(retrying=false) {
         originals = data.originals || {};
         localStorage.setItem('listenLog',     JSON.stringify(albums));
         localStorage.setItem('listenLogOrig', JSON.stringify(originals));
-        if (migrated) { console.log('Migrated direct archive.org URLs → CAA redirect URLs'); setTimeout(pushToCloud, 1000); }
+        if (migrated) { console.log('Migrated direct archive.org URLs → CAA redirect URLs'); localStorage.setItem('listenLogSavedAt', String(Date.now())); setTimeout(pushToCloud, 1000); }
       }
     }
     setSyncStatus('ok', 'synced');
