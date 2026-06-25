@@ -1596,9 +1596,29 @@ async function artError(img) {
   img.dataset.tried = '1';
   // Try stored iTunes fallback first
   if (img.dataset.fb) { img.src = img.dataset.fb; return; }
-  // Dynamically fetch iTunes using artist+album from data attributes
   const artist = img.dataset.artist || '';
   const album  = img.dataset.album  || '';
+  const src = img.src || '';
+  // If stored URL is a direct archive.org URL (not a CAA redirect), try the CAA redirect
+  // which may resolve to a different, working archive.org node
+  if (src.includes('archive.org') && !src.includes('coverartarchive.org')) {
+    const rgidMatch = src.match(/mbid-([0-9a-f-]{36})/);
+    if (rgidMatch) {
+      const rgid = rgidMatch[1];
+      const caaRedirect = `https://coverartarchive.org/release-group/${rgid}/front`;
+      try {
+        // Try to fetch via CAA redirect — if it resolves to a working node, use it
+        const probe = await fetch(caaRedirect, { redirect: 'follow' });
+        if (probe.ok) {
+          const blob = await probe.blob();
+          const freshUrl = URL.createObjectURL(blob);
+          img.src = freshUrl;
+          return;
+        }
+      } catch(e) { /* CAA also down */ }
+    }
+  }
+  // Try iTunes
   if (artist && album) {
     const url = await fetchItunesArt(artist, album);
     if (url) { img.src = url; return; }
@@ -1706,10 +1726,19 @@ async function pullFromCloud(retrying=false) {
         console.log('Local has unsaved changes — pushing to Supabase instead of pulling');
         await pushToCloud();
       } else {
-        albums    = remoteAlbums;
+        // Migrate hardcoded archive.org node URLs → CAA redirect URLs (more resilient across nodes)
+        let migrated = false;
+        (data.albums||[]).forEach(a => {
+          if (a.artUrl?.includes('archive.org/0/items/mbid-')) {
+            const m = a.artUrl.match(/mbid-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/);
+            if (m) { a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`; migrated = true; }
+          }
+        });
+        albums    = data.albums || [];
         originals = data.originals || {};
         localStorage.setItem('listenLog',     JSON.stringify(albums));
         localStorage.setItem('listenLogOrig', JSON.stringify(originals));
+        if (migrated) { console.log('Migrated direct archive.org URLs → CAA redirect URLs'); setTimeout(pushToCloud, 1000); }
       }
     }
     setSyncStatus('ok', 'synced');
