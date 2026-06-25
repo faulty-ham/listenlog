@@ -497,7 +497,20 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
             <span class="src-badge src-mb">MB</span>
           </div>
         </div>
+        <button id="btn-save-art" class="btn-ghost btn-sm" title="Save artwork to Supabase Storage for reliable hosting" style="white-space:nowrap;flex-shrink:0;display:none">
+          ↑ Save art
+        </button>
       </div>
+    </div>
+
+    <!-- ART DROP ZONE -->
+    <div id="art-drop-zone" style="margin-bottom:10px">
+      <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px">Custom Artwork</label>
+      <div id="art-drop-inner" style="border:1.5px dashed var(--border);border-radius:6px;padding:12px;text-align:center;cursor:pointer;transition:border-color .15s;color:var(--muted);font-size:13px">
+        Drop image here or <span style="color:var(--accent);text-decoration:underline">click to browse</span>
+        <input type="file" id="art-file-input" accept="image/*" style="display:none">
+      </div>
+      <div id="art-upload-status" style="font-size:13px;color:var(--muted);margin-top:4px;min-height:18px"></div>
     </div>
 
     <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
@@ -1147,7 +1160,10 @@ function resetForm() {
   document.getElementById('autofill-mb-input').value='';
   document.getElementById('match-card').style.display='none';
   document.getElementById('match-art').style.display='none';
+  document.getElementById('art-upload-status').textContent='';
+  document.getElementById('art-drop-inner').style.borderColor='';
   pendingArtUrl=''; pendingArtFallback='';
+  updateSaveArtBtn();
 }
 
 // ── Autofill card display ────────────────────────────────────
@@ -1213,6 +1229,7 @@ function editAlbum(id) {
   } else {
     document.getElementById('match-card').style.display='none';
   }
+  updateSaveArtBtn();
   openPanel('edit');
 }
 
@@ -1331,6 +1348,17 @@ on('btn-delete-entry','click',()=>{
 });
 
 on('autofill-mb-btn','click',()=>runMbForce(document.getElementById('autofill-mb-input').value.trim(),null));
+
+// Art upload
+on('btn-save-art','click', saveCurrentArtToSupabase);
+const _dropInner = document.getElementById('art-drop-inner');
+if (_dropInner) {
+  _dropInner.addEventListener('click', () => document.getElementById('art-file-input').click());
+  _dropInner.addEventListener('dragover', e => { e.preventDefault(); _dropInner.style.borderColor = 'var(--accent)'; });
+  _dropInner.addEventListener('dragleave', () => { _dropInner.style.borderColor = ''; });
+  _dropInner.addEventListener('drop', e => { e.preventDefault(); _dropInner.style.borderColor = ''; handleArtFile(e.dataTransfer.files[0]); });
+}
+on('art-file-input','change', e => { handleArtFile(e.target.files[0]); e.target.value = ''; });
 on('autofill-mb-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur();runMbForce(e.target.value.trim(),null);}});
 on('quick-add-mb','keydown',async e=>{
   if(e.key!=='Enter')return;e.preventDefault();
@@ -1456,6 +1484,7 @@ function applyMbResult(result) {
   document.getElementById('autofill-mb-input').value='';
   const ferr = document.getElementById('form-error');
   if (ferr) ferr.textContent='';
+  updateSaveArtBtn();
 }
 
 async function fetchItunesArt(artist, album) {
@@ -1653,6 +1682,93 @@ async function artError(img) {
   }
   img.style.display = 'none';
   if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
+}
+
+const ART_BUCKET = 'listenlog-art';
+
+async function uploadArtToSupabase(blob, albumId) {
+  const ext  = blob.type === 'image/png' ? 'png' : 'jpg';
+  const path = `${_userId}/${albumId}.${ext}`;
+  const { error } = await _sb.storage.from(ART_BUCKET).upload(path, blob, {
+    contentType: blob.type,
+    upsert: true,
+  });
+  if (error) throw error;
+  const { data } = _sb.storage.from(ART_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function saveCurrentArtToSupabase() {
+  const btn    = document.getElementById('btn-save-art');
+  const status = document.getElementById('art-upload-status');
+  const url    = pendingArtUrl;
+  if (!url || !editingId && !url) return;
+  btn.disabled = true;
+  btn.textContent = '⟳ Saving…';
+  status.textContent = '';
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`Failed to fetch art: ${r.status}`);
+    const blob = await r.blob();
+    const id   = editingId || '_new_' + Date.now();
+    const publicUrl = await uploadArtToSupabase(blob, id);
+    pendingArtUrl = publicUrl;
+    // Update match-art preview to show saved URL
+    const artEl = document.getElementById('match-art');
+    if (artEl) { artEl.src = publicUrl; artEl.style.display = 'block'; }
+    btn.style.display = 'none';
+    status.textContent = '✓ Saved to Supabase';
+    status.style.color = 'var(--accent)';
+  } catch(e) {
+    console.error('Art upload error:', e);
+    btn.textContent = '↑ Save art';
+    btn.disabled = false;
+    status.textContent = '✗ Upload failed — ' + e.message;
+    status.style.color = 'var(--danger)';
+  }
+}
+
+async function handleArtFile(file) {
+  const status = document.getElementById('art-upload-status');
+  const inner  = document.getElementById('art-drop-inner');
+  if (!file || !file.type.startsWith('image/')) {
+    status.textContent = '✗ Please drop an image file';
+    status.style.color = 'var(--danger)';
+    return;
+  }
+  status.textContent = '⟳ Uploading…';
+  status.style.color = 'var(--muted)';
+  inner.style.borderColor = 'var(--accent)';
+  try {
+    const id = editingId || '_new_' + Date.now();
+    const publicUrl = await uploadArtToSupabase(file, id);
+    pendingArtUrl = publicUrl;
+    // Show preview in match card
+    const artEl = document.getElementById('match-art');
+    if (artEl) { artEl.src = publicUrl; artEl.style.display = 'block'; }
+    document.getElementById('match-card').style.display = 'block';
+    document.getElementById('btn-save-art').style.display = 'none';
+    status.textContent = '✓ Uploaded — will be saved with entry';
+    status.style.color = 'var(--accent)';
+    inner.style.borderColor = '';
+  } catch(e) {
+    console.error('Art file upload error:', e);
+    status.textContent = '✗ Upload failed — ' + e.message;
+    status.style.color = 'var(--danger)';
+    inner.style.borderColor = '';
+  }
+}
+
+function isSupabaseArt(url) {
+  return url && url.includes('supabase.co/storage');
+}
+
+function updateSaveArtBtn() {
+  const btn = document.getElementById('btn-save-art');
+  if (!btn) return;
+  btn.style.display = (pendingArtUrl && !isSupabaseArt(pendingArtUrl)) ? '' : 'none';
+  btn.textContent = '↑ Save art';
+  btn.disabled = false;
 }
 
 function rebuildOriginalIdIndex() {
