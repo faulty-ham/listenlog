@@ -592,11 +592,11 @@ let albums    = JSON.parse(localStorage.getItem('listenLog')    || '[]');
 let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
 // Migrate hardcoded archive.org node URLs → CAA redirect URLs at startup
-// Direct node URLs break when that specific archive.org server has issues
 (function() {
   let changed = false;
   albums.forEach(a => {
-    if (a.artUrl?.includes('archive.org/0/items/mbid-')) {
+    if (a.artUrl && a.artUrl.includes('archive.org')) {
+      console.log('Found archive.org URL:', a.artUrl.substring(0, 80));
       const m = a.artUrl.match(/mbid-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/);
       if (m) { a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`; changed = true; }
     }
@@ -605,6 +605,8 @@ let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
     localStorage.setItem('listenLog', JSON.stringify(albums));
     localStorage.setItem('listenLogSavedAt', String(Date.now()));
     console.log('Migrated archive.org node URLs → CAA redirect URLs');
+  } else {
+    console.log('No archive.org URLs found in', albums.length, 'albums');
   }
 })();
 
