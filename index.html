@@ -1425,6 +1425,10 @@ async function fetchItunesArt(artist, album) {
     const searches = [
       `${artist} ${album}`,
       `${normArtist} ${normAlbum}`,
+      // Try key words only (helps with punctuation-heavy titles)
+      `${normArtist} ${normAlbum.split(' ').filter(w=>w.length>2).join(' ')}`,
+      // Album title alone (for obscure releases not on major stores)
+      normAlbum,
     ];
 
     for (const q of searches) {
@@ -1467,6 +1471,44 @@ async function fetchItunesArt(artist, album) {
   }
 }
 
+async function fetchDeezerArt(artist, album) {
+  try {
+    const q = encodeURIComponent(`artist:"${artist}" album:"${album}"`);
+    const r = await fetch(`https://api.deezer.com/search/album?q=${q}&limit=5`);
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (!data.data?.length) return null;
+    const norm = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    const na = norm(album);
+    const match = data.data.find(x => norm(x.title||'') === na)
+               || data.data.find(x => norm(x.title||'').includes(na) || na.includes(norm(x.title||'')))
+               || data.data[0];
+    return match?.cover_xl || match?.cover_big || match?.cover_medium || null;
+  } catch(e) { return null; }
+}
+async function fetchCaaArt(mbid, rgid) {
+  // Try the CAA index endpoint which returns direct archive.org URLs
+  // This lets us pick a working node if one is down
+  const endpoints = rgid ? [
+    `https://coverartarchive.org/release-group/${rgid}`,
+    `https://coverartarchive.org/release/${mbid}`,
+  ] : [
+    `https://coverartarchive.org/release/${mbid}`,
+  ];
+  for (const ep of endpoints) {
+    try {
+      const r = await fetch(ep);
+      if (!r.ok) continue;
+      const data = await r.json();
+      const front = data.images?.find(i => i.front) || data.images?.[0];
+      if (front) {
+        // Prefer thumbnails (more reliable) over full image
+        return front.thumbnails?.['500'] || front.thumbnails?.large || front.image || null;
+      }
+    } catch(e) { /* try next */ }
+  }
+  return null;
+}
 async function mbidLookup(mbid) {
   try {
     const r = await fetch(
@@ -1481,22 +1523,18 @@ async function mbidLookup(mbid) {
     const artist = (data['artist-credit']?.[0]?.artist?.name) || (data['artist-credit']?.[0]?.name) || '';
     const album  = data.title || '';
     const date   = data.date || data['first-release-date'] || data['release-group']?.['first-release-date'] || null;
-    const rgid   = data['release-group']?.id || null;
+    const rgid = data['release-group']?.id || null;
 
-    // Always try iTunes in parallel with CAA URL construction
-    // CAA availability is checked at display time via onerror — no HEAD request needed
-    const caaUrl = rgid
-      ? `https://coverartarchive.org/release-group/${rgid}/front`
-      : `https://coverartarchive.org/release/${mbid}/front`;
+    // Fetch all art sources in parallel
+    const [caaArt, itunesArt] = await Promise.all([
+      fetchCaaArt(mbid, rgid),
+      fetchItunesArt(artist, album),
+    ]);
+    const art        = caaArt || itunesArt || null;
+    const artFallback = caaArt ? (itunesArt || null) : null;
+    console.log(`Art — CAA: ${caaArt||'none'}, iTunes: ${itunesArt||'none'}`);
 
-    // Fetch iTunes art in parallel — use it as fallback stored alongside CAA url
-    const itunesArt = await fetchItunesArt(artist, album);
-    console.log(`Art sources — CAA: ${caaUrl}, iTunes: ${itunesArt || 'none'}`);
-
-    // Store CAA url as primary; iTunes as fallback encoded in the url
-    // The img onerror will try the iTunes URL if CAA fails
-    const art = caaUrl; // primary
-    return { matchedArtist: artist, matchedAlbum: album, date, art, artFallback: itunesArt };
+    return { matchedArtist: artist, matchedAlbum: album, date, art, artFallback };
   } catch(e) {
     console.error('mbidLookup error:', e);
     return null;
@@ -1542,14 +1580,21 @@ async function artError(img) {
   img.dataset.tried = '1';
   // Try stored fallback first
   if (img.dataset.fb) { img.src = img.dataset.fb; return; }
-  // No stored fallback — fetch iTunes dynamically using artist+album
   const artist = img.dataset.artist || '';
   const album  = img.dataset.album  || '';
+  const artUrl = img.src || img.dataset.src || '';
+  // Extract mbid/rgid from CAA URL and try the index endpoint for a direct URL
+  const rgidMatch = artUrl.match(/release-group\/([0-9a-f-]{36})/);
+  const mbidMatch = artUrl.match(/release\/([0-9a-f-]{36})/);
+  if (rgidMatch || mbidMatch) {
+    const url = await fetchCaaArt(mbidMatch?.[1]||'', rgidMatch?.[1]||'');
+    if (url && url !== artUrl) { img.src = url; return; }
+  }
+  // Try iTunes
   if (artist && album) {
     const url = await fetchItunesArt(artist, album);
     if (url) { img.src = url; return; }
   }
-  // Nothing worked — show placeholder
   img.style.display = 'none';
   if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
 }
