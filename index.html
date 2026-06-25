@@ -19,29 +19,29 @@
   background:#1f2328;border:1px solid #3a4048;border-radius:10px;
   padding:36px 40px;width:340px;max-width:90vw;text-align:center;
 }
-.auth-logo{font-family:'Lora',serif;font-size:32px;font-weight:700;letter-spacing:-1.5px;margin-bottom:4px}
+.auth-logo{font-family:'Lora',serif;font-size:36px;font-weight:700;letter-spacing:-1.5px;margin-bottom:4px}
 .auth-logo em{color:#00c030;font-style:italic}
-.auth-sub{font-size:11px;color:#738a9a;text-transform:uppercase;letter-spacing:.12em;margin-bottom:28px}
+.auth-sub{font-size:17px;color:#738a9a;text-transform:uppercase;letter-spacing:.12em;margin-bottom:28px}
 .auth-input{
   width:100%;background:#14181c;border:1px solid #3a4048;color:#c8d0d8;
-  font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;
+  font-family:'Inter',sans-serif;font-size:19px;padding:9px 12px;
   border-radius:6px;outline:none;margin-bottom:10px;box-sizing:border-box;
   transition:border-color .15s;
 }
 .auth-input:focus{border-color:#00c030}
 .auth-btn{
   width:100%;background:#00c030;color:#0d1117;font-family:'Inter',sans-serif;
-  font-size:13px;font-weight:600;border:none;border-radius:6px;padding:10px;
+  font-size:19px;font-weight:600;border:none;border-radius:6px;padding:10px;
   cursor:pointer;margin-top:4px;transition:background .15s;
 }
 .auth-btn:hover{background:#00e03a}
-.auth-msg{font-size:12px;color:#738a9a;margin-top:12px;min-height:18px}
+.auth-msg{font-size:18px;color:#738a9a;margin-top:12px;min-height:18px}
 .auth-msg.ok{color:#00c030}.auth-msg.err{color:#c97a7a}
 #auth-screen{flex-shrink:0}
 #app-wrap{display:none}
 #app-wrap.visible{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 #sync-indicator{
-  position:fixed;bottom:8px;right:12px;font-size:10px;color:#738a9a;
+  position:fixed;bottom:8px;right:12px;font-size:16px;color:#738a9a;
   font-family:'Inter',sans-serif;z-index:20;display:flex;align-items:center;gap:5px;
 }
 @media(max-width:700px){#sync-indicator{display:none!important}}
@@ -59,7 +59,7 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;display:flex;flex-direction:column}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:16px;display:flex;flex-direction:column}
 
 /* ── HEADER ── */
 header{flex-shrink:0;padding:28px 40px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:24px;flex-wrap:wrap;background:linear-gradient(180deg,#0d1117 0%,var(--bg) 100%)}
@@ -67,20 +67,20 @@ header{flex-shrink:0;padding:28px 40px 20px;border-bottom:1px solid var(--border
 .header-title h1 em{color:var(--accent);font-style:italic}
 .header-stats{margin-left:auto;display:flex;gap:32px}
 .stat{text-align:right}
-.stat-num{font-size:28px;font-weight:500;color:var(--accent);font-family:'Lora',serif;line-height:1}
-.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-top:3px}
+.stat-num{font-size:30px;font-weight:500;color:var(--accent);font-family:'Lora',serif;line-height:1}
+.stat-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-top:3px}
 
 /* ── TOOLBAR ── */
 .sticky-controls{flex-shrink:0;background:var(--surface)}
 .toolbar{padding:9px 40px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface)}
-input[type="text"],select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:5px 9px;border-radius:var(--radius);outline:none;transition:border-color .15s}
+input[type="text"],select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;padding:5px 9px;border-radius:var(--radius);outline:none;transition:border-color .15s}
 input[type="text"]:focus,select:focus{border-color:var(--accent)}
 select option{background:#1f2328}
 .search-wrap{position:relative}
 .search-wrap input{padding-left:26px;padding-right:22px;width:190px}
-.search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+.search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none}
 .toolbar-sep{width:1px;height:22px;background:var(--border);margin:0 2px}
-button{font-family:'Inter',sans-serif;font-size:12px;border:none;cursor:pointer;border-radius:var(--radius);padding:5px 11px;transition:all .15s}
+button{font-family:'Inter',sans-serif;font-size:14px;border:none;cursor:pointer;border-radius:var(--radius);padding:5px 11px;transition:all .15s}
 .btn-primary{background:var(--accent);color:#0d1117;font-weight:600;letter-spacing:.02em}
 .btn-primary:hover{background:#00e03a}
 .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
@@ -88,27 +88,27 @@ button{font-family:'Inter',sans-serif;font-size:12px;border:none;cursor:pointer;
 .btn-ghost:disabled{opacity:.35;cursor:default;pointer-events:none}
 .btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid var(--border)}
 .btn-danger-ghost:hover{border-color:var(--danger)}
-.btn-sm{padding:2px 7px;font-size:11px}
+.btn-sm{padding:2px 7px;font-size:13px}
 
 /* ── PANELS ── */
 .panel{display:none;padding:18px 40px;background:var(--surface);border-bottom:1px solid var(--border);animation:slideDown .18s ease}
 .panel.open{display:block}
 @keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.panel-title{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);margin-bottom:10px}
+.panel-title{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);margin-bottom:10px}
 .form-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
 .form-group{display:flex;flex-direction:column;gap:4px}
-.form-group label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.form-group label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .form-actions{display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 
 /* ── STAR RATING INPUT ── */
 .star-input{display:flex;gap:3px;align-items:center;padding-top:2px;user-select:none}
-.star-btn{font-size:24px;cursor:pointer;color:var(--star-empty);transition:color .08s;background:none;border:none;padding:0;line-height:1}
+.star-btn{font-size:26px;cursor:pointer;color:var(--star-empty);transition:color .08s;background:none;border:none;padding:0;line-height:1}
 .star-btn.lit{color:var(--star)}
-.star-val-display{font-size:11px;color:var(--muted);margin-left:6px}
+.star-val-display{font-size:13px;color:var(--muted);margin-left:6px}
 
 /* ── TAG TOGGLES ── */
 .tag-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding-top:2px}
-.tag-toggle{font-size:11px;border-radius:20px;padding:3px 10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif}
+.tag-toggle{font-size:13px;border-radius:20px;padding:3px 10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif}
 .tag-toggle.want.on{background:var(--want);color:#0d1117;border-color:var(--want)}
 .tag-toggle.hard.on{background:var(--hard);color:#0d1117;border-color:var(--hard)}
 .tag-toggle.unmatch.on{background:var(--danger);color:#fff;border-color:var(--danger)}
@@ -124,7 +124,7 @@ button{font-family:'Inter',sans-serif;font-size:12px;border:none;cursor:pointer;
 table{width:100%;border-collapse:collapse}
 thead{position:sticky;top:0;z-index:5;background:var(--surface);box-shadow:0 1px 0 var(--border)}
 thead tr{border-bottom:none}
-th{text-align:left;padding:10px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:400;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s}
+th{text-align:left;padding:10px 10px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:400;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s}
 th:hover{color:var(--accent)}th.sorted{color:var(--accent)}
 th .sa{margin-left:3px;opacity:.4}th.sorted .sa{opacity:1}
 th.th-check{cursor:default;width:32px}
@@ -158,10 +158,10 @@ td{padding:7px 10px;vertical-align:middle}
 .art-placeholder span{font-size:8px;letter-spacing:.06em;color:#2e4060;text-transform:uppercase;font-family:'Inter',sans-serif}
 
 /* ── TEXT CELLS ── */
-.td-artist{font-weight:500;color:var(--text-hi);max-width:180px;font-size:13px;text-decoration:none;-webkit-text-decoration:none}
-.td-album{font-family:'Lora',serif;font-size:15px;color:var(--muted);max-width:220px}
-.td-date{color:var(--muted);white-space:nowrap;font-size:12px}
-.td-notes{color:var(--muted);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-artist{font-weight:500;color:var(--text-hi);max-width:180px;font-size:15px;text-decoration:none;-webkit-text-decoration:none}
+.td-album{font-family:'Lora',serif;font-size:17px;color:var(--muted);max-width:220px}
+.td-date{color:var(--muted);white-space:nowrap;font-size:14px}
+.td-notes{color:var(--muted);font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── RATING DISPLAY — SVG half-stars, Letterboxd green ── */
 .stars-display{display:inline-flex;align-items:center;gap:1px;vertical-align:middle}
@@ -169,10 +169,10 @@ td{padding:7px 10px;vertical-align:middle}
 
 /* ── TAGS ── */
 .row-tags{display:flex;gap:4px;flex-wrap:wrap}
-.badge{font-size:9px;text-transform:uppercase;letter-spacing:.1em;border-radius:20px;padding:2px 7px;white-space:nowrap;font-family:'Inter',sans-serif}
+.badge{font-size:11px;text-transform:uppercase;letter-spacing:.1em;border-radius:20px;padding:2px 7px;white-space:nowrap;font-family:'Inter',sans-serif}
 .badge-want{background:rgba(122,176,201,.12);color:var(--want);border:1px solid rgba(122,176,201,.25)}
 .badge-hard{background:rgba(201,153,122,.12);color:var(--hard);border:1px solid rgba(201,153,122,.25)}
-.src-badge{font-size:9px;padding:2px 6px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'Inter',sans-serif}
+.src-badge{font-size:11px;padding:2px 6px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'Inter',sans-serif}
 .src-mb{background:rgba(122,153,201,.12);border-color:rgba(122,153,201,.3);color:#7a99c9}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
 
@@ -181,9 +181,9 @@ td{padding:7px 10px;vertical-align:middle}
 .empty-state .ei{font-size:48px;margin-bottom:16px;opacity:.25}
 
 /* ── FILTER COUNT ── */
-.filter-count{font-size:11px;color:var(--muted);padding:5px 40px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
-.pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:10px}
-.clear-btn{color:var(--accent);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;font-size:11px;padding:0;text-decoration:underline}
+.filter-count{font-size:13px;color:var(--muted);padding:5px 40px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:12px}
+.clear-btn{color:var(--accent);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;font-size:13px;padding:0;text-decoration:underline}
 
 /* ── BULK BAR ── */
 input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;flex-shrink:0}
@@ -194,8 +194,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:400px;max-width:95vw;animation:fadeUp .18s ease;max-height:90vh;overflow-y:auto}
 .modal.wide{width:860px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.modal h3{font-family:'Lora',serif;font-size:20px;margin-bottom:6px;color:var(--text-hi)}
-.modal p{color:var(--muted);font-size:12px;margin-bottom:16px}
+.modal h3{font-family:'Lora',serif;font-size:22px;margin-bottom:6px;color:var(--text-hi)}
+.modal p{color:var(--muted);font-size:14px;margin-bottom:16px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 
 /* minmax(0,1fr) is critical — prevents text columns from overflowing their grid cell */
@@ -210,7 +210,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 /* Actions: fixed 120px column, never shrinks, buttons centered and large */
 .thumb-btn{
   width:44px;height:44px;border-radius:50%;border:2px solid var(--border);
-  background:transparent;font-size:22px;cursor:pointer;
+  background:transparent;font-size:24px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   transition:all .15s;flex-shrink:0;
 }
@@ -223,7 +223,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .conf-med-pill{background:rgba(232,201,122,.12);color:var(--accent);border:1px solid rgba(232,201,122,.25)}
 .conf-low-pill{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
 .field-old{color:var(--muted)}.field-new{color:var(--text-hi);font-weight:500}
-.change-arrow{color:var(--muted);margin:0 3px;font-size:10px}
+.change-arrow{color:var(--muted);margin:0 3px;font-size:12px}
 
 /* ── SPINNER ── */
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -233,16 +233,16 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .ms-wrap{position:relative;display:inline-block}
 .ms-btn{
   background:var(--bg);border:1px solid var(--border);color:var(--muted);
-  font-family:'Inter',sans-serif;font-size:12px;padding:5px 10px;
+  font-family:'Inter',sans-serif;font-size:14px;padding:5px 10px;
   border-radius:var(--radius);cursor:pointer;white-space:nowrap;
   transition:border-color .15s,color .15s;display:flex;align-items:center;gap:5px;
 }
 .ms-btn:hover,.ms-btn.active{border-color:var(--accent);color:var(--text)}
 .ms-btn.has-selection{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
-.ms-arrow{font-size:9px;opacity:.6}
+.ms-arrow{font-size:11px;opacity:.6}
 .ms-count{
   background:var(--accent);color:#0d1117;border-radius:20px;
-  font-size:10px;font-weight:600;padding:1px 6px;margin-left:2px;
+  font-size:12px;font-weight:600;padding:1px 6px;margin-left:2px;
 }
 .ms-dropdown{
   position:absolute;top:calc(100% + 4px);left:0;z-index:200;
@@ -254,20 +254,20 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .ms-search-wrap{padding:8px 8px 4px;border-bottom:1px solid var(--border)}
 .ms-search{
   width:100%;background:var(--surface2);border:1px solid var(--border);
-  color:var(--text);font-family:'Inter',sans-serif;font-size:11px;
+  color:var(--text);font-family:'Inter',sans-serif;font-size:13px;
   padding:4px 8px;border-radius:var(--radius);outline:none;
 }
 .ms-search:focus{border-color:var(--accent)}
 .ms-list{overflow-y:auto;max-height:220px;padding:4px 0}
 .ms-item{
   display:flex;align-items:center;gap:8px;padding:5px 10px;
-  font-size:12px;color:var(--text);cursor:pointer;transition:background .1s;
+  font-size:14px;color:var(--text);cursor:pointer;transition:background .1s;
 }
 .ms-item:hover{background:var(--surface2)}
 .ms-item:focus{background:var(--surface2);outline:1px solid var(--accent);outline-offset:-1px}
 .ms-item input[type=checkbox]{accent-color:var(--accent);flex-shrink:0}
 /* Three-state check indicator */
-.tri-check{width:14px;height:14px;border-radius:3px;border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;line-height:1;transition:all .1s}
+.tri-check{width:14px;height:14px;border-radius:3px;border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1;transition:all .1s}
 .tri-include{background:var(--accent);border-color:var(--accent);color:#0d1117}
 .tri-include::after{content:'✓'}
 .tri-exclude{background:var(--danger);border-color:var(--danger);color:#fff}
@@ -275,15 +275,15 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .tri-mixed{border-style:dashed;border-color:var(--accent)}
 /* NOT pill */
 .filter-pill-not{background:rgba(201,122,122,.12);border-color:rgba(201,122,122,.35)}
-.not-label{font-size:9px;font-weight:700;letter-spacing:.06em;background:var(--danger);color:#fff;border-radius:2px;padding:1px 3px;margin-right:2px;vertical-align:middle}
+.not-label{font-size:11px;font-weight:700;letter-spacing:.06em;background:var(--danger);color:#fff;border-radius:2px;padding:1px 3px;margin-right:2px;vertical-align:middle}
 .ms-footer{
   border-top:1px solid var(--border);padding:6px 10px;
-  display:flex;justify-content:space-between;align-items:center;font-size:11px;
+  display:flex;justify-content:space-between;align-items:center;font-size:13px;
 }
-.ms-clear{color:var(--danger);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;font-size:11px;padding:0}
+.ms-clear{color:var(--danger);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;font-size:13px;padding:0}
 .ms-clear:hover{text-decoration:underline}
-.ms-done{color:var(--accent);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;font-size:11px;padding:0}
-.ms-mode-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:'Inter',sans-serif;font-size:11px;padding:3px 10px;border-radius:var(--radius);cursor:pointer;transition:all .1s}
+.ms-done{color:var(--accent);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;font-size:13px;padding:0}
+.ms-mode-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:'Inter',sans-serif;font-size:13px;padding:3px 10px;border-radius:var(--radius);cursor:pointer;transition:all .1s}
 .ms-mode-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 
 /* ── ACTIVE FILTER PILLS (below toolbar) ── */
@@ -296,15 +296,15 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   display:inline-flex;align-items:center;gap:5px;
   background:var(--accent-dim);border:1px solid rgba(0,192,48,.3);
   color:var(--accent);border-radius:20px;padding:2px 8px 2px 10px;
-  font-size:11px;font-family:'Inter',sans-serif;
+  font-size:13px;font-family:'Inter',sans-serif;
 }
 .filter-pill button{
   background:none;border:none;color:var(--accent);cursor:pointer;
-  padding:0;font-size:12px;line-height:1;opacity:.7;
+  padding:0;font-size:14px;line-height:1;opacity:.7;
 }
 .filter-pill button:hover{opacity:1}
 .pill-clear-all{
-  font-size:11px;color:var(--muted);cursor:pointer;background:none;border:none;
+  font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;
   font-family:'Inter',sans-serif;text-decoration:underline;padding:0;margin-left:4px;
 }
 
@@ -318,13 +318,13 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .quick-rate-card{width:360px;max-width:95vw;padding:24px}
 .qr-album-info{display:flex;gap:12px;align-items:center;margin-bottom:20px}
 .qr-art{width:56px;height:56px;border-radius:4px;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
-.qr-artist{font-weight:600;color:var(--text-hi);font-size:14px}
-.qr-album{font-family:'Lora',serif;color:var(--text);font-size:16px;margin-top:2px}
+.qr-artist{font-weight:600;color:var(--text-hi);font-size:16px}
+.qr-album{font-family:'Lora',serif;color:var(--text);font-size:18px;margin-top:2px}
 .qr-stars{display:flex;justify-content:center;gap:6px;margin-bottom:16px}
 .qr-stars .star-btn{font-size:66px;width:72px;height:72px}
 .qr-tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
 .qr-notes-row{margin-bottom:16px}
-.qr-notes-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:7px 10px;border-radius:var(--radius);outline:none;box-sizing:border-box}
+.qr-notes-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;padding:7px 10px;border-radius:var(--radius);outline:none;box-sizing:border-box}
 .qr-notes-input:focus{border-color:var(--accent)}
 .qr-actions{display:flex;gap:8px;justify-content:flex-end}
 
@@ -333,26 +333,26 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 /* Desktop: rows display as a single flex line */
 .toolbar-top-row,.toolbar-filter-row{display:contents}
 @media(max-width:700px){
-  .mobile-sort-select{display:block;font-size:10px;padding:4px 2px}
+  .mobile-sort-select{display:block;font-size:12px;padding:4px 2px}
   header{padding:12px 12px 10px}
-  .header-title h1{font-size:26px}
+  .header-title h1{font-size:28px}
   .header-stats{display:none}
   .mobile-hidden{display:none!important}
   /* List text: larger on mobile */
-  .td-artist{font-size:15px}
-  .td-album{font-size:16px}
-  .td-date{font-size:13px}
+  .td-artist{font-size:17px}
+  .td-album{font-size:18px}
+  .td-date{font-size:15px}
   /* Toolbar: two clean rows */
   .sticky-controls{flex-shrink:0}
   .toolbar{padding:6px 12px;gap:0;flex-direction:column;align-items:stretch}
   .toolbar-top-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
   .toolbar-filter-row{display:flex;gap:4px;align-items:center}
   .toolbar-top-row .search-wrap{flex:1}
-  .toolbar-top-row .search-wrap input{width:100%;font-size:12px}
+  .toolbar-top-row .search-wrap input{width:100%;font-size:14px}
   /* Filter buttons fill row evenly */
   .toolbar-filter-row .ms-wrap{flex:1;min-width:0}
-  .toolbar-filter-row .ms-btn{width:100%;font-size:10px;padding:4px 2px;justify-content:center}
-  .toolbar-filter-row #mobile-sort{flex:1;min-width:0;font-size:10px;padding:4px 2px}
+  .toolbar-filter-row .ms-btn{width:100%;font-size:12px;padding:4px 2px;justify-content:center}
+  .toolbar-filter-row #mobile-sort{flex:1;min-width:0;font-size:12px;padding:4px 2px}
   /* Card layout for table rows */
   table thead{display:none}
   table,tbody,tr.album-row,td{display:block;width:100%}
@@ -369,9 +369,9 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   /* Make art fill row on mobile */
   tr.album-row td:nth-child(1) .art-thumb,
   tr.album-row td:nth-child(1) .art-placeholder{width:90px;height:90px;border-radius:4px}
-  tr.album-row td:nth-child(2){grid-column:2;grid-row:1;font-size:13px}
-  tr.album-row td:nth-child(3){grid-column:2;grid-row:2;font-size:12px}
-  tr.album-row td:nth-child(4){grid-column:2;grid-row:3;font-size:10px;color:var(--muted);font-family:'Inter',sans-serif}
+  tr.album-row td:nth-child(2){grid-column:2;grid-row:1;font-size:15px}
+  tr.album-row td:nth-child(3){grid-column:2;grid-row:2;font-size:14px}
+  tr.album-row td:nth-child(4){grid-column:2;grid-row:3;font-size:12px;color:var(--muted);font-family:'Inter',sans-serif}
   tr.album-row td:nth-child(5){grid-column:3;grid-row:1}
   tr.album-row td:nth-child(6){grid-column:3;grid-row:2/4}
   tr.album-row td:nth-child(7),tr.album-row td:nth-child(8){display:none}
@@ -379,7 +379,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
         /* All modals full-width on mobile */
   .modal,.modal.wide,.quick-rate-card{width:96vw!important;max-width:96vw!important;padding:16px;max-height:90vh;overflow-y:auto}
   #filter-pills{padding:5px 12px}
-  .filter-pill{font-size:10px}
+  .filter-pill{font-size:12px}
     /* Quick-rate stars slightly smaller on mobile */
   .qr-stars .star-btn{font-size:52px;width:60px;height:60px}
 }
@@ -396,7 +396,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <input class="auth-input" id="auth-password" type="password" placeholder="Password" autocomplete="current-password">
     <button class="auth-btn" id="auth-signin-btn">Sign in</button>
     <div class="auth-msg" id="auth-msg"></div>
-    <div style="margin-top:16px;font-size:11px;color:#738a9a">
+    <div style="margin-top:16px;font-size:13px;color:#738a9a">
       No account? <a href="#" id="auth-switch-link" style="color:#00c030;text-decoration:none">Sign up</a>
     </div>
   </div>
@@ -407,7 +407,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <div class="sync-dot" id="sync-dot"></div>
   <span id="sync-label">synced</span>
   <span style="color:#3a4048">·</span>
-  <a href="#" id="sign-out-link" style="color:#738a9a;text-decoration:none;font-size:10px">sign out</a>
+  <a href="#" id="sign-out-link" style="color:#738a9a;text-decoration:none;font-size:12px">sign out</a>
 </div>
 
 <!-- MAIN APP -->
@@ -428,11 +428,11 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <button class="btn-primary" id="btn-toggle-add">+ Add Album</button><div class="search-wrap">
       <span class="search-icon">⌕</span>
       <input type="text" id="filter-search" placeholder="Search artist or album…">
-      <button id="search-clear" title="Clear search" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;line-height:1">✕</button>
+      <button id="search-clear" title="Clear search" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
     </div>
     <div class="mobile-hidden" style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:2px 4px 2px 8px">
-      <span style="font-size:10px;color:var(--muted);white-space:nowrap;text-transform:uppercase;letter-spacing:.08em">Quick Add</span>
-      <input type="text" id="quick-add-mb" placeholder="Paste MB link…" style="background:none;border:none;outline:none;font-family:'Inter',sans-serif;font-size:11px;color:var(--text);width:160px;padding:3px 4px">
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap;text-transform:uppercase;letter-spacing:.08em">Quick Add</span>
+      <input type="text" id="quick-add-mb" placeholder="Paste MB link…" style="background:none;border:none;outline:none;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);width:160px;padding:3px 4px">
     </div>
   </div>
   <div class="toolbar-filter-row">
@@ -490,10 +490,10 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
           <img id="match-art" style="width:64px;height:64px;object-fit:cover;display:none" alt="">
         </div>
         <div style="min-width:0;flex:1">
-          <div id="match-artist" style="font-weight:600;color:var(--text-hi);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-          <div id="match-album-name" style="font-family:'Lora',serif;font-style:italic;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px"></div>
+          <div id="match-artist" style="font-weight:600;color:var(--text-hi);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+          <div id="match-album-name" style="font-family:'Lora',serif;font-style:italic;color:var(--muted);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px"></div>
           <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
-            <span id="match-date" style="font-size:11px;color:var(--muted);font-family:'Inter',sans-serif"></span>
+            <span id="match-date" style="font-size:13px;color:var(--muted);font-family:'Inter',sans-serif"></span>
             <span class="src-badge src-mb">MB</span>
           </div>
         </div>
@@ -501,12 +501,12 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     </div>
 
     <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
-      <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">MB link</label>
-      <input class="rescan-search-input" id="autofill-mb-input" placeholder="Paste MusicBrainz URL or release ID" style="flex:1;font-size:11px;padding:5px 8px">
+      <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">MB link</label>
+      <input class="rescan-search-input" id="autofill-mb-input" placeholder="Paste MusicBrainz URL or release ID" style="flex:1;font-size:13px;padding:5px 8px">
       <button class="btn-ghost btn-sm" style="color:var(--want);white-space:nowrap" id="autofill-mb-btn">Force</button>
     </div>
 
-    <span id="form-error" style="font-size:11px;color:var(--danger);display:block;min-height:16px;margin-bottom:6px"></span>
+    <span id="form-error" style="font-size:13px;color:var(--danger);display:block;min-height:16px;margin-bottom:6px"></span>
 
     <!-- ACTION BUTTONS — full width, evenly spread -->
     <div class="form-actions-bar">
@@ -538,8 +538,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   </table>
   <div id="empty-state" class="empty-state">
     <div class="ei">🎵</div>
-    <p style="font-size:13px">No albums logged yet.</p>
-    <p style="font-size:11px;color:#4a4a4a;margin-top:4px">Click "Add Album" or import a CSV to start.</p>
+    <p style="font-size:15px">No albums logged yet.</p>
+    <p style="font-size:13px;color:#4a4a4a;margin-top:4px">Click "Add Album" or import a CSV to start.</p>
   </div>
 </div>
 
@@ -572,7 +572,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="qr-tags">
       <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
       <button class="tag-toggle hard" id="qr-hard-toggle" style="display:none">📦 Hard to find</button>
-      <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:11px">⚠ Missing info</button>
+      <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:13px">⚠ Missing info</button>
     </div>
     <div class="qr-notes-row">
       <input type="text" id="qr-notes" class="qr-notes-input" placeholder="Notes…">
@@ -645,7 +645,7 @@ function starsHTML(n) {
   if (!n) return '';
   const full  = Math.round(n);
   const empty = 5 - full;
-  return `<span class="stars-display" title="${n}/5" style="font-size:15px;letter-spacing:1px">`
+  return `<span class="stars-display" title="${n}/5" style="font-size:17px;letter-spacing:1px">`
     + `<span style="color:var(--star)">${'★'.repeat(full)}</span>`
     + `<span style="color:var(--star-empty)">${'★'.repeat(empty)}</span>`
     + `</span>`;
@@ -791,7 +791,7 @@ function buildDropdown(field, wrap) {
           const item = document.createElement('div');
           item.className = 'ms-item';
           item.tabIndex = 0;
-          item.innerHTML = `<span class="tri-check ${allInclude?'tri-include':allExclude?'tri-exclude':someActive?'tri-mixed':''}"></span><span>${esc(decade)}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">${albumCount} albums</span>`;
+          item.innerHTML = `<span class="tri-check ${allInclude?'tri-include':allExclude?'tri-exclude':someActive?'tri-mixed':''}"></span><span>${esc(decade)}</span><span style="font-size:12px;color:var(--muted);margin-left:4px">${albumCount} albums</span>`;
           const toggleDecade = () => {
             const cur = allInclude ? 'include' : allExclude ? 'exclude' : someActive ? 'include' : null;
             const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
@@ -1088,8 +1088,8 @@ function render() {
       <td class="td-artist">${esc(a.artist)}</td>
       <td class="td-album">${esc(a.album)}</td>
       <td class="td-date">${esc(a.date||'—')}</td>
-      <td>${a.rating ? starsHTML(a.rating) : '<span style="color:var(--border);font-size:11px">—</span>'}</td>
-      <td><div class="row-tags">${tags||'<span style="color:var(--border);font-size:11px">—</span>'}</div></td>
+      <td>${a.rating ? starsHTML(a.rating) : '<span style="color:var(--border);font-size:13px">—</span>'}</td>
+      <td><div class="row-tags">${tags||'<span style="color:var(--border);font-size:13px">—</span>'}</div></td>
       <td class="td-notes" title="${esc(a.notes||'')}">${esc(a.notes||'—')}</td>`;
     tbody.appendChild(tr);
   });
@@ -1337,7 +1337,22 @@ on('quick-add-mb','keydown',async e=>{
   const raw=e.target.value.trim();e.target.value='';
   const mbid=raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
   if(!mbid){alert('No valid MusicBrainz ID found in that link.');return;}
-  // Open modal immediately — don't wait for MB response
+  editingId=null;resetForm();openPanel('add');
+  document.getElementById('form-error').textContent='⟳ Looking up MusicBrainz…';
+  const result=await mbidLookup(mbid);
+  document.getElementById('form-error').textContent='';
+  if(!result){document.getElementById('form-error').textContent='MB lookup failed — paste link again or fill manually.';return;}
+  applyMbResult(result);
+  setTimeout(()=>document.getElementById('btn-save')?.focus(),50);
+});
+on('quick-add-mb','paste',async e=>{
+  // Trigger immediately on paste without needing Enter
+  const raw=(e.clipboardData||window.clipboardData).getData('text').trim();
+  if(!raw)return;
+  const mbid=raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
+  if(!mbid)return; // not a MB link, let them type/edit normally
+  e.preventDefault();
+  e.target.value='';
   editingId=null;resetForm();openPanel('add');
   document.getElementById('form-error').textContent='⟳ Looking up MusicBrainz…';
   const result=await mbidLookup(mbid);
