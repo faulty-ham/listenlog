@@ -1418,26 +1418,40 @@ function applyMbResult(result) {
 
 async function fetchItunesArt(artist, album) {
   try {
-    // Try multiple search strategies
+    // Normalize: lowercase, strip punctuation/special chars, collapse spaces
+    const norm = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    const normAlbum = norm(album);
+
     const searches = [
-      `${artist} ${album}`,           // "Sublime 40 oz. to Freedom"
-      `${artist} ${album.replace(/[^a-zA-Z0-9\s]/g, '')}`, // strip punctuation
-      artist,                          // just artist as last resort
+      `${artist} ${album}`,
+      `${norm(artist)} ${normAlbum}`,
     ];
+
     for (const q of searches) {
-      const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=10`);
+      const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=20`);
       if (!r.ok) continue;
       const data = await r.json();
       if (!data.results?.length) continue;
-      const al = album.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-      const match = data.results.find(x => {
-        const cn = (x.collectionName||'').toLowerCase().replace(/[^a-z0-9\s]/g, '');
-        return cn === al || cn.includes(al) || al.includes(cn);
-      }) || (q === artist ? data.results[0] : null);
-      if (match?.artworkUrl100) {
-        return match.artworkUrl100.replace('100x100bb', '600x600bb');
+
+      // Score each result by how well the album name matches
+      const scored = data.results.map(x => {
+        const cn = norm(x.collectionName || '');
+        let score = 0;
+        if (cn === normAlbum) score = 100;
+        else if (cn.includes(normAlbum) || normAlbum.includes(cn)) score = 50;
+        // Penalise if artist doesn't match at all
+        const an = norm(x.artistName || '');
+        const na = norm(artist);
+        if (an.includes(na) || na.includes(an)) score += 10;
+        return { ...x, score };
+      }).filter(x => x.score >= 50).sort((a, b) => b.score - a.score);
+
+      if (scored[0]?.artworkUrl100) {
+        console.log(`iTunes match: "${scored[0].artistName} — ${scored[0].collectionName}" (score ${scored[0].score})`);
+        return scored[0].artworkUrl100.replace('100x100bb', '600x600bb');
       }
     }
+    console.log(`iTunes: no match found for "${artist} — ${album}"`);
     return null;
   } catch(e) {
     console.error('iTunes art fetch error:', e);
@@ -1513,18 +1527,14 @@ document.getElementById('art-lightbox').addEventListener('click', () => {
 });
 async function artError(img) {
   if (img.dataset.tried) {
-    // Already tried fallback — show placeholder
     img.style.display = 'none';
     if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
     return;
   }
   img.dataset.tried = '1';
   // Try stored fallback first
-  if (img.dataset.fb) {
-    img.src = img.dataset.fb;
-    return;
-  }
-  // No stored fallback — fetch iTunes dynamically
+  if (img.dataset.fb) { img.src = img.dataset.fb; return; }
+  // No stored fallback — fetch iTunes dynamically using artist+album
   const artist = img.dataset.artist || '';
   const album  = img.dataset.album  || '';
   if (artist && album) {
