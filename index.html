@@ -596,8 +596,15 @@ function migrateArtUrls(arr) {
   let changed = false;
   (arr||[]).forEach(a => {
     if (a.artUrl && a.artUrl.includes('ca.archive.org')) {
+      console.log('Migrating URL:', a.artist, '—', a.album, '\n  from:', a.artUrl.substring(0, 80));
       const m = a.artUrl.match(/mbid-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/);
-      if (m) { a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`; changed = true; }
+      if (m) {
+        a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`;
+        console.log('  to:', a.artUrl);
+        changed = true;
+      } else {
+        console.log('  no mbid found in URL');
+      }
     }
   });
   return changed;
@@ -1515,7 +1522,9 @@ async function fetchItunesArt(artist, album) {
       const scored = data.results.map(x => {
         const cn = norm(x.collectionName || '');
         const an = norm(x.artistName || '');
-        // Score album name similarity first
+        // Artist must match
+        const artistMatch = an.includes(normArtist) || normArtist.includes(an);
+        if (!artistMatch) return { ...x, score: 0 };
         let score = 0;
         if (cn === normAlbum) score = 100;
         else if (cn.includes(normAlbum) || normAlbum.includes(cn)) score = 60;
@@ -1526,10 +1535,6 @@ async function fetchItunesArt(artist, album) {
           if (overlap >= 2 || (overlap === 1 && aWords.length <= 2))
             score = Math.round((overlap / Math.max(aWords.length, bWords.length)) * 50);
         }
-        if (score === 0) return { ...x, score: 0 };
-        // Artist check: required unless album match is exact (score=100) and artist is close
-        const artistMatch = an.includes(normArtist) || normArtist.includes(an);
-        if (!artistMatch && score < 100) return { ...x, score: 0 };
         if (artistMatch) score += 10;
         return { ...x, score };
       }).filter(x => x.score >= 50).sort((a, b) => b.score - a.score);
