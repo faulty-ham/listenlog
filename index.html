@@ -1515,10 +1515,7 @@ async function fetchItunesArt(artist, album) {
       const scored = data.results.map(x => {
         const cn = norm(x.collectionName || '');
         const an = norm(x.artistName || '');
-        // Artist must match — this is non-negotiable
-        const artistMatch = an.includes(normArtist) || normArtist.includes(an);
-        if (!artistMatch) return { ...x, score: 0 };
-        // Score by album name similarity
+        // Score album name similarity first
         let score = 0;
         if (cn === normAlbum) score = 100;
         else if (cn.includes(normAlbum) || normAlbum.includes(cn)) score = 60;
@@ -1529,6 +1526,11 @@ async function fetchItunesArt(artist, album) {
           if (overlap >= 2 || (overlap === 1 && aWords.length <= 2))
             score = Math.round((overlap / Math.max(aWords.length, bWords.length)) * 50);
         }
+        if (score === 0) return { ...x, score: 0 };
+        // Artist check: required unless album match is exact (score=100) and artist is close
+        const artistMatch = an.includes(normArtist) || normArtist.includes(an);
+        if (!artistMatch && score < 100) return { ...x, score: 0 };
+        if (artistMatch) score += 10;
         return { ...x, score };
       }).filter(x => x.score >= 50).sort((a, b) => b.score - a.score);
 
@@ -1742,22 +1744,30 @@ async function pullFromCloud(retrying=false) {
       .single();
     if (error && error.code !== 'PGRST116') throw error;
     if (data) {
+      // Always migrate bad archive.org node URLs in remote data first
       const remoteAlbums = data.albums || [];
-      // Compare: if we have unsaved local changes (push pending or failed), keep local
-      const lastPushed  = parseInt(localStorage.getItem('listenLogPushedAt') || '0');
-      const lastSaved   = parseInt(localStorage.getItem('listenLogSavedAt')  || '0');
-      const localDirty  = lastSaved > lastPushed;
+      const remoteMigrated = migrateArtUrls(remoteAlbums);
+
+      const lastPushed = parseInt(localStorage.getItem('listenLogPushedAt') || '0');
+      const lastSaved  = parseInt(localStorage.getItem('listenLogSavedAt')  || '0');
+      const localDirty = lastSaved > lastPushed;
+
       if (localDirty && albums.length > 0) {
-        console.log('Local has unsaved changes — pushing to Supabase instead of pulling');
+        // Local has unsaved changes — migrate local too then push
+        migrateArtUrls(albums);
+        console.log('Local has unsaved changes — pushing to Supabase');
         await pushToCloud();
       } else {
-        // Migrate any bad archive.org node URLs in pulled data
-        const migrated = migrateArtUrls(data.albums||[]);
-        albums    = data.albums || [];
+        // Use remote data (already migrated above)
+        albums    = remoteAlbums;
         originals = data.originals || {};
         localStorage.setItem('listenLog',     JSON.stringify(albums));
         localStorage.setItem('listenLogOrig', JSON.stringify(originals));
-        if (migrated) { console.log('Migrated archive.org URLs after pull'); localStorage.setItem('listenLogSavedAt', String(Date.now())); setTimeout(pushToCloud, 1000); }
+        if (remoteMigrated) {
+          console.log('Migrated archive.org URLs in remote data — pushing fix to Supabase');
+          localStorage.setItem('listenLogSavedAt', String(Date.now()));
+          setTimeout(pushToCloud, 500);
+        }
       }
     }
     setSyncStatus('ok', 'synced');
