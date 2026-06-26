@@ -608,30 +608,21 @@ let albums    = JSON.parse(localStorage.getItem('listenLog')    || '[]');
 // originalData: keyed by "artist|||album" (lowercased), stores {artist,album,date,rating} from CSV
 let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
-// Migrate hardcoded archive.org node URLs → CAA redirect URLs at startup
+// Migrate hardcoded archive.org node URLs → CAA redirect URLs (resilient across CDN nodes)
 function migrateArtUrls(arr) {
   let changed = false;
   (arr||[]).forEach(a => {
-    if (a.artUrl && a.artUrl.includes('ca.archive.org')) {
-      console.log('Migrating URL:', a.artist, '—', a.album, '\n  from:', a.artUrl.substring(0, 80));
+    if (a.artUrl?.includes('ca.archive.org')) {
       const m = a.artUrl.match(/mbid-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/);
-      if (m) {
-        a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`;
-        console.log('  to:', a.artUrl);
-        changed = true;
-      } else {
-        console.log('  no mbid found in URL');
-      }
+      if (m) { a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`; changed = true; }
     }
   });
   return changed;
 }
 (function() {
-  const changed = migrateArtUrls(albums);
-  if (changed) {
+  if (migrateArtUrls(albums)) {
     localStorage.setItem('listenLog', JSON.stringify(albums));
     localStorage.setItem('listenLogSavedAt', String(Date.now()));
-    console.log('Migrated archive.org node URLs → CAA redirect URLs');
   }
 })();
 
@@ -639,10 +630,6 @@ let editingId = null, pendingDeleteId = null;
 let openDropdown = null;
 let pendingArtUrl = '', pendingArtFallback = '';
 let sortKey = 'date', sortDir = -1;
-
-// CSV parse state
-
-// Rescan state
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 function origKey(artist, album) {
@@ -1042,6 +1029,9 @@ function getSorted(list) {
 // ════════════════════════════════════════════════════════════
 // RENDER
 // ════════════════════════════════════════════════════════════
+const ART_PLACEHOLDER = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span>`;
+const DASH = '<span style="color:var(--border);font-size:13px">—</span>';
+
 function render() {
   const tbody = document.getElementById('album-tbody');
   if (!tbody) return; // DOM not ready yet
@@ -1052,7 +1042,6 @@ function render() {
     const img = row.querySelector('img.art-thumb:not(.lazy)');
     if (img?.src) loadedArt[row.dataset.id] = img.src;
   });
-  tbody.innerHTML = '';
 
   const rated = albums.filter(a=>a.rating);
   const avg   = rated.length ? (rated.reduce((s,a)=>s+a.rating,0)/rated.length).toFixed(1) : '—';
@@ -1073,21 +1062,22 @@ function render() {
     if (arr) arr.textContent = th.dataset.sort===sortKey ? (sortDir===1?'↑':'↓') : '↕';
   });
 
+  const frag = document.createDocumentFragment();
   list.forEach(a => {
     const tr = document.createElement('tr');
     tr.className = 'album-row';
+    tr.dataset.id = a.id;
     tr.addEventListener('click', e => {
       if (e.target.closest('button,input')) return;
-      const isMobile = window.innerWidth <= 700;
-      if (isMobile) {
+      if (window.innerWidth <= 700) {
         const rect = tr.getBoundingClientRect();
         if (e.clientX >= rect.left + rect.width / 2) openQuickRate(a.id);
         else editAlbum(a.id);
         return;
       }
       const td = e.target.closest('td');
-      const tdIdx = [...tr.querySelectorAll('td')].indexOf(td);
-      if (tdIdx === 4 || tdIdx === 5 || tdIdx === 6) openQuickRate(a.id);
+      const tdIdx = [...tr.children].indexOf(td);
+      if (tdIdx >= 4) openQuickRate(a.id);
       else editAlbum(a.id);
     });
     const tags = [
@@ -1096,20 +1086,23 @@ function render() {
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
     ].filter(Boolean).join(' ');
 
-    const alreadyLoaded = loadedArt[a.id];
-    tr.dataset.id = a.id;
+    const loaded = loadedArt[a.id];
+    const artCell = a.artUrl
+      ? `<img class="art-thumb${loaded ? '' : ' lazy'}" ${loaded ? `src="${esc(loaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" data-artist="${esc(a.artist)}" data-album="${esc(a.album)}" data-caa="${esc(a.artUrl)}"${a.artFallback?` data-fb="${esc(a.artFallback)}"`:``} onerror="artError(this)"><div class="art-placeholder" style="display:none">${ART_PLACEHOLDER}</div>`
+      : `<div class="art-placeholder">${ART_PLACEHOLDER}</div>`;
+
     tr.innerHTML = `
-      <td class="td-art" onclick="event.stopPropagation()">${a.artUrl
-        ? `<img class="art-thumb${alreadyLoaded ? '' : ' lazy'}" ${alreadyLoaded ? `src="${esc(alreadyLoaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" data-artist="${esc(a.artist)}" data-album="${esc(a.album)}" data-caa="${esc(a.artUrl)}"${a.artFallback?` data-fb="${esc(a.artFallback)}"`:``} onerror="artError(this)"><div class="art-placeholder" style="display:none"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span></div>`
-        : `<div class="art-placeholder"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span></div>`}</td>
+      <td class="td-art" onclick="event.stopPropagation()">${artCell}</td>
       <td class="td-artist">${esc(a.artist)}</td>
       <td class="td-album">${esc(a.album)}</td>
       <td class="td-date">${esc(a.date||'—')}</td>
-      <td>${a.rating ? starsHTML(a.rating) : '<span style="color:var(--border);font-size:13px">—</span>'}</td>
-      <td><div class="row-tags">${tags||'<span style="color:var(--border);font-size:13px">—</span>'}</div></td>
+      <td>${a.rating ? starsHTML(a.rating) : DASH}</td>
+      <td><div class="row-tags">${tags||DASH}</div></td>
       <td class="td-notes" title="${esc(a.notes||'')}">${esc(a.notes||'—')}</td>`;
-    tbody.appendChild(tr);
+    frag.appendChild(tr);
   });
+  tbody.innerHTML = '';
+  tbody.appendChild(frag);
 
   updateDropdowns();
   observeLazyImages();
@@ -1507,61 +1500,6 @@ async function fetchItunesArt(artist, album) {
     const normAlbum  = norm(album);
     const normArtist = norm(artist);
 
-    const searches = [
-      `${artist} ${album}`,
-      `${normArtist} ${normAlbum}`,
-      // Try key words only (helps with punctuation-heavy titles)
-      `${normArtist} ${normAlbum.split(' ').filter(w=>w.length>2).join(' ')}`,
-      // Album title alone (for obscure releases not on major stores)
-      normAlbum,
-    ];
-
-    for (const q of searches) {
-      const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=20`);
-      if (!r.ok) continue;
-      const data = await r.json();
-      if (!data.results?.length) continue;
-
-      // Log all candidates for debugging
-      console.log(`iTunes candidates for "${q}":`);
-      data.results.forEach(x => console.log(`  "${x.collectionName}" by "${x.artistName}"`));
-
-      const scored = data.results.map(x => {
-        const cn = norm(x.collectionName || '');
-        const an = norm(x.artistName || '');
-        let score = 0;
-        if (cn === normAlbum) score = 100;
-        else if (cn.includes(normAlbum) || normAlbum.includes(cn)) score = 60;
-        // Partial word overlap
-        else {
-          const aWords = normAlbum.split(' ').filter(w => w.length > 2);
-          const bWords = cn.split(' ').filter(w => w.length > 2);
-          const overlap = aWords.filter(w => bWords.includes(w)).length;
-          if (overlap > 0) score = Math.round((overlap / Math.max(aWords.length, bWords.length)) * 40);
-        }
-        if (an.includes(normArtist) || normArtist.includes(an)) score += 10;
-        return { ...x, score };
-      }).filter(x => x.score >= 25).sort((a, b) => b.score - a.score);
-
-      if (scored[0]?.artworkUrl100) {
-        console.log(`iTunes match: "${scored[0].artistName} — ${scored[0].collectionName}" (score ${scored[0].score})`);
-        return scored[0].artworkUrl100.replace('100x100bb', '600x600bb');
-      }
-    }
-    console.log(`iTunes: no match found for "${artist} — ${album}"`);
-    return null;
-  } catch(e) {
-    console.error('iTunes art fetch error:', e);
-    return null;
-  }
-}
-
-async function fetchItunesArt(artist, album) {
-  try {
-    const norm = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
-    const normAlbum  = norm(album);
-    const normArtist = norm(artist);
-
     // Only search artist+album together — never album alone (too many false matches)
     const searches = [
       `${artist} ${album}`,
@@ -1573,9 +1511,6 @@ async function fetchItunesArt(artist, album) {
       if (!r.ok) continue;
       const data = await r.json();
       if (!data.results?.length) continue;
-
-      console.log(`iTunes candidates for "${q}":`);
-      data.results.forEach(x => console.log(`  "${x.collectionName}" by "${x.artistName}"`));
 
       const scored = data.results.map(x => {
         const cn = norm(x.collectionName || '');
@@ -1598,11 +1533,9 @@ async function fetchItunesArt(artist, album) {
       }).filter(x => x.score >= 50).sort((a, b) => b.score - a.score);
 
       if (scored[0]?.artworkUrl100) {
-        console.log(`iTunes match: "${scored[0].artistName} — ${scored[0].collectionName}" (score ${scored[0].score})`);
         return scored[0].artworkUrl100.replace('100x100bb', '600x600bb');
       }
     }
-    console.log(`iTunes: no match found for "${artist} — ${album}"`);
     return null;
   } catch(e) {
     console.error('iTunes art fetch error:', e);
@@ -1633,7 +1566,6 @@ async function mbidLookup(mbid) {
     const itunesArt = await fetchItunesArt(artist, album);
     const art        = caaUrl;
     const artFallback = itunesArt || null;
-    console.log(`Art — CAA: ${caaUrl}, iTunes fallback: ${itunesArt||'none'}`);
 
     return { matchedArtist: artist, matchedAlbum: album, date, art, artFallback };
   } catch(e) {
@@ -1813,9 +1745,6 @@ window.addEventListener('beforeunload', () => {
   if (_syncTimeout) {
     clearTimeout(_syncTimeout);
     _syncTimeout = null;
-    // Use sendBeacon for reliable delivery even during page unload
-    const payload = JSON.stringify({ user_id: _userId, albums, originals });
-    // Fall back to synchronous push attempt
     pushToCloud();
   }
 });
@@ -1848,7 +1777,6 @@ async function pushToCloud(retrying=false) {
   // Migrate any bad archive.org URLs before pushing
   if (migrateArtUrls(albums)) {
     localStorage.setItem('listenLog', JSON.stringify(albums));
-    console.log('Migrated archive.org URLs before push');
   }
   _lastPushTime = Date.now();
   try {
@@ -1891,7 +1819,6 @@ async function pullFromCloud(retrying=false) {
       if (localDirty && albums.length > 0) {
         // Local has unsaved changes — migrate local too then push
         migrateArtUrls(albums);
-        console.log('Local has unsaved changes — pushing to Supabase');
         await pushToCloud();
       } else {
         // Use remote data (already migrated above)
@@ -1900,7 +1827,6 @@ async function pullFromCloud(retrying=false) {
         localStorage.setItem('listenLog',     JSON.stringify(albums));
         localStorage.setItem('listenLogOrig', JSON.stringify(originals));
         if (remoteMigrated) {
-          console.log('Migrated archive.org URLs in remote data — pushing fix to Supabase');
           localStorage.setItem('listenLogSavedAt', String(Date.now()));
           setTimeout(pushToCloud, 500);
         }
