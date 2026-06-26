@@ -434,12 +434,12 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <div class="toolbar-top-row">
     <button class="btn-primary" id="btn-toggle-add">+ Add Album</button><div class="search-wrap">
       <span class="search-icon">⌕</span>
-      <input type="text" id="filter-search" placeholder="Search artist or album…">
+      <input type="text" id="filter-search" placeholder="Search artist or album…" aria-label="Search albums">
       <button id="search-clear" title="Clear search" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
     </div>
     <div class="mobile-hidden" style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:2px 4px 2px 8px">
       <span style="font-size:12px;color:var(--muted);white-space:nowrap;text-transform:uppercase;letter-spacing:.08em">Quick Add</span>
-      <input type="text" id="quick-add-mb" placeholder="Paste MB link…" style="background:none;border:none;outline:none;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);width:160px;padding:3px 4px">
+      <input type="text" id="quick-add-mb" placeholder="Paste MB link…" aria-label="Quick add by MusicBrainz link" style="background:none;border:none;outline:none;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);width:160px;padding:3px 4px">
     </div>
   </div>
   <div class="toolbar-filter-row">
@@ -478,15 +478,15 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="form-row" style="margin-bottom:10px">
       <div class="form-group" style="flex:1.2;min-width:130px">
         <label>Artist *</label>
-        <input type="text" id="f-artist" placeholder="e.g. Radiohead" autocomplete="off" style="width:100%">
+        <input type="text" id="f-artist" placeholder="e.g. Radiohead" autocomplete="off" style="width:100%" aria-label="Artist">
       </div>
       <div class="form-group" style="flex:1.5;min-width:140px">
         <label>Album *</label>
-        <input type="text" id="f-album" placeholder="e.g. OK Computer" autocomplete="off" style="width:100%">
+        <input type="text" id="f-album" placeholder="e.g. OK Computer" autocomplete="off" style="width:100%" aria-label="Album">
       </div>
       <div class="form-group" style="min-width:110px">
         <label>Release Date</label>
-        <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="width:100%">
+        <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="width:100%" aria-label="Release date">
       </div>
     </div><!-- MB LINK -->
 
@@ -522,7 +522,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
     <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
       <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">MB link</label>
-      <input class="rescan-search-input" id="autofill-mb-input" placeholder="Paste MusicBrainz URL or release ID" style="flex:1;font-size:13px;padding:5px 8px">
+      <input class="rescan-search-input" id="autofill-mb-input" placeholder="Paste MusicBrainz URL or release ID" style="flex:1;font-size:13px;padding:5px 8px" aria-label="MusicBrainz link">
       <button class="btn-ghost btn-sm" style="color:var(--want);white-space:nowrap" id="autofill-mb-btn">Force</button>
     </div>
 
@@ -595,7 +595,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:13px">⚠ Missing info</button>
     </div>
     <div class="qr-notes-row">
-      <input type="text" id="qr-notes" class="qr-notes-input" placeholder="Notes…">
+      <input type="text" id="qr-notes" class="qr-notes-input" placeholder="Notes…" aria-label="Notes">
     </div>
     <div class="qr-actions">
       <button class="btn-primary" id="qr-save">Save</button>
@@ -856,7 +856,7 @@ function buildDropdown(field, wrap) {
   const map       = activeFilters[field];
 
   if (hasSearch) {
-    dd.innerHTML = `<div class="ms-search-wrap"><input class="ms-search" placeholder="Search…" type="text"></div>`;
+    dd.innerHTML = `<div class="ms-search-wrap"><input class="ms-search" placeholder="Search…" type="text" aria-label="Search filter options"></div>`;
   }
 
   const list = document.createElement('div');
