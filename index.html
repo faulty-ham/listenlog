@@ -604,7 +604,11 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 // ════════════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════════════
-let albums    = JSON.parse(localStorage.getItem('listenLog')    || '[]');
+let albums = (() => {
+  const raw = JSON.parse(localStorage.getItem('listenLog') || '[]');
+  const seen = new Set();
+  return raw.filter(a => a.id && (seen.has(a.id) ? false : seen.add(a.id)));
+})();
 // originalData: keyed by "artist|||album" (lowercased), stores {artist,album,date,rating} from CSV
 let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
@@ -1863,8 +1867,14 @@ async function pullFromCloud(retrying=false) {
     }
     const remote = all.map(rowToAlbum);
     migrateArtUrls(remote);
+
+    // Deduplicate by id (safety net — remote should be clean)
+    const seen = new Set();
+    const deduped = remote.filter(a => seen.has(a.id) ? false : seen.add(a.id));
+
     if (_writeQueue.size > 0) {
-      const merged = remote.map(a => {
+      // Overlay any pending local writes onto the remote data
+      const merged = deduped.map(a => {
         const q = _writeQueue.get(a.id);
         return (q !== undefined && q !== null) ? q : a;
       });
@@ -1872,8 +1882,10 @@ async function pullFromCloud(retrying=false) {
         if (album && !merged.find(a => a.id === id)) merged.unshift(album);
       albums = merged;
     } else {
-      albums = remote;
+      albums = deduped;
     }
+
+    // Always overwrite localStorage with clean Supabase data
     localStorage.setItem('listenLog', JSON.stringify(albums));
     setSyncStatus('ok', 'synced');
     render();
