@@ -1858,7 +1858,8 @@ async function pullFromCloud(retrying=false) {
     while (true) {
       const { data, error } = await _sb.from('albums')
         .select('*').eq('user_id', _userId)
-        .order('added', { ascending: false })
+        .order('added', { ascending: false, nullsLast: true })
+        .order('id', { ascending: true })  // stable tiebreaker
         .range(from, from + PAGE - 1);
       if (error) throw error;
       all = all.concat(data || []);
@@ -1866,6 +1867,7 @@ async function pullFromCloud(retrying=false) {
       from += PAGE;
     }
     const remote = all.map(rowToAlbum);
+    console.log(`Pulled ${all.length} albums from Supabase (${Math.ceil(all.length/PAGE)} pages)`);
     migrateArtUrls(remote);
 
     // Deduplicate by id (safety net — remote should be clean)
