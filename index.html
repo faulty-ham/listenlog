@@ -605,30 +605,20 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 // ════════════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════════════
-let albums = (() => {
-  const raw = JSON.parse(localStorage.getItem('listenLog') || '[]');
-  const seen = new Set();
-  return raw.filter(a => a.id && (seen.has(a.id) ? false : seen.add(a.id)));
-})();
+// Albums loaded from Supabase on auth — localStorage is just a write-back cache
+let albums = [];
 // originalData: keyed by "artist|||album" (lowercased), stores {artist,album,date,rating} from CSV
 let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
 // Migrate hardcoded archive.org node URLs → CAA redirect URLs (resilient across CDN nodes)
 function migrateArtUrls(arr) {
-  let changed = false;
   (arr||[]).forEach(a => {
     if (a.artUrl?.includes('ca.archive.org')) {
       const m = a.artUrl.match(/mbid-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/);
-      if (m) { a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`; changed = true; }
+      if (m) a.artUrl = `https://coverartarchive.org/release-group/${m[1]}/front`;
     }
   });
-  return changed;
 }
-(function() {
-  if (migrateArtUrls(albums)) {
-    localStorage.setItem('listenLog', JSON.stringify(albums));
-  }
-})();
 
 let editingId = null, pendingDeleteId = null;
 let openDropdown = null;
@@ -1868,16 +1858,11 @@ async function pullFromCloud(retrying=false) {
       from += PAGE;
     }
     const remote = all.map(rowToAlbum);
-    console.log(`Pulled ${all.length} albums from Supabase (${Math.ceil(all.length/PAGE)} pages)`);
+    console.log(`Pulled ${all.length} albums from Supabase`);
     migrateArtUrls(remote);
 
-    // Deduplicate by id (safety net — remote should be clean)
-    const seen = new Set();
-    const deduped = remote.filter(a => seen.has(a.id) ? false : seen.add(a.id));
-
     if (_writeQueue.size > 0) {
-      // Overlay any pending local writes onto the remote data
-      const merged = deduped.map(a => {
+      const merged = remote.map(a => {
         const q = _writeQueue.get(a.id);
         return (q !== undefined && q !== null) ? q : a;
       });
@@ -1885,7 +1870,7 @@ async function pullFromCloud(retrying=false) {
         if (album && !merged.find(a => a.id === id)) merged.unshift(album);
       albums = merged;
     } else {
-      albums = deduped;
+      albums = remote;
     }
 
     // Always overwrite localStorage with clean Supabase data
