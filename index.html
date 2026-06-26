@@ -1360,6 +1360,15 @@ if (_dropInner) {
 }
 on('art-file-input','change', e => { handleArtFile(e.target.files[0]); e.target.value = ''; });
 on('autofill-mb-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur();runMbForce(e.target.value.trim(),null);}});
+on('autofill-mb-input','paste',e=>{
+  const raw=(e.clipboardData||window.clipboardData).getData('text').trim();
+  if(!raw)return;
+  const mbid=raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
+  if(!mbid)return;
+  e.preventDefault();
+  e.target.value='';
+  runMbForce(raw, null);
+});
 on('quick-add-mb','keydown',async e=>{
   if(e.key!=='Enter')return;e.preventDefault();
   const raw=e.target.value.trim();e.target.value='';
