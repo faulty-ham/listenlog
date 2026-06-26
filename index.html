@@ -412,6 +412,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <div class="sync-dot" id="sync-dot"></div>
   <span id="sync-label">synced</span>
   <span style="color:#3a4048">·</span>
+  <a href="#" id="resync-link" style="color:#738a9a;text-decoration:none;font-size:12px">resync</a>
+  <span style="color:#3a4048">·</span>
   <a href="#" id="sign-out-link" style="color:#738a9a;text-decoration:none;font-size:12px">sign out</a>
 </div>
 
@@ -1985,6 +1987,16 @@ document.getElementById('auth-password').addEventListener('keydown', e => {
 document.getElementById('sign-out-link').addEventListener('click', async e => {
   e.preventDefault();
   await _sb.auth.signOut();
+});
+document.getElementById('resync-link').addEventListener('click', async e => {
+  e.preventDefault();
+  // Flush any pending writes first so we don't lose them
+  if (_writeQueue.size > 0) await flushQueue();
+  // Clear the cache and watermark to force a full pull
+  localStorage.removeItem(SYNC_TS_KEY);
+  localStorage.removeItem('listenLog');
+  albums = [];
+  await pullFromCloud();
 });
 
 // ── Session management ────────────────────────────────────────
