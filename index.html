@@ -1150,6 +1150,7 @@ function openPanel(mode) {
   document.getElementById('btn-save').textContent = mode==='edit' ? 'Update Entry' : 'Save Entry';
   document.getElementById('btn-delete-entry').style.display = mode==='edit' ? '' : 'none';
   document.getElementById('add-modal').classList.add('open');
+  setTimeout(() => document.getElementById('autofill-mb-input')?.focus(), 50);
 }
 function closePanel() {
   document.getElementById('add-modal').classList.remove('open');
