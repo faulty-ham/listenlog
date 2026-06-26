@@ -622,7 +622,6 @@ function migrateArtUrls(arr) {
 (function() {
   if (migrateArtUrls(albums)) {
     localStorage.setItem('listenLog', JSON.stringify(albums));
-    localStorage.setItem('listenLogSavedAt', String(Date.now()));
   }
 })();
 
@@ -1206,7 +1205,7 @@ function addOrUpdateAlbum() {
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
   else albums.unshift(entry);
-  save(); closePanel(); render();
+  save(entry); closePanel(); render();
 }
 function editAlbum(id) {
   const a=albums.find(x=>x.id===id); if(!a)return;
@@ -1264,7 +1263,13 @@ function syncQrToggles() {
   u.classList.toggle('on', qrUnmatched);
 }
 function doDelete() {
-  if(pendingDeleteId){albums=albums.filter(a=>a.id!==pendingDeleteId);save();render();}
+  if(pendingDeleteId){
+    const id = pendingDeleteId;
+    albums = albums.filter(a => a.id !== id);
+    localStorage.setItem('listenLog', JSON.stringify(albums));
+    queueDelete(id);
+    render();
+  }
   document.getElementById('delete-modal').classList.remove('open'); pendingDeleteId=null;
 }
 
@@ -1324,7 +1329,7 @@ on('qr-save','click',()=>{
   if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
   a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;
   a.notes=document.getElementById('qr-notes').value.trim()||null;
-  save();render();
+  save(a);render();
   document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
 });
 on('qr-cancel','click',()=>{document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;});
@@ -1342,7 +1347,13 @@ on('btn-save','click',addOrUpdateAlbum);
 on('btn-delete-entry','click',()=>{
   if(!editingId)return;
   const a=albums.find(x=>x.id===editingId);if(!a)return;
-  if(confirm(`Delete "${a.artist} – ${a.album}"?`)){albums=albums.filter(x=>x.id!==editingId);save();closePanel();render();}
+  if(confirm(`Delete "${a.artist} – ${a.album}"?`)){
+    const id=editingId;
+    albums=albums.filter(x=>x.id!==id);
+    localStorage.setItem('listenLog', JSON.stringify(albums));
+    queueDelete(id);
+    closePanel();render();
+  }
 });
 
 on('autofill-mb-btn','click',()=>runMbForce(document.getElementById('autofill-mb-input').value.trim(),null));
@@ -1725,7 +1736,7 @@ function rebuildOriginalIdIndex() {
              || originals[origKey(a.album, a.artist)];
     if (rec) { originals[`id:${a.id}`] = rec; changed = true; }
   });
-  if (changed) saveOriginals();
+  if (changed) localStorage.setItem('listenLogOrig', JSON.stringify(originals));
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1737,17 +1748,7 @@ const SUPABASE_ANON = 'sb_publishable_sdrLgh-9xgPZxCFsA56ZSw_SG0MSBxW';
 
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-let _syncTimeout = null;
 let _userId = null;
-
-// Flush any pending save immediately when the tab is closed or navigated away
-window.addEventListener('beforeunload', () => {
-  if (_syncTimeout) {
-    clearTimeout(_syncTimeout);
-    _syncTimeout = null;
-    pushToCloud();
-  }
-});
 
 function setSyncStatus(state, label) {
   const dot = document.getElementById('sync-dot');
@@ -1757,93 +1758,128 @@ function setSyncStatus(state, label) {
   lbl.textContent = label||'';
 }
 
-let _lastPushTime = parseInt(localStorage.getItem('listenLogPushedAt') || '0');
+let _lastPushTime = 0;
+// Pending write queue — no edit is lost even if network is slow
+const _writeQueue = new Map(); // id → album (or null = delete)
+let _flushTimeout = null;
 
-function save() {
+function albumToRow(a) {
+  return {
+    id:             a.id,
+    user_id:        _userId,
+    artist:         a.artist || '',
+    album:          a.album  || '',
+    date:           a.date   || null,
+    rating:         a.rating || null,
+    notes:          a.notes  || null,
+    art_url:        a.artUrl      || null,
+    art_fallback:   a.artFallback || null,
+    want_to_listen: a.wantToListen || false,
+    hard_to_find:   a.hardToFind  || false,
+    unmatched:      a.unmatched   || false,
+    added:          a.added       || Date.now(),
+    updated_at:     new Date().toISOString(),
+  };
+}
+
+function rowToAlbum(r) {
+  return {
+    id:           r.id,
+    artist:       r.artist       || '',
+    album:        r.album        || '',
+    date:         r.date         || '',
+    rating:       r.rating       || null,
+    notes:        r.notes        || null,
+    artUrl:       r.art_url      || '',
+    artFallback:  r.art_fallback || '',
+    wantToListen: r.want_to_listen || false,
+    hardToFind:   r.hard_to_find   || false,
+    unmatched:    r.unmatched       || false,
+    added:        r.added           || 0,
+  };
+}
+
+function save(album) {
+  if (!album) { localStorage.setItem('listenLog', JSON.stringify(albums)); return; }
+  const idx = albums.findIndex(a => a.id === album.id);
+  if (idx !== -1) albums[idx] = album; else albums.unshift(album);
   localStorage.setItem('listenLog', JSON.stringify(albums));
-  localStorage.setItem('listenLogSavedAt', String(Date.now()));
-  clearTimeout(_syncTimeout);
-  _syncTimeout = setTimeout(pushToCloud, 300);
-}
-function saveOriginals() {
-  localStorage.setItem('listenLogOrig', JSON.stringify(originals));
-  clearTimeout(_syncTimeout);
-  _syncTimeout = setTimeout(pushToCloud, 300);
+  _writeQueue.set(album.id, album);
+  setSyncStatus('busy', 'saving\u2026');
+  clearTimeout(_flushTimeout);
+  _flushTimeout = setTimeout(flushQueue, 300);
 }
 
-async function pushToCloud(retrying=false) {
-  if (!_userId) return;
-  setSyncStatus('busy', 'saving…');
-  // Migrate any bad archive.org URLs before pushing
-  if (migrateArtUrls(albums)) {
-    localStorage.setItem('listenLog', JSON.stringify(albums));
+function queueDelete(id) {
+  _writeQueue.set(id, null);
+  clearTimeout(_flushTimeout);
+  _flushTimeout = setTimeout(flushQueue, 0);
+}
+
+async function flushQueue(retrying=false) {
+  if (!_userId || _writeQueue.size === 0) return;
+  const batch = new Map(_writeQueue);
+  _writeQueue.clear();
+  const upserts = [], deletes = [];
+  for (const [id, album] of batch) {
+    if (album === null) deletes.push(id);
+    else upserts.push(albumToRow(album));
   }
-  _lastPushTime = Date.now();
   try {
-    const { error } = await _sb.from('listenlog_data')
-      .upsert({ user_id:_userId, albums, originals }, { onConflict:'user_id' });
-    if (error) {
-      console.error('Supabase upsert error:', error.code, error.message, error.details);
-      throw error;
+    if (upserts.length) {
+      const { error } = await _sb.from('albums').upsert(upserts, { onConflict: 'id' });
+      if (error) throw error;
     }
-    localStorage.setItem('listenLogPushedAt', String(_lastPushTime));
+    if (deletes.length) {
+      const { error } = await _sb.from('albums').delete().eq('user_id', _userId).in('id', deletes);
+      if (error) throw error;
+    }
     setSyncStatus('ok', 'synced');
+    localStorage.setItem('listenLog', JSON.stringify(albums));
   } catch(e) {
-    console.error('Sync error full:', JSON.stringify(e));
-    if (!retrying) {
-      setTimeout(() => pushToCloud(true), 3000);
-    } else {
-      setSyncStatus('err', 'sync error');
-    }
+    console.error('Flush error:', e);
+    for (const [id, album] of batch) _writeQueue.set(id, album);
+    if (!retrying) { setTimeout(() => flushQueue(true), 3000); setSyncStatus('busy', 'retrying\u2026'); }
+    else setSyncStatus('err', 'sync error \u2014 check connection');
   }
 }
 
 async function pullFromCloud(retrying=false) {
   if (!_userId) return;
-  setSyncStatus('busy', 'loading…');
+  setSyncStatus('busy', 'loading\u2026');
   try {
-    const { data, error } = await _sb.from('listenlog_data')
-      .select('albums, originals')
-      .eq('user_id', _userId)
-      .single();
-    if (error && error.code !== 'PGRST116') throw error;
-    if (data) {
-      // Always migrate bad archive.org node URLs in remote data first
-      const remoteAlbums = data.albums || [];
-      const remoteMigrated = migrateArtUrls(remoteAlbums);
-
-      const lastPushed = parseInt(localStorage.getItem('listenLogPushedAt') || '0');
-      const lastSaved  = parseInt(localStorage.getItem('listenLogSavedAt')  || '0');
-      const localDirty = lastSaved > lastPushed;
-
-      if (localDirty && albums.length > 0) {
-        // Local has unsaved changes — migrate local too then push
-        migrateArtUrls(albums);
-        await pushToCloud();
-      } else {
-        // Use remote data (already migrated above)
-        albums    = remoteAlbums;
-        originals = data.originals || {};
-        localStorage.setItem('listenLog',     JSON.stringify(albums));
-        localStorage.setItem('listenLogOrig', JSON.stringify(originals));
-        if (remoteMigrated) {
-          localStorage.setItem('listenLogSavedAt', String(Date.now()));
-          setTimeout(pushToCloud, 500);
-        }
-      }
+    const { data, error } = await _sb.from('albums')
+      .select('*').eq('user_id', _userId).order('added', { ascending: false });
+    if (error) throw error;
+    const remote = (data || []).map(rowToAlbum);
+    migrateArtUrls(remote);
+    if (_writeQueue.size > 0) {
+      const merged = remote.map(a => {
+        const q = _writeQueue.get(a.id);
+        return (q !== undefined && q !== null) ? q : a;
+      });
+      for (const [id, album] of _writeQueue)
+        if (album && !merged.find(a => a.id === id)) merged.unshift(album);
+      albums = merged;
+    } else {
+      albums = remote;
     }
+    localStorage.setItem('listenLog', JSON.stringify(albums));
     setSyncStatus('ok', 'synced');
     render();
-    rebuildOriginalIdIndex();
   } catch(e) {
     console.error('Pull error:', e);
-    if (!retrying) {
-      setTimeout(() => pullFromCloud(true), 3000);
-    } else {
-      setSyncStatus('err', 'sync error');
-    }
+    if (!retrying) setTimeout(() => pullFromCloud(true), 3000);
+    else setSyncStatus('err', 'sync error');
   }
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && _writeQueue.size > 0) {
+    clearTimeout(_flushTimeout);
+    flushQueue();
+  }
+});
 
 // ── Auth UI ───────────────────────────────────────────────────
 let _authMode = 'signin'; // 'signin' | 'signup'
