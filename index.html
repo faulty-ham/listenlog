@@ -1444,13 +1444,23 @@ on('autofill-mb-input','paste',e=>{
     const text = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain') || '';
     const mbid = getMbid(text);
     if (!mbid) return;
-    editingId = null; resetForm(); openPanel('add');
-    document.getElementById('form-error').textContent = '⟳ Looking up MusicBrainz…';
-    const result = await mbidLookup(mbid);
-    document.getElementById('form-error').textContent = '';
-    if (!result) { document.getElementById('form-error').textContent = 'MB lookup failed — try again or fill manually.'; return; }
-    applyMbResult(result);
-    setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
+    // If edit modal is open, re-match the current entry instead of adding new
+    const modalOpen = document.getElementById('add-modal').classList.contains('open');
+    if (modalOpen) {
+      document.getElementById('form-error').textContent = '⟳ Looking up MusicBrainz…';
+      const result = await mbidLookup(mbid);
+      document.getElementById('form-error').textContent = '';
+      if (!result) { document.getElementById('form-error').textContent = 'MB lookup failed — try again or fill manually.'; return; }
+      applyMbResult(result);
+    } else {
+      editingId = null; resetForm(); openPanel('add');
+      document.getElementById('form-error').textContent = '⟳ Looking up MusicBrainz…';
+      const result = await mbidLookup(mbid);
+      document.getElementById('form-error').textContent = '';
+      if (!result) { document.getElementById('form-error').textContent = 'MB lookup failed — try again or fill manually.'; return; }
+      applyMbResult(result);
+      setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
+    }
   });
 })();
 
