@@ -433,7 +433,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="stat"><div class="stat-num" id="stat-want">0</div><div class="stat-label">Want to Hear</div></div>
     <div class="stat"><div class="stat-num" id="stat-avg">—</div><div class="stat-label">Avg Rating</div></div>
   </div>
-  <div id="header-sync-links" style="display:none;margin-left:auto;gap:8px;align-items:center;flex-direction:column;align-items:flex-end">
+  <div id="header-sync-links" style="margin-left:auto;gap:8px;align-items:center;flex-direction:column;align-items:flex-end">
     <span id="header-sync-label" style="color:#738a9a;font-size:12px"></span>
     <div style="display:flex;gap:8px;align-items:center">
       <a href="#" id="header-resync-link" style="color:#738a9a;text-decoration:none;font-size:14px">resync</a>
@@ -2082,7 +2082,6 @@ function showApp(user) {
   document.getElementById('auth-screen').classList.remove('visible');
   document.getElementById('app-wrap').classList.add('visible');
   document.getElementById('sync-indicator').style.display = 'flex';
-  document.getElementById('header-sync-links').style.display = 'flex';
   initApp();       // guarded by _appInited — safe to call multiple times
   pullFromCloud(); // always re-sync data on auth state change
 }
@@ -2091,7 +2090,6 @@ function showAuth() {
   document.getElementById('auth-screen').classList.add('visible');
   document.getElementById('app-wrap').classList.remove('visible');
   document.getElementById('sync-indicator').style.display = 'none';
-  document.getElementById('header-sync-links').style.display = 'none';
 }
 
 _sb.auth.onAuthStateChange((event, session) => {
