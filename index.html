@@ -56,7 +56,11 @@
 @media(min-width:701px){
   #header-sync-links{display:none!important}
 }
-50%{opacity:.4}}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.sync-dot.ok{background:var(--accent)}
+.sync-dot.busy{background:#d9a13b;animation:pulse 1.2s ease-in-out infinite}
+.sync-dot.err{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 </style>
 <style>
 :root {
@@ -209,16 +213,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .modal p{color:var(--muted);font-size:14px;margin-bottom:16px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 
-/* minmax(0,1fr) is critical — prevents text columns from overflowing their grid cell */
-  display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr) 120px;
-  grid-template-rows:auto auto;
-  background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden;
-  transition:border-color .2s,background .2s;
-}
- /* min-width:0 allows grid cell to shrink below content */
-/* Allow text to wrap — never clip the title */
-/* Actions: fixed 120px column, never shrinks, buttons centered and large */
 .thumb-btn{
   width:44px;height:44px;border-radius:50%;border:2px solid var(--border);
   background:transparent;font-size:24px;cursor:pointer;
@@ -625,8 +619,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 // ════════════════════════════════════════════════════════════
 // Albums loaded from Supabase on auth — localStorage is just a write-back cache
 let albums = [];
-// originalData: keyed by "artist|||album" (lowercased), stores {artist,album,date,rating} from CSV
-let originals = JSON.parse(localStorage.getItem('listenLogOrig') || '{}');
 
 // Migrate hardcoded archive.org node URLs → CAA redirect URLs (resilient across CDN nodes)
 function migrateArtUrls(arr) {
@@ -644,9 +636,6 @@ let pendingArtUrl = '', pendingArtFallback = '';
 let sortKey = 'date', sortDir = -1;
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
-function origKey(artist, album) {
-  return `${String(artist).toLowerCase().trim()}|||${String(album).toLowerCase().trim()}`;
-}
 
 // ════════════════════════════════════════════════════════════
 // HALF-STAR WIDGET — built inside initApp() to prevent double-init
@@ -1477,7 +1466,6 @@ on('delete-modal','click',e=>{
 });
 
 render();
-rebuildOriginalIdIndex();
 on('mobile-sort','change',e=>{
   const [key,dir]=e.target.value.split('-');
   sortKey=key; sortDir=dir==='asc'?1:-1; render();
@@ -1740,17 +1728,6 @@ function updateSaveArtBtn() {
   btn.disabled = false;
 }
 
-function rebuildOriginalIdIndex() {
-  let changed = false;
-  albums.forEach(a => {
-    if (originals[`id:${a.id}`]) return;
-    const rec = originals[origKey(a.artist, a.album)]
-             || originals[origKey(a.album, a.artist)];
-    if (rec) { originals[`id:${a.id}`] = rec; changed = true; }
-  });
-  if (changed) localStorage.setItem('listenLogOrig', JSON.stringify(originals));
-}
-
 // ════════════════════════════════════════════════════════════
 // SUPABASE — auth + cloud sync
 // Fill in your project URL and anon key below.
@@ -1813,7 +1790,6 @@ function setSyncStatus(state, label) {
   }
 }
 
-let _lastPushTime = 0;
 // Pending write queue — no edit is lost even if network is slow
 const _writeQueue = new Map(); // id → album (or null = delete)
 let _flushTimeout = null;
@@ -1949,7 +1925,6 @@ async function pullFromCloud(retrying=false) {
         applyPendingWrites();
         localStorage.setItem('listenLog', JSON.stringify(albums));
         localStorage.setItem(SYNC_TS_KEY, newest);
-        console.log(`Incremental sync: ${changed.length} changed rows`);
         render();
       }
       setSyncStatus('ok', 'synced');
@@ -1972,7 +1947,6 @@ async function pullFromCloud(retrying=false) {
         .order('id', { ascending: true })
     );
     const remote = all.map(rowToAlbum);
-    console.log(`Full pull: ${all.length} albums`);
     migrateArtUrls(remote);
     albums = remote;
     applyPendingWrites();
