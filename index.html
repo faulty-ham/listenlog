@@ -1460,6 +1460,7 @@ on('autofill-mb-input','paste',e=>{
       document.getElementById('form-error').textContent = '';
       if (!result) { document.getElementById('form-error').textContent = 'MB lookup failed — try again or fill manually.'; return; }
       applyMbResult(result);
+      setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
     } else {
       editingId = null; resetForm(); openPanel('add');
       document.getElementById('form-error').textContent = '⟳ Looking up MusicBrainz…';
@@ -1666,6 +1667,7 @@ async function runMbForce(raw, onOpen) {
     return;
   }
   applyMbResult(result);
+  setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
 }
 
 function openLightbox(url) {
