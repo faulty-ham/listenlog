@@ -512,9 +512,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
             <span class="src-badge src-mb">MB</span>
           </div>
         </div>
-        <button id="btn-save-art" class="btn-ghost btn-sm" title="Save artwork to Supabase Storage for reliable hosting" style="white-space:nowrap;flex-shrink:0;display:none">
-          ↑ Save art
-        </button>
       </div>
     </div>
 
@@ -1175,7 +1172,6 @@ function resetForm() {
   document.getElementById('art-upload-status').textContent='';
   document.getElementById('art-drop-inner').style.borderColor='';
   pendingArtUrl=''; pendingArtFallback='';
-  updateSaveArtBtn();
 }
 
 // ── Autofill card display ────────────────────────────────────
@@ -1197,30 +1193,48 @@ function resetForm() {
 // ════════════════════════════════════════════════════════════
 // CRUD
 // ════════════════════════════════════════════════════════════
-function addOrUpdateAlbum() {
+async function addOrUpdateAlbum() {
   const artist=document.getElementById('f-artist').value.trim(), album=document.getElementById('f-album').value.trim();
   const ferr=document.getElementById('form-error');
   if(!artist||!album){ferr.textContent='Artist and Album are required.';return;}
   ferr.textContent='';
   const existing = editingId ? (albums.find(a=>a.id===editingId)||{}) : {};
+  const artUrl = pendingArtUrl||existing.artUrl||'';
   const entry={
     id:editingId||uid(), artist, album,
     date:document.getElementById('f-date').value.trim(),
-    // Preserve rating/tags/notes from existing — these are managed via Quick Rate
     rating:existing.rating||null,
     notes:existing.notes||null,
-    // New entries default to "want to listen"; existing entries preserve their tags
     wantToListen:editingId ? (existing.wantToListen||false) : true,
     hardToFind:existing.hardToFind||false,
-    // Clear unmatched when art is set (MB match applied)
     unmatched:existing.unmatched&&!pendingArtUrl||false,
-    artUrl:pendingArtUrl||existing.artUrl||'',
+    artUrl,
     artFallback:pendingArtFallback||existing.artFallback||'',
     added:existing.added||Date.now(),
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
   else albums.unshift(entry);
   save(entry); closePanel(); render();
+
+  // Auto-upload art to Supabase Storage in the background if it's not already there
+  if (artUrl && !isSupabaseArt(artUrl) && pendingArtUrl) {
+    try {
+      const resp = await fetch(artUrl);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        if (blob.type.startsWith('image/')) {
+          const publicUrl = await uploadArtToSupabase(blob, entry.id);
+          // Update the entry with the permanent Supabase URL
+          entry.artUrl = publicUrl;
+          save(entry);
+          console.log('Art auto-saved to Supabase for', artist, '—', album);
+        }
+      }
+    } catch(e) {
+      console.error('Auto art upload failed:', e);
+      // Non-fatal — the external URL is still stored as fallback
+    }
+  }
 }
 function editAlbum(id) {
   const a=albums.find(x=>x.id===id); if(!a)return;
@@ -1241,7 +1255,6 @@ function editAlbum(id) {
   } else {
     document.getElementById('match-card').style.display='none';
   }
-  updateSaveArtBtn();
   openPanel('edit');
 }
 
@@ -1373,7 +1386,6 @@ on('btn-delete-entry','click',()=>{
 
 
 // Art upload
-on('btn-save-art','click', saveCurrentArtToSupabase);
 const _dropInner = document.getElementById('art-drop-inner');
 if (_dropInner) {
   _dropInner.addEventListener('click', () => document.getElementById('art-file-input').click());
@@ -1515,7 +1527,6 @@ function applyMbResult(result) {
   document.getElementById('autofill-mb-input').value='';
   const ferr = document.getElementById('form-error');
   if (ferr) ferr.textContent='';
-  updateSaveArtBtn();
 }
 
 async function fetchItunesArt(artist, album) {
@@ -1668,36 +1679,6 @@ async function uploadArtToSupabase(blob, albumId) {
   return data.publicUrl;
 }
 
-async function saveCurrentArtToSupabase() {
-  const btn    = document.getElementById('btn-save-art');
-  const status = document.getElementById('art-upload-status');
-  const url    = pendingArtUrl;
-  if (!url || !editingId && !url) return;
-  btn.disabled = true;
-  btn.textContent = '⟳ Saving…';
-  status.textContent = '';
-  try {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`Failed to fetch art: ${r.status}`);
-    const blob = await r.blob();
-    const id   = editingId || '_new_' + Date.now();
-    const publicUrl = await uploadArtToSupabase(blob, id);
-    pendingArtUrl = publicUrl;
-    // Update match-art preview to show saved URL
-    const artEl = document.getElementById('match-art');
-    if (artEl) { artEl.src = publicUrl; artEl.style.display = 'block'; }
-    btn.style.display = 'none';
-    status.textContent = '✓ Saved to Supabase';
-    status.style.color = 'var(--accent)';
-  } catch(e) {
-    console.error('Art upload error:', e);
-    btn.textContent = '↑ Save art';
-    btn.disabled = false;
-    status.textContent = '✗ Upload failed — ' + e.message;
-    status.style.color = 'var(--danger)';
-  }
-}
-
 async function handleArtFile(file) {
   const status = document.getElementById('art-upload-status');
   const inner  = document.getElementById('art-drop-inner');
@@ -1713,11 +1694,9 @@ async function handleArtFile(file) {
     const id = editingId || '_new_' + Date.now();
     const publicUrl = await uploadArtToSupabase(file, id);
     pendingArtUrl = publicUrl;
-    // Show preview in match card
     const artEl = document.getElementById('match-art');
     if (artEl) { artEl.src = publicUrl; artEl.style.display = 'block'; }
     document.getElementById('match-card').style.display = 'block';
-    document.getElementById('btn-save-art').style.display = 'none';
     status.textContent = '✓ Uploaded — will be saved with entry';
     status.style.color = 'var(--accent)';
     inner.style.borderColor = '';
@@ -1731,14 +1710,6 @@ async function handleArtFile(file) {
 
 function isSupabaseArt(url) {
   return url && url.includes('supabase.co/storage');
-}
-
-function updateSaveArtBtn() {
-  const btn = document.getElementById('btn-save-art');
-  if (!btn) return;
-  btn.style.display = (pendingArtUrl && !isSupabaseArt(pendingArtUrl)) ? '' : 'none';
-  btn.textContent = '↑ Save art';
-  btn.disabled = false;
 }
 
 // ════════════════════════════════════════════════════════════
