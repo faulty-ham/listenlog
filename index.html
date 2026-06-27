@@ -49,7 +49,11 @@
   position:fixed;bottom:8px;right:12px;font-size:16px;color:#738a9a;
   font-family:'Inter',sans-serif;z-index:20;display:flex;align-items:center;gap:5px;
 }
-@media(max-width:700px){#sync-indicator{display:none!important}}
+@media(max-width:700px){
+  #sync-indicator .sync-dot,
+  #sync-indicator #sync-label,
+  #sync-indicator span[style*="color:#3a4048"]:first-of-type { display:none!important }
+}
 50%{opacity:.4}}
 </style>
 <style>
