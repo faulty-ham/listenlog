@@ -53,6 +53,9 @@
   #sync-indicator{display:none!important}
   #header-sync-links{display:flex!important}
 }
+@media(min-width:701px){
+  #header-sync-links{display:none!important}
+}
 50%{opacity:.4}}
 </style>
 <style>
@@ -430,10 +433,13 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="stat"><div class="stat-num" id="stat-want">0</div><div class="stat-label">Want to Hear</div></div>
     <div class="stat"><div class="stat-num" id="stat-avg">—</div><div class="stat-label">Avg Rating</div></div>
   </div>
-  <div id="header-sync-links" style="display:none;margin-left:auto;gap:8px;align-items:center">
-    <a href="#" id="header-resync-link" style="color:#738a9a;text-decoration:none;font-size:14px">resync</a>
-    <span style="color:#3a4048">·</span>
-    <a href="#" id="header-sign-out-link" style="color:#738a9a;text-decoration:none;font-size:14px">sign out</a>
+  <div id="header-sync-links" style="display:none;margin-left:auto;gap:8px;align-items:center;flex-direction:column;align-items:flex-end">
+    <span id="header-sync-label" style="color:#738a9a;font-size:12px"></span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a href="#" id="header-resync-link" style="color:#738a9a;text-decoration:none;font-size:14px">resync</a>
+      <span style="color:#3a4048">·</span>
+      <a href="#" id="header-sign-out-link" style="color:#738a9a;text-decoration:none;font-size:14px">sign out</a>
+    </div>
   </div>
 </header>
 
@@ -1761,7 +1767,9 @@ let _syncAgoTimer = null;
 
 function hideSyncOverlay() {
   const overlay = document.getElementById('sync-overlay');
-  if (overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.style.display = 'none', 300); }
+  if (!overlay || overlay.style.display === 'none') return;
+  overlay.style.opacity = '0';
+  setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
 
 function formatSyncAgo(ms) {
@@ -1774,13 +1782,19 @@ function formatSyncAgo(ms) {
   return `${h}h ago`;
 }
 
+function updateSyncAgoLabels() {
+  if (!_lastSyncTime) return;
+  const text = `synced ${formatSyncAgo(Date.now() - _lastSyncTime)}`;
+  const lbl = document.getElementById('sync-label');
+  const hlbl = document.getElementById('header-sync-label');
+  if (lbl)  lbl.textContent  = text;
+  if (hlbl) hlbl.textContent = text;
+}
+
 function startSyncAgoTimer() {
   clearInterval(_syncAgoTimer);
-  _syncAgoTimer = setInterval(() => {
-    if (!_lastSyncTime) return;
-    const lbl = document.getElementById('sync-label');
-    if (lbl) lbl.textContent = `synced ${formatSyncAgo(Date.now() - _lastSyncTime)}`;
-  }, 15000); // update every 15s
+  updateSyncAgoLabels();
+  _syncAgoTimer = setInterval(updateSyncAgoLabels, 15000);
 }
 
 function setSyncStatus(state, label) {
@@ -1790,11 +1804,12 @@ function setSyncStatus(state, label) {
   dot.className = 'sync-dot ' + (state||'');
   if (state === 'ok') {
     _lastSyncTime = Date.now();
-    lbl.textContent = 'synced just now';
     startSyncAgoTimer();
     hideSyncOverlay();
   } else {
-    lbl.textContent = label || '';
+    if (lbl) lbl.textContent = label || '';
+    const hlbl = document.getElementById('header-sync-label');
+    if (hlbl) hlbl.textContent = label || '';
   }
 }
 
