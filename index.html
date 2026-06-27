@@ -733,7 +733,7 @@ function getFiltered() {
 
 // Build options lists for each field
 function getOptions(field) {
-  if (field === 'artist') return [...new Set(albums.map(a=>a.artist).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  if (field === 'artist') return [...new Set(albums.map(a=>a.artist).filter(Boolean))].sort((a,b)=>sortName(a).localeCompare(sortName(b)));
   if (field === 'year')   return [...new Set(albums.map(a=>extractYear(a.date)).filter(Boolean))].sort().reverse();
   if (field === 'rating') return RATING_OPTIONS.map(o=>o.value);
   if (field === 'tags')   return TAG_OPTIONS.map(o=>o.value);
@@ -1022,11 +1022,20 @@ function updateDropdowns() {
   });
 }
 
+// Strip a leading article for sorting purposes ("The Beatles" -> "beatles")
+function sortName(s) {
+  return String(s||'').toLowerCase().replace(/^(the|a|an)\s+/i, '').trim();
+}
+
 function getSorted(list) {
   return [...list].sort((a,b) => {
     let av=a[sortKey]||'', bv=b[sortKey]||'';
     if (sortKey==='rating'){av=a.rating||0;bv=b.rating||0;}
     if (typeof av==='number') return (av-bv)*sortDir;
+    // For artist/album, ignore a leading "The"/"A"/"An" so names file by their real word
+    if (sortKey==='artist' || sortKey==='album') {
+      return sortName(av).localeCompare(sortName(bv))*sortDir;
+    }
     return String(av).localeCompare(String(bv))*sortDir;
   });
 }
