@@ -640,6 +640,7 @@ let editingId = null, pendingDeleteId = null;
 let openDropdown = null;
 let pendingArtUrl = '', pendingArtFallback = '';
 let sortKey = 'date', sortDir = -1;
+let _mbLookupInProgress = false; // block Enter-to-save while MB lookup is running
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
@@ -1453,14 +1454,18 @@ on('autofill-mb-input','paste',e=>{
     const modalOpen = document.getElementById('add-modal').classList.contains('open');
     if (modalOpen) {
       document.getElementById('form-error').textContent = '⟳ Looking up MusicBrainz…';
+      _mbLookupInProgress = true;
       const result = await mbidLookup(mbid);
+      _mbLookupInProgress = false;
       document.getElementById('form-error').textContent = '';
       if (!result) { document.getElementById('form-error').textContent = 'MB lookup failed — try again or fill manually.'; return; }
       applyMbResult(result);
     } else {
       editingId = null; resetForm(); openPanel('add');
       document.getElementById('form-error').textContent = '⟳ Looking up MusicBrainz…';
+      _mbLookupInProgress = true;
       const result = await mbidLookup(mbid);
+      _mbLookupInProgress = false;
       document.getElementById('form-error').textContent = '';
       if (!result) { document.getElementById('form-error').textContent = 'MB lookup failed — try again or fill manually.'; return; }
       applyMbResult(result);
@@ -1503,6 +1508,7 @@ document.addEventListener('keydown', e => {
   if (document.querySelector('.ms-dropdown.open')) return;
   // Find the open modal and click its primary button
   if (document.getElementById('add-modal').classList.contains('open')) {
+    if (_mbLookupInProgress) return; // don't save while lookup is running
     e.preventDefault(); document.getElementById('btn-save').click(); return;
   }
   if (document.getElementById('quick-rate-modal').classList.contains('open')) {
@@ -1648,11 +1654,12 @@ async function runMbForce(raw, onOpen) {
   if (!raw) return;
   const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
   if (!mbid) { alert('No valid MusicBrainz ID found in that link.'); return; }
-  // Open/stay in modal immediately
   if (onOpen) onOpen();
   const ferr = document.getElementById('form-error');
   if (ferr) ferr.textContent = '⟳ Looking up MusicBrainz…';
+  _mbLookupInProgress = true;
   const result = await mbidLookup(mbid);
+  _mbLookupInProgress = false;
   if (ferr) ferr.textContent = '';
   if (!result) {
     if (ferr) ferr.textContent = 'MB lookup failed — check the link and try again.';
