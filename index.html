@@ -1420,11 +1420,16 @@ on('autofill-mb-input','paste',e=>{
   }
 
   document.addEventListener('dragenter', e => {
-    // Only care about links or text
     const types = [...(e.dataTransfer?.types||[])];
     if (!types.includes('text/uri-list') && !types.includes('text/plain')) return;
     _dragCounter++;
-    if (_dragCounter === 1) overlay.style.display = 'flex';
+    if (_dragCounter === 1) {
+      const modalOpen = document.getElementById('add-modal').classList.contains('open');
+      overlay.querySelector('div:last-child').textContent = modalOpen
+        ? 'Drop MB link to update match'
+        : 'Drop MB link to add album';
+      overlay.style.display = 'flex';
+    }
     e.preventDefault();
   });
 
