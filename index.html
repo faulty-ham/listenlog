@@ -544,7 +544,11 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   </div>
 </div>
 
-<!-- CSV IMPORT PANEL -->
+<!-- COUNT MISMATCH WARNING -->
+<div id="count-warning" style="display:none;align-items:center;gap:10px;background:#3a2a1a;border:1px solid #6b4a2a;color:#e0b080;padding:8px 14px;margin:0 0 8px;border-radius:6px;font-size:13px;flex-shrink:0">
+  <span>Data may be out of sync.</span>
+  <button onclick="document.getElementById('header-resync-link')?.click?.();document.getElementById('resync-link')?.click?.();" style="background:#6b4a2a;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:13px;cursor:pointer">Resync now</button>
+</div>
 
 <!-- TABLE -->
 <div class="table-wrap">
@@ -1830,12 +1834,33 @@ function rowToAlbum(r) {
   };
 }
 
+const WRITE_QUEUE_KEY = 'listenLogWriteQueue';
+
+// Persist the write queue so unflushed edits survive a reload/crash
+function persistQueue() {
+  try {
+    const arr = [..._writeQueue.entries()]; // [[id, album|null], ...]
+    localStorage.setItem(WRITE_QUEUE_KEY, JSON.stringify(arr));
+  } catch(e) { console.error('Queue persist error:', e); }
+}
+
+// Restore the write queue from localStorage on startup
+function restoreQueue() {
+  try {
+    const raw = localStorage.getItem(WRITE_QUEUE_KEY);
+    if (!raw) return;
+    const arr = JSON.parse(raw);
+    for (const [id, album] of arr) _writeQueue.set(id, album);
+  } catch(e) { console.error('Queue restore error:', e); }
+}
+
 function save(album) {
   if (!album) { localStorage.setItem('listenLog', JSON.stringify(albums)); return; }
   const idx = albums.findIndex(a => a.id === album.id);
   if (idx !== -1) albums[idx] = album; else albums.unshift(album);
   localStorage.setItem('listenLog', JSON.stringify(albums));
   _writeQueue.set(album.id, album);
+  persistQueue();
   setSyncStatus('busy', 'saving\u2026');
   clearTimeout(_flushTimeout);
   _flushTimeout = setTimeout(flushQueue, 300);
@@ -1843,6 +1868,7 @@ function save(album) {
 
 function queueDelete(id) {
   _writeQueue.set(id, null);
+  persistQueue();
   clearTimeout(_flushTimeout);
   _flushTimeout = setTimeout(flushQueue, 0);
 }
@@ -1868,11 +1894,18 @@ async function flushQueue(retrying=false) {
         .eq('user_id', _userId).in('id', deletes);
       if (error) throw error;
     }
+    // Only clear the persisted queue after confirmed success
+    persistQueue();
     setSyncStatus('ok', 'synced');
     localStorage.setItem('listenLog', JSON.stringify(albums));
+    verifyCount();
   } catch(e) {
     console.error('Flush error:', e);
-    for (const [id, album] of batch) _writeQueue.set(id, album);
+    // Re-queue failed writes (skip ones that got newer edits while in flight)
+    for (const [id, album] of batch) {
+      if (!_writeQueue.has(id)) _writeQueue.set(id, album);
+    }
+    persistQueue();
     if (!retrying) { setTimeout(() => flushQueue(true), 3000); setSyncStatus('busy', 'retrying\u2026'); }
     else setSyncStatus('err', 'sync error \u2014 check connection');
   }
@@ -1956,6 +1989,7 @@ async function pullFromCloud(retrying=false) {
     localStorage.setItem(SYNC_TS_KEY, newest);
     setSyncStatus('ok', 'synced');
     render();
+    verifyCount(true);
   } catch(e) {
     console.error('Pull error:', e);
     if (!retrying) setTimeout(() => pullFromCloud(true), 3000);
@@ -1972,6 +2006,38 @@ function applyPendingWrites() {
     else byId.set(id, album);
   }
   albums = [...byId.values()].sort((a,b) => (b.added||0) - (a.added||0));
+}
+
+// Verify local album count matches Supabase. Warns on drift.
+let _lastVerify = 0;
+async function verifyCount(force=false) {
+  if (!_userId) return;
+  // Throttle — at most once every 60s unless forced
+  if (!force && Date.now() - _lastVerify < 60000) return;
+  _lastVerify = Date.now();
+  // Don't verify while writes are pending (counts would legitimately differ)
+  if (_writeQueue.size > 0) return;
+  try {
+    const { count, error } = await _sb.from('albums')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', _userId)
+      .is('deleted_at', null);
+    if (error) throw error;
+    if (typeof count === 'number' && count !== albums.length) {
+      console.warn(`Count mismatch: local ${albums.length}, remote ${count}`);
+      const banner = document.getElementById('count-warning');
+      if (banner) {
+        banner.querySelector('span').textContent =
+          `Data may be out of sync (showing ${albums.length}, server has ${count}).`;
+        banner.style.display = 'flex';
+      }
+    } else {
+      const banner = document.getElementById('count-warning');
+      if (banner) banner.style.display = 'none';
+    }
+  } catch(e) {
+    console.error('Verify count error:', e);
+  }
 }
 
 document.addEventListener('visibilitychange', () => {
@@ -2057,7 +2123,13 @@ function showApp(user) {
   document.getElementById('app-wrap').classList.add('visible');
   document.getElementById('sync-indicator').style.display = 'flex';
   initApp();       // guarded by _appInited — safe to call multiple times
-  pullFromCloud(); // always re-sync data on auth state change
+  // Replay any writes that didn't flush before a previous reload/crash
+  restoreQueue();
+  if (_writeQueue.size > 0) {
+    flushQueue().then(() => pullFromCloud());
+  } else {
+    pullFromCloud();
+  }
 }
 function showAuth() {
   _userId = null;
