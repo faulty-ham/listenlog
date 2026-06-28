@@ -641,6 +641,29 @@ let openDropdown = null;
 let pendingArtUrl = '', pendingArtFallback = '';
 let sortKey = 'date', sortDir = -1;
 let _mbLookupInProgress = false; // block Enter-to-save while MB lookup is running
+let _storageWarned = false;
+
+// Safe localStorage write — handles quota exhaustion gracefully
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch(e) {
+    console.error('localStorage write failed:', e.name, e.message);
+    if (e.name === 'QuotaExceededError' && !_storageWarned) {
+      _storageWarned = true;
+      setSyncStatus('err', 'local storage full');
+      // Data is still safe in Supabase — this only affects the offline cache
+      const banner = document.getElementById('count-warning');
+      if (banner) {
+        banner.querySelector('span').textContent =
+          'Local cache is full — your data is safe in the cloud, but offline cache is disabled.';
+        banner.style.display = 'flex';
+      }
+    }
+    return false;
+  }
+}
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
@@ -1224,16 +1247,20 @@ async function addOrUpdateAlbum() {
 
   // Auto-upload art to Supabase Storage in the background if it's not already there
   if (artUrl && !isSupabaseArt(artUrl) && pendingArtUrl) {
+    const targetId = entry.id;
     try {
       const resp = await fetch(artUrl);
       if (resp.ok) {
         const blob = await resp.blob();
         if (blob.type.startsWith('image/')) {
-          const publicUrl = await uploadArtToSupabase(blob, entry.id);
-          // Update the entry with the permanent Supabase URL
-          entry.artUrl = publicUrl;
-          save(entry);
-          console.log('Art auto-saved to Supabase for', artist, '—', album);
+          const publicUrl = await uploadArtToSupabase(blob, targetId);
+          // Re-fetch the CURRENT version of this album — it may have changed
+          // (rating, notes, deletion) while the upload was in flight. Update only artUrl.
+          const current = albums.find(a => a.id === targetId);
+          if (current) {
+            current.artUrl = publicUrl;
+            save(current);
+          }
         }
       }
     } catch(e) {
@@ -1300,7 +1327,7 @@ function doDelete() {
   if(pendingDeleteId){
     const id = pendingDeleteId;
     albums = albums.filter(a => a.id !== id);
-    localStorage.setItem('listenLog', JSON.stringify(albums));
+    safeSetItem('listenLog', JSON.stringify(albums));
     queueDelete(id);
     render();
   }
@@ -1384,7 +1411,7 @@ on('btn-delete-entry','click',()=>{
   if(confirm(`Delete "${a.artist} – ${a.album}"?`)){
     const id=editingId;
     albums=albums.filter(x=>x.id!==id);
-    localStorage.setItem('listenLog', JSON.stringify(albums));
+    safeSetItem('listenLog', JSON.stringify(albums));
     queueDelete(id);
     closePanel();render();
   }
@@ -1821,6 +1848,8 @@ function setSyncStatus(state, label) {
 // Pending write queue — no edit is lost even if network is slow
 const _writeQueue = new Map(); // id → album (or null = delete)
 let _flushTimeout = null;
+let _flushing = false;
+let _pulling = false;
 
 function albumToRow(a) {
   return {
@@ -1879,10 +1908,10 @@ function restoreQueue() {
 }
 
 function save(album) {
-  if (!album) { localStorage.setItem('listenLog', JSON.stringify(albums)); return; }
+  if (!album) { safeSetItem('listenLog', JSON.stringify(albums)); return; }
   const idx = albums.findIndex(a => a.id === album.id);
   if (idx !== -1) albums[idx] = album; else albums.unshift(album);
-  localStorage.setItem('listenLog', JSON.stringify(albums));
+  safeSetItem('listenLog', JSON.stringify(albums));
   _writeQueue.set(album.id, album);
   persistQueue();
   setSyncStatus('busy', 'saving\u2026');
@@ -1899,6 +1928,9 @@ function queueDelete(id) {
 
 async function flushQueue(retrying=false) {
   if (!_userId || _writeQueue.size === 0) return;
+  // Don't flush while a pull is in progress — let it finish to avoid racing the watermark
+  if (_pulling) { setTimeout(() => flushQueue(retrying), 500); return; }
+  _flushing = true;
   const batch = new Map(_writeQueue);
   _writeQueue.clear();
   const upserts = [], deletes = [];
@@ -1921,7 +1953,7 @@ async function flushQueue(retrying=false) {
     // Only clear the persisted queue after confirmed success
     persistQueue();
     setSyncStatus('ok', 'synced');
-    localStorage.setItem('listenLog', JSON.stringify(albums));
+    safeSetItem('listenLog', JSON.stringify(albums));
     verifyCount();
   } catch(e) {
     console.error('Flush error:', e);
@@ -1932,6 +1964,8 @@ async function flushQueue(retrying=false) {
     persistQueue();
     if (!retrying) { setTimeout(() => flushQueue(true), 3000); setSyncStatus('busy', 'retrying\u2026'); }
     else setSyncStatus('err', 'sync error \u2014 check connection');
+  } finally {
+    _flushing = false;
   }
 }
 
@@ -1953,6 +1987,17 @@ async function fetchAlbumPages(query) {
 
 async function pullFromCloud(retrying=false) {
   if (!_userId) return;
+  // Don't pull while a flush is in progress — avoid racing the watermark
+  if (_flushing) { setTimeout(() => pullFromCloud(retrying), 500); return; }
+  _pulling = true;
+  try {
+    await _pullFromCloudInner(retrying);
+  } finally {
+    _pulling = false;
+  }
+}
+
+async function _pullFromCloudInner(retrying=false) {
   const lastSync = localStorage.getItem(SYNC_TS_KEY);
   const cached   = JSON.parse(localStorage.getItem('listenLog') || '[]');
 
@@ -1980,7 +2025,7 @@ async function pullFromCloud(retrying=false) {
         albums = [...byId.values()].sort((a,b) => (b.added||0) - (a.added||0));
         migrateArtUrls(albums);
         applyPendingWrites();
-        localStorage.setItem('listenLog', JSON.stringify(albums));
+        safeSetItem('listenLog', JSON.stringify(albums));
         localStorage.setItem(SYNC_TS_KEY, newest);
         render();
       }
@@ -2007,7 +2052,7 @@ async function pullFromCloud(retrying=false) {
     migrateArtUrls(remote);
     albums = remote;
     applyPendingWrites();
-    localStorage.setItem('listenLog', JSON.stringify(albums));
+    safeSetItem('listenLog', JSON.stringify(albums));
     // Record the newest updated_at as our sync watermark
     const newest = all.reduce((mx,r) => r.updated_at > mx ? r.updated_at : mx, '1970-01-01');
     localStorage.setItem(SYNC_TS_KEY, newest);
