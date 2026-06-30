@@ -1474,48 +1474,47 @@ on('autofill-mb-input','paste',e=>{
     overlay.style.display = 'none';
     // Skip if dropped onto a form field
     if (e.target.closest('input,textarea')) return;
+    // If a lookup is already running, ignore this drop (prevents silent races)
+    if (_mbLookupInProgress) {
+      const fe = document.getElementById('form-error');
+      if (fe) fe.textContent = 'Still looking up the previous link — one moment…';
+      return;
+    }
     // Read every available data type — browsers vary in what they populate
     let text = '';
     for (const type of ['text/uri-list', 'text/plain', 'text/x-moz-url', 'URL']) {
-      const v = e.dataTransfer.getData(type);
-      if (v) { text += ' ' + v; }
+      try { const v = e.dataTransfer.getData(type); if (v) text += ' ' + v; } catch(_) {}
     }
     const mbid = getMbid(text);
     if (!mbid) {
-      // Dropped something that wasn't a MB link — give feedback if a modal is open
+      console.warn('Drop had no MB id. Raw data:', JSON.stringify(text));
       const fe = document.getElementById('form-error');
-      if (fe && document.getElementById('add-modal').classList.contains('open'))
+      if (document.getElementById('add-modal').classList.contains('open') && fe)
         fe.textContent = 'No MusicBrainz ID found in that link.';
       return;
     }
     // If edit modal is open, re-match the current entry instead of adding new
     const modalOpen = document.getElementById('add-modal').classList.contains('open');
-    if (modalOpen) {
-      document.getElementById('form-error').textContent = '⟳ Looking up MusicBrainz…';
-      _mbLookupInProgress = true;
-      const result = await mbidLookup(mbid);
+    if (!modalOpen) { editingId = null; resetForm(); openPanel('add'); }
+    const fe = document.getElementById('form-error');
+    if (fe) fe.textContent = '⟳ Looking up MusicBrainz…';
+    _mbLookupInProgress = true;
+    let result;
+    try {
+      result = await mbidLookup(mbid);
+    } catch(err) {
+      console.error('Lookup threw:', err);
+      result = { error: 'Lookup failed unexpectedly. Try again.' };
+    } finally {
       _mbLookupInProgress = false;
-      if (!result || result.error) {
-        document.getElementById('form-error').textContent = result?.error || 'MB lookup failed — try again or fill manually.';
-        return;
-      }
-      document.getElementById('form-error').textContent = '';
-      applyMbResult(result);
-      setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
-    } else {
-      editingId = null; resetForm(); openPanel('add');
-      document.getElementById('form-error').textContent = '⟳ Looking up MusicBrainz…';
-      _mbLookupInProgress = true;
-      const result = await mbidLookup(mbid);
-      _mbLookupInProgress = false;
-      if (!result || result.error) {
-        document.getElementById('form-error').textContent = result?.error || 'MB lookup failed — try again or fill manually.';
-        return;
-      }
-      document.getElementById('form-error').textContent = '';
-      applyMbResult(result);
-      setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
     }
+    if (!result || result.error) {
+      if (fe) fe.textContent = result?.error || 'MB lookup failed — try again or fill manually.';
+      return;
+    }
+    if (fe) fe.textContent = '';
+    applyMbResult(result);
+    setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
   });
 })();
 
@@ -1736,8 +1735,15 @@ async function runMbForce(raw, onOpen) {
   const ferr = document.getElementById('form-error');
   if (ferr) ferr.textContent = '⟳ Looking up MusicBrainz…';
   _mbLookupInProgress = true;
-  const result = await mbidLookup(mbid);
-  _mbLookupInProgress = false;
+  let result;
+  try {
+    result = await mbidLookup(mbid);
+  } catch(err) {
+    console.error('Lookup threw:', err);
+    result = { error: 'Lookup failed unexpectedly. Try again.' };
+  } finally {
+    _mbLookupInProgress = false;
+  }
   if (!result || result.error) {
     if (ferr) ferr.textContent = result?.error || 'MB lookup failed — check the link and try again.';
     return;
