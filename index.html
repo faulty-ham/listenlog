@@ -383,12 +383,11 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   tr.album-row td:nth-child(5){grid-column:3;grid-row:1}
   tr.album-row td:nth-child(6){grid-column:3;grid-row:2/4}
   tr.album-row td:nth-child(7),tr.album-row td:nth-child(8){display:none}
-  /* Rescan card stack */
-        /* All modals full-width on mobile */
+  /* All modals full-width on mobile */
   .modal,.modal.wide,.quick-rate-card{width:96vw!important;max-width:96vw!important;padding:16px;max-height:90vh;overflow-y:auto}
   #filter-pills{padding:5px 12px}
   .filter-pill{font-size:12px}
-    /* Quick-rate stars slightly smaller on mobile */
+  /* Quick-rate stars slightly smaller on mobile */
   .qr-stars .star-btn{font-size:52px;width:60px;height:60px}
 }
 
@@ -512,7 +511,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       </div>
     </div><!-- MB LINK -->
 
-    <!-- MATCH RESULT — shown after MB force match -->
+    <!-- MATCH RESULT — shown after MB match -->
     <div id="match-card" style="display:none;margin-bottom:10px">
       <div style="display:flex;gap:12px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
         <div id="match-art-slot" style="width:64px;height:64px;border-radius:4px;background:var(--surface);border:1px solid var(--border);flex-shrink:0;overflow:hidden">
@@ -1489,57 +1488,38 @@ on('autofill-mb-input','paste',e=>{
 
   document.addEventListener('dragleave', e => {
     _dragCounter--;
-    if (_dragCounter <= 0) {
-      _dragCounter = 0;
-      overlay.style.display = 'none';
-      console.log('Overlay hidden via dragleave (counter reached 0)');
-    }
+    if (_dragCounter <= 0) { _dragCounter = 0; overlay.style.display = 'none'; }
   }, true);
 
-  let _dragOverCount = 0;
-  document.addEventListener('dragover', e => { _dragOverCount++; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }, true);
+  document.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }, true);
 
   document.addEventListener('drop', async e => {
     e.preventDefault();
     e.stopPropagation();
     try {
-      console.log(`Drop fired. dragover events seen: ${_dragOverCount}`);
-      _dragOverCount = 0;
       _dragCounter = 0;
       overlay.style.display = 'none';
       // Skip if dropped onto a form field outside the modal (filter/search fields).
       // Fields INSIDE the open edit/add modal should still trigger a match —
       // people naturally drop near the album/artist text, not just the MB link field.
       const closestField = e.target.closest('input,textarea');
-      if (closestField) {
-        const insideModal = closestField.closest('#add-modal') !== null;
-        if (!insideModal) {
-          console.log('Drop on input/textarea outside modal — ignoring. Field id:', closestField.id);
-          return;
-        }
-      }
+      if (closestField && !closestField.closest('#add-modal')) return;
       // If a lookup is already running, ignore this drop
       if (_mbLookupInProgress) {
-        console.log('Lookup already in progress — ignoring this drop');
         const fe = document.getElementById('form-error');
         if (fe) fe.textContent = 'Still looking up the previous link — one moment…';
         return;
       }
-      // Read every available data type — log everything for diagnostics
+      // Read every available data type — browsers vary in what they populate
       let text = '';
-      const availableTypes = [...(e.dataTransfer?.types || [])];
-      console.log('Drop event. Available types:', availableTypes);
       for (const type of ['text/uri-list', 'text/plain', 'text/x-moz-url', 'URL']) {
         try {
           const v = e.dataTransfer.getData(type);
-          if (v) { console.log(`  ${type}:`, v.substring(0, 80)); text += ' ' + v; }
-        } catch(typeErr) { console.log(`  getData(${type}) threw:`, typeErr); }
+          if (v) text += ' ' + v;
+        } catch(_) {}
       }
-        console.log('Combined text:', text.substring(0, 120));
       const mbid = getMbid(text);
-      console.log('Extracted mbid:', mbid);
       if (!mbid) {
-        console.warn('Drop had no MB id. Raw data:', JSON.stringify(text));
         const fe0 = document.getElementById('form-error');
         if (document.getElementById('add-modal').classList.contains('open') && fe0)
           fe0.textContent = 'No MusicBrainz ID found in that link.';
