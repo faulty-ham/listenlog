@@ -1485,17 +1485,25 @@ on('autofill-mb-input','paste',e=>{
       overlay.style.display = 'flex';
     }
     e.preventDefault();
-  });
+  }, true);
 
   document.addEventListener('dragleave', e => {
     _dragCounter--;
-    if (_dragCounter <= 0) { _dragCounter = 0; overlay.style.display = 'none'; }
-  });
+    if (_dragCounter <= 0) {
+      _dragCounter = 0;
+      overlay.style.display = 'none';
+      console.log('Overlay hidden via dragleave (counter reached 0)');
+    }
+  }, true);
 
-  document.addEventListener('dragover', e => { e.preventDefault(); });
+  let _dragOverCount = 0;
+  document.addEventListener('dragover', e => { _dragOverCount++; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }, true);
 
   document.addEventListener('drop', async e => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log(`Drop fired. dragover events seen: ${_dragOverCount}`);
+    _dragOverCount = 0;
     _dragCounter = 0;
     overlay.style.display = 'none';
     // Skip if dropped onto a form field
@@ -1548,7 +1556,7 @@ on('autofill-mb-input','paste',e=>{
     if (fe) fe.textContent = '';
     applyMbResult(result);
     setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
-  });
+  }, true);
 })();
 
 on('filter-search','input',e=>{
