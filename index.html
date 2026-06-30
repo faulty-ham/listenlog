@@ -1510,7 +1510,7 @@ on('autofill-mb-input','paste',e=>{
       // Skip if dropped onto a form field — except the MB link field itself, which should still work
       const closestField = e.target.closest('input,textarea');
       if (closestField && closestField.id !== 'autofill-mb-input') {
-        console.log('Drop on input/textarea — ignoring');
+        console.log('Drop on input/textarea — ignoring. Field id:', closestField.id, 'e.target:', e.target.tagName, e.target.id);
         return;
       }
       // If a lookup is already running, ignore this drop
