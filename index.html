@@ -1502,60 +1502,68 @@ on('autofill-mb-input','paste',e=>{
   document.addEventListener('drop', async e => {
     e.preventDefault();
     e.stopPropagation();
-    console.log(`Drop fired. dragover events seen: ${_dragOverCount}`);
-    _dragOverCount = 0;
-    _dragCounter = 0;
-    overlay.style.display = 'none';
-    // Skip if dropped onto a form field
-    if (e.target.closest('input,textarea')) return;
-    // If a lookup is already running, ignore this drop
-    if (_mbLookupInProgress) {
-      const fe = document.getElementById('form-error');
-      if (fe) fe.textContent = 'Still looking up the previous link — one moment…';
-      return;
-    }
-    // Read every available data type — log everything for diagnostics
-    let text = '';
-    const availableTypes = [...(e.dataTransfer?.types || [])];
-    console.log('Drop event. Available types:', availableTypes);
-    for (const type of ['text/uri-list', 'text/plain', 'text/x-moz-url', 'URL']) {
-      try {
-        const v = e.dataTransfer.getData(type);
-        if (v) { console.log(`  ${type}:`, v.substring(0, 80)); text += ' ' + v; }
-      } catch(_) {}
-    }
-    console.log('Combined text:', text.substring(0, 120));
-    const mbid = getMbid(text);
-    console.log('Extracted mbid:', mbid);
-    if (!mbid) {
-      console.warn('Drop had no MB id. Raw data:', JSON.stringify(text));
-      const fe = document.getElementById('form-error');
-      if (document.getElementById('add-modal').classList.contains('open') && fe)
-        fe.textContent = 'No MusicBrainz ID found in that link.';
-      return;
-    }
-    // If edit modal is open, re-match the current entry instead of adding new
-    const modalOpen = document.getElementById('add-modal').classList.contains('open');
-    if (!modalOpen) { editingId = null; resetForm(); openPanel('add'); }
-    const fe = document.getElementById('form-error');
-    if (fe) fe.textContent = '⟳ Looking up MusicBrainz…';
-    _mbLookupInProgress = true;
-    let result;
     try {
-      result = await mbidLookup(mbid);
-    } catch(err) {
-      console.error('Lookup threw:', err);
-      result = { error: 'Lookup failed unexpectedly. Try again.' };
-    } finally {
+      console.log(`Drop fired. dragover events seen: ${_dragOverCount}`);
+      _dragOverCount = 0;
+      _dragCounter = 0;
+      overlay.style.display = 'none';
+      // Skip if dropped onto a form field
+      if (e.target.closest('input,textarea')) { console.log('Drop on input/textarea — ignoring'); return; }
+      // If a lookup is already running, ignore this drop
+      if (_mbLookupInProgress) {
+        console.log('Lookup already in progress — ignoring this drop');
+        const fe = document.getElementById('form-error');
+        if (fe) fe.textContent = 'Still looking up the previous link — one moment…';
+        return;
+      }
+      // Read every available data type — log everything for diagnostics
+      let text = '';
+      const availableTypes = [...(e.dataTransfer?.types || [])];
+      console.log('Drop event. Available types:', availableTypes);
+      for (const type of ['text/uri-list', 'text/plain', 'text/x-moz-url', 'URL']) {
+        try {
+          const v = e.dataTransfer.getData(type);
+          if (v) { console.log(`  ${type}:`, v.substring(0, 80)); text += ' ' + v; }
+        } catch(typeErr) { console.log(`  getData(${type}) threw:`, typeErr); }
+      }
+        console.log('Combined text:', text.substring(0, 120));
+      const mbid = getMbid(text);
+      console.log('Extracted mbid:', mbid);
+      if (!mbid) {
+        console.warn('Drop had no MB id. Raw data:', JSON.stringify(text));
+        const fe0 = document.getElementById('form-error');
+        if (document.getElementById('add-modal').classList.contains('open') && fe0)
+          fe0.textContent = 'No MusicBrainz ID found in that link.';
+        return;
+      }
+      // If edit modal is open, re-match the current entry instead of adding new
+      const modalOpen = document.getElementById('add-modal').classList.contains('open');
+      if (!modalOpen) { editingId = null; resetForm(); openPanel('add'); }
+      const fe = document.getElementById('form-error');
+      if (fe) fe.textContent = '⟳ Looking up MusicBrainz…';
+      _mbLookupInProgress = true;
+      let result;
+      try {
+        result = await mbidLookup(mbid);
+      } catch(err) {
+        console.error('Lookup threw:', err);
+        result = { error: 'Lookup failed unexpectedly. Try again.' };
+      } finally {
+        _mbLookupInProgress = false;
+      }
+      if (!result || result.error) {
+        if (fe) fe.textContent = result?.error || 'MB lookup failed — try again or fill manually.';
+        return;
+      }
+      if (fe) fe.textContent = '';
+      applyMbResult(result);
+      setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
+    } catch (outerErr) {
+      console.error('Drop handler threw an uncaught error:', outerErr);
       _mbLookupInProgress = false;
+      const fe = document.getElementById('form-error');
+      if (fe) fe.textContent = 'Unexpected error — see console.';
     }
-    if (!result || result.error) {
-      if (fe) fe.textContent = result?.error || 'MB lookup failed — try again or fill manually.';
-      return;
-    }
-    if (fe) fe.textContent = '';
-    applyMbResult(result);
-    setTimeout(() => document.getElementById('btn-save')?.focus(), 50);
   }, true);
 })();
 
