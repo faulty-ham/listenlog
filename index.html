@@ -391,6 +391,21 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     /* Quick-rate stars slightly smaller on mobile */
   .qr-stars .star-btn{font-size:52px;width:60px;height:60px}
 }
+
+/* Landscape mobile: show the regular table but tighten columns to fit */
+@media(max-height:500px) and (orientation:landscape) {
+  .td-art{width:52px!important;padding-right:4px}
+  .td-art .art-thumb,.td-art .art-placeholder{width:48px!important;height:48px!important}
+  .td-artist{max-width:120px;font-size:13px}
+  .td-album{max-width:140px;font-size:13px}
+  .td-date{font-size:12px}
+  .td-notes{display:none}
+  table th:last-child,table td:last-child{display:none}
+  #album-table{table-layout:fixed;width:100%}
+  .header-stats{display:none}
+  header{padding:6px 12px}
+  .header-title h1{font-size:22px}
+}
 </style>
 </head>
 <body>
