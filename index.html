@@ -1500,18 +1500,25 @@ on('autofill-mb-input','paste',e=>{
     overlay.style.display = 'none';
     // Skip if dropped onto a form field
     if (e.target.closest('input,textarea')) return;
-    // If a lookup is already running, ignore this drop (prevents silent races)
+    // If a lookup is already running, ignore this drop
     if (_mbLookupInProgress) {
       const fe = document.getElementById('form-error');
       if (fe) fe.textContent = 'Still looking up the previous link — one moment…';
       return;
     }
-    // Read every available data type — browsers vary in what they populate
+    // Read every available data type — log everything for diagnostics
     let text = '';
+    const availableTypes = [...(e.dataTransfer?.types || [])];
+    console.log('Drop event. Available types:', availableTypes);
     for (const type of ['text/uri-list', 'text/plain', 'text/x-moz-url', 'URL']) {
-      try { const v = e.dataTransfer.getData(type); if (v) text += ' ' + v; } catch(_) {}
+      try {
+        const v = e.dataTransfer.getData(type);
+        if (v) { console.log(`  ${type}:`, v.substring(0, 80)); text += ' ' + v; }
+      } catch(_) {}
     }
+    console.log('Combined text:', text.substring(0, 120));
     const mbid = getMbid(text);
+    console.log('Extracted mbid:', mbid);
     if (!mbid) {
       console.warn('Drop had no MB id. Raw data:', JSON.stringify(text));
       const fe = document.getElementById('form-error');
