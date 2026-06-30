@@ -729,37 +729,45 @@ function extractYear(d) { const m = String(d||'').match(/\d{4}/); return m ? m[0
 function getFiltered() {
   const q = document.getElementById('filter-search')?.value.trim().toLowerCase() || '';
 
-  // Helper: test a value against a filter Map
-  // Returns true if the album should be kept
-  function passesFilter(map, testFn) {
-    if (!map.size) return true;
-    const includes = [...map].filter(([,v]) => v === 'include').map(([k]) => k);
-    const excludes = [...map].filter(([,v]) => v === 'exclude').map(([k]) => k);
-    // Exclude: if album matches ANY excluded value → reject
-    if (excludes.length && excludes.some(val => testFn(val))) return false;
-    // Include: if any includes exist, album must match at least one
-    if (includes.length && !includes.some(val => testFn(val))) return false;
+  // Pre-split each filter Map into includes/excludes ONCE, before the per-album loop —
+  // these only depend on activeFilters, not on the album being tested.
+  function splitFilter(map) {
+    if (!map.size) return null;
+    const includes = [], excludes = [];
+    for (const [k, v] of map) (v === 'include' ? includes : excludes).push(k);
+    return { includes, excludes };
+  }
+  const artistF = splitFilter(activeFilters.artist);
+  const yearF   = splitFilter(activeFilters.year);
+  const ratingF = splitFilter(activeFilters.rating);
+  const tagsF   = splitFilter(activeFilters.tags);
+
+  // Test a precomputed {includes,excludes} split against an album via testFn
+  function passes(split, testFn) {
+    if (!split) return true;
+    if (split.excludes.length && split.excludes.some(val => testFn(val))) return false;
+    if (split.includes.length && !split.includes.some(val => testFn(val))) return false;
     return true;
   }
 
   return albums.filter(a => {
     if (q && !(a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))) return false;
 
-    if (!passesFilter(activeFilters.artist, val => a.artist === val)) return false;
+    if (!passes(artistF, val => a.artist === val)) return false;
 
-    if (!passesFilter(activeFilters.year, val => {
+    if (!passes(yearF, val => {
       const yr = extractYear(a.date||'');
       if (val === 'no-date') return !yr;
       if (/^\d{4}s$/.test(val)) { const d = parseInt(val), y = parseInt(yr); return y >= d && y < d + 10; }
       return yr === val;
     })) return false;
 
-    if (!passesFilter(activeFilters.rating, val => {
+    if (!passes(ratingF, val => {
       if (val === 'unrated') return !a.rating;
       return Math.round(a.rating||0) === parseInt(val);
     })) return false;
 
-    if (!passesFilter(activeFilters.tags, val => {
+    if (!passes(tagsF, val => {
       if (val === 'want')      return !!a.wantToListen;
       if (val === 'hard')      return !!a.hardToFind;
       if (val === 'listened')  return !a.wantToListen && !a.unmatched;
@@ -1079,14 +1087,20 @@ function sortName(s) {
 }
 
 function getSorted(list) {
+  // For string fields, precompute each album's sort key ONCE rather than
+  // recomputing sortName()/lowercasing on every pairwise comparison during sort.
+  if (sortKey === 'artist' || sortKey === 'album') {
+    return list
+      .map(a => ({ a, key: sortName(a[sortKey]||'') }))
+      .sort((x,y) => x.key.localeCompare(y.key)*sortDir)
+      .map(x => x.a);
+  }
+  if (sortKey === 'rating') {
+    return [...list].sort((a,b) => ((a.rating||0)-(b.rating||0))*sortDir);
+  }
   return [...list].sort((a,b) => {
-    let av=a[sortKey]||'', bv=b[sortKey]||'';
-    if (sortKey==='rating'){av=a.rating||0;bv=b.rating||0;}
-    if (typeof av==='number') return (av-bv)*sortDir;
-    // For artist/album, ignore a leading "The"/"A"/"An" so names file by their real word
-    if (sortKey==='artist' || sortKey==='album') {
-      return sortName(av).localeCompare(sortName(bv))*sortDir;
-    }
+    const av = a[sortKey]||'', bv = b[sortKey]||'';
+    if (typeof av === 'number') return (av-bv)*sortDir;
     return String(av).localeCompare(String(bv))*sortDir;
   });
 }
@@ -1108,10 +1122,15 @@ function render() {
     if (img?.src) loadedArt[row.dataset.id] = img.src;
   });
 
-  const rated = albums.filter(a=>a.rating);
-  const avg   = rated.length ? (rated.reduce((s,a)=>s+a.rating,0)/rated.length).toFixed(1) : '—';
+  // Single pass over albums for all header stats, instead of two separate .filter() passes
+  let ratedCount = 0, ratedSum = 0, wantCount = 0;
+  for (const a of albums) {
+    if (a.rating) { ratedCount++; ratedSum += a.rating; }
+    if (a.wantToListen) wantCount++;
+  }
+  const avg = ratedCount ? (ratedSum/ratedCount).toFixed(1) : '—';
   document.getElementById('stat-total').textContent = albums.length;
-  document.getElementById('stat-want').textContent  = albums.filter(a=>a.wantToListen).length;
+  document.getElementById('stat-want').textContent  = wantCount;
   document.getElementById('stat-avg').textContent   = avg;
 
   const fc = document.getElementById('filter-count');
@@ -1556,16 +1575,19 @@ on('autofill-mb-input','paste',e=>{
   }, true);
 })();
 
+let _searchRenderTimeout = null;
 on('filter-search','input',e=>{
   const cl=document.getElementById('search-clear');
   if(cl)cl.style.display=e.target.value?'block':'none';
-  render();
+  clearTimeout(_searchRenderTimeout);
+  _searchRenderTimeout = setTimeout(render, 150);
 });
 on('filter-search','keydown',e=>{
   if(e.key==='Enter'){e.preventDefault();e.target.blur();}
 });
 on('search-clear','click',()=>{
   const si=document.getElementById('filter-search');
+  clearTimeout(_searchRenderTimeout);
   si.value='';render();si.focus();
   const cl=document.getElementById('search-clear');if(cl)cl.style.display='none';
 });
