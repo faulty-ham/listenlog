@@ -774,6 +774,15 @@ function getLabel(field, value) {
 
 // ── Dropdown builder ─────────────────────────────────────────
 
+function clampDropdown(dd) {
+  // Shift dropdown left if it overflows the right edge of the viewport
+  requestAnimationFrame(() => {
+    const rect = dd.getBoundingClientRect();
+    const overflow = rect.right - window.innerWidth + 8; // 8px breathing room
+    if (overflow > 0) dd.style.left = `-${overflow}px`;
+  });
+}
+
 function buildDropdown(field, wrap) {
   const existing = wrap.querySelector('.ms-dropdown');
   if (existing) existing.remove();
@@ -880,6 +889,7 @@ function buildDropdown(field, wrap) {
 
     renderYear();
     wrap.appendChild(dd);
+    clampDropdown(dd);
     openDropdown = dd;
     setTimeout(() => document.addEventListener('click', onOutsideClick, { once: true }), 0);
     return;
@@ -954,6 +964,7 @@ function buildDropdown(field, wrap) {
   dd.appendChild(footer);
 
   wrap.appendChild(dd);
+  clampDropdown(dd);
   openDropdown = dd;
   // Focus search input immediately — must be synchronous within the click handler for mobile keyboard
   if (hasSearch) dd.querySelector('.ms-search')?.focus();
