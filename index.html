@@ -332,8 +332,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .qr-stars .star-btn{font-size:66px;width:72px;height:72px}
 .qr-tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
 .qr-notes-row{margin-bottom:16px}
-.qr-notes-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;padding:7px 10px;border-radius:var(--radius);outline:none;box-sizing:border-box}
-.qr-notes-input:focus{border-color:var(--accent)}
 .qr-actions{display:flex;gap:8px;justify-content:flex-end}
 
 /* ── MOBILE TOOLBAR ── */
@@ -625,11 +623,28 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:13px">⚠ Missing info</button>
     </div>
     <div class="qr-notes-row">
-      <input type="text" id="qr-notes" class="qr-notes-input" placeholder="Notes…" aria-label="Notes">
+      <button class="btn-ghost" id="qr-notes-btn" style="width:100%;text-align:left;font-size:14px">📝 Notes</button>
     </div>
     <div class="qr-actions">
       <button class="btn-primary" id="qr-save">Save</button>
       <button class="btn-ghost" id="qr-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTES MODAL -->
+<div class="modal-overlay" id="notes-modal" style="z-index:150">
+  <div class="modal wide">
+    <h3 style="margin-bottom:2px">Notes</h3>
+    <p id="notes-modal-subtitle" style="color:var(--muted);font-size:14px;margin-bottom:14px"></p>
+    <span id="notes-loading-hint" style="display:none;font-size:13px;color:var(--muted);margin-bottom:8px">⟳ Loading track listing…</span>
+    <textarea id="notes-textarea" placeholder="Notes…" aria-label="Notes"
+      style="width:100%;min-height:340px;background:var(--bg);border:1px solid var(--border);color:var(--text);
+             font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;padding:12px;border-radius:var(--radius);
+             outline:none;box-sizing:border-box;resize:vertical"></textarea>
+    <div class="modal-actions">
+      <button class="btn-primary" id="notes-save">Save</button>
+      <button class="btn-ghost" id="notes-cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -1182,7 +1197,7 @@ function render() {
       <td class="td-date">${esc(a.date||'—')}</td>
       <td>${a.rating ? starsHTML(a.rating) : DASH}</td>
       <td><div class="row-tags">${tags||DASH}</div></td>
-      <td class="td-notes" title="${esc(a.notes||'')}">${esc(a.notes||'—')}</td>`;
+      <td class="td-notes" title="${a.notes?'Has notes':''}">${a.notes ? '📝' : DASH}</td>`;
     frag.appendChild(tr);
   });
   tbody.innerHTML = '';
@@ -1343,13 +1358,124 @@ function openQuickRate(id) {
   qrId=id; qrRating=a.rating||0; qrWant=!!a.wantToListen; qrHard=!!a.hardToFind; qrUnmatched=!!a.unmatched;
   document.getElementById('qr-artist').textContent=a.artist;
   document.getElementById('qr-album').textContent=a.album;
-  document.getElementById('qr-notes').value=a.notes||'';
+  updateQrNotesBtn();
   const artEl=document.getElementById('qr-art');
   if(a.artUrl){artEl.src=a.artUrl;artEl.style.display='block';}else artEl.style.display='none';
   setQrRating(qrRating);
   syncQrToggles();
   document.getElementById('quick-rate-modal').classList.add('open');
 }
+
+function updateQrNotesBtn() {
+  const a = albums.find(x=>x.id===qrId);
+  const btn = document.getElementById('qr-notes-btn');
+  if (!btn) return;
+  btn.textContent = (a && a.notes) ? '📝 Notes ✓' : '📝 Notes';
+}
+
+// ── Notes modal ─────────────────────────────────────────────
+let _notesId = null;
+const NOTES_SEED = '\n\n\n'; // blank lines left above an auto-inserted track listing
+
+function formatTrackDuration(ms) {
+  if (!ms) return '';
+  const totalSec = Math.round(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+// Fetch a track listing from MusicBrainz using whatever MB id is embedded in the album's art URL.
+// Returns a formatted multi-line string, or null if no listing could be found.
+async function fetchTracklist(artUrl) {
+  const m = (artUrl||'').match(/coverartarchive\.org\/(release-group|release)\/([0-9a-f-]{36})/);
+  if (!m) return null;
+  const [, kind, id] = m;
+  const headers = { 'User-Agent': 'ListenLog/1.0 (https://faulty-ham.github.io/listenlog)' };
+  try {
+    let releaseId = kind === 'release' ? id : null;
+    if (kind === 'release-group') {
+      const rgRes = await fetchWithTimeout(
+        `https://musicbrainz.org/ws/2/release-group/${id}?inc=releases&fmt=json`, { headers }, 10000);
+      if (!rgRes.ok) return null;
+      const rgData = await rgRes.json();
+      const releases = rgData.releases || [];
+      if (!releases.length) return null;
+      releaseId = releases[0].id;
+    }
+    if (!releaseId) return null;
+    const relRes = await fetchWithTimeout(
+      `https://musicbrainz.org/ws/2/release/${releaseId}?inc=recordings&fmt=json`, { headers }, 10000);
+    if (!relRes.ok) return null;
+    const relData = await relRes.json();
+    const media = relData.media || [];
+    if (!media.length) return null;
+    const lines = [];
+    media.forEach((disc, i) => {
+      if (media.length > 1) lines.push(`Disc ${i+1}`);
+      (disc.tracks||[]).forEach(t => {
+        const dur = formatTrackDuration(t.length);
+        lines.push(`${t.position}. ${t.title}${dur ? ' ('+dur+')' : ''}`);
+      });
+    });
+    return lines.length ? lines.join('\n') : null;
+  } catch(e) {
+    console.error('Tracklist fetch failed:', e);
+    return null;
+  }
+}
+
+async function openNotesModal(id) {
+  const a = albums.find(x=>x.id===id); if (!a) return;
+  _notesId = id;
+  document.getElementById('notes-modal-subtitle').textContent = `${a.artist} — ${a.album}`;
+  const ta   = document.getElementById('notes-textarea');
+  const hint = document.getElementById('notes-loading-hint');
+  document.getElementById('notes-modal').classList.add('open');
+
+  if (a.notes) {
+    ta.value = a.notes;
+    hint.style.display = 'none';
+    ta.focus();
+    return;
+  }
+
+  // Fresh notes — seed with a few blank lines, then try to pull in the track listing
+  ta.value = NOTES_SEED;
+  ta.focus();
+  ta.setSelectionRange(0, 0);
+  hint.style.display = 'block';
+  const tracklist = await fetchTracklist(a.artUrl);
+  hint.style.display = 'none';
+  // Only apply if we're still looking at the same album and the user hasn't typed anything yet
+  if (_notesId === id && tracklist && ta.value === NOTES_SEED) {
+    ta.value = NOTES_SEED + tracklist;
+  }
+}
+
+function closeNotesModal() {
+  document.getElementById('notes-modal').classList.remove('open');
+  _notesId = null;
+}
+
+on('qr-notes-btn','click',()=>{ if(qrId) openNotesModal(qrId); });
+
+on('notes-save','click',()=>{
+  if (!_notesId) return;
+  const a = albums.find(x=>x.id===_notesId); if (!a) return;
+  const raw = document.getElementById('notes-textarea').value.replace(/\s+$/,'');
+  a.notes = raw.trim() ? raw : null;
+  save(a); render();
+  updateQrNotesBtn();
+  closeNotesModal();
+});
+on('notes-cancel','click', closeNotesModal);
+let _notesMousedownOnOverlay = false;
+on('notes-modal','mousedown',e=>{_notesMousedownOnOverlay = e.target.id==='notes-modal';});
+on('notes-modal','click',e=>{
+  if(e.target.id==='notes-modal' && _notesMousedownOnOverlay) closeNotesModal();
+  else e.stopPropagation();
+});
 
 function setQrRating(val) {
   qrRating=val;
@@ -1433,7 +1559,6 @@ on('qr-save','click',()=>{
   const ratingChanged=qrRating!==(a.rating||0);
   if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
   a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;
-  a.notes=document.getElementById('qr-notes').value.trim()||null;
   save(a);render();
   document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
 });
@@ -1601,6 +1726,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     const lb = document.getElementById('art-lightbox');
     if (lb && lb.style.display !== 'none') { lb.style.display='none'; document.getElementById('art-lightbox-img').src=''; return; }
+    const nm = document.getElementById('notes-modal');
+    if (nm && nm.classList.contains('open')) { closeNotesModal(); return; }
   }
   if (e.key !== 'Enter') return;
   if (e.target.tagName === 'TEXTAREA') return;
