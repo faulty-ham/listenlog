@@ -645,6 +645,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="modal-actions">
       <button class="btn-primary" id="notes-save">Save</button>
       <button class="btn-ghost" id="notes-cancel">Cancel</button>
+      <button class="btn-ghost" id="notes-discard" style="color:var(--danger);margin-left:auto">Discard</button>
     </div>
   </div>
 </div>
@@ -1428,6 +1429,9 @@ async function fetchTracklist(artUrl) {
 async function openNotesModal(id) {
   const a = albums.find(x=>x.id===id); if (!a) return;
   _notesId = id;
+  // Notes takes over from Quick Rate — close it so we land back on the main view, not Quick Rate
+  document.getElementById('quick-rate-modal').classList.remove('open');
+  qrId = null;
   document.getElementById('notes-modal-subtitle').textContent = `${a.artist} — ${a.album}`;
   const ta   = document.getElementById('notes-textarea');
   const hint = document.getElementById('notes-loading-hint');
@@ -1557,6 +1561,14 @@ on('notes-save','click',()=>{
   closeNotesModal();
 });
 on('notes-cancel','click', closeNotesModal);
+on('notes-discard','click',()=>{
+  if (!_notesId) return;
+  const a = albums.find(x=>x.id===_notesId); if (!a) return;
+  a.notes = null;
+  save(a); render();
+  updateQrNotesBtn();
+  closeNotesModal();
+});
 on('notes-modal','mousedown',e=>{_notesMousedownOnOverlay = e.target.id==='notes-modal';});
 on('notes-modal','click',e=>{
   if(e.target.id==='notes-modal' && _notesMousedownOnOverlay) closeNotesModal();
