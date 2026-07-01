@@ -668,7 +668,7 @@ function migrateArtUrls(arr) {
 
 let editingId = null, pendingDeleteId = null;
 let openDropdown = null;
-let pendingArtUrl = '', pendingArtFallback = '';
+let pendingArtUrl = '', pendingArtFallback = '', pendingMbid = '';
 let sortKey = 'date', sortDir = -1;
 let _mbLookupInProgress = false; // block Enter-to-save while MB lookup is running
 let _storageWarned = false;
@@ -1260,7 +1260,7 @@ function resetForm() {
   document.getElementById('match-art').style.display='none';
   document.getElementById('art-upload-status').textContent='';
   document.getElementById('art-drop-inner').style.borderColor='';
-  pendingArtUrl=''; pendingArtFallback='';
+  pendingArtUrl=''; pendingArtFallback=''; pendingMbid='';
 }
 
 // ── Autofill card display ────────────────────────────────────
@@ -1299,6 +1299,7 @@ async function addOrUpdateAlbum() {
     unmatched:existing.unmatched&&!pendingArtUrl||false,
     artUrl,
     artFallback:pendingArtFallback||existing.artFallback||'',
+    mbid:pendingMbid||existing.mbid||'',
     added:existing.added||Date.now(),
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
@@ -1335,7 +1336,7 @@ function editAlbum(id) {
   document.getElementById('f-artist').value=a.artist;
   document.getElementById('f-album').value=a.album;
   document.getElementById('f-date').value=a.date||'';
-  pendingArtUrl=a.artUrl||'';
+  pendingArtUrl=a.artUrl||''; pendingMbid=a.mbid||'';
   // Show existing art if available
   if (a.artUrl) {
     document.getElementById('match-artist').textContent     = a.artist;
@@ -1388,23 +1389,37 @@ function formatTrackDuration(ms) {
 
 // Fetch a track listing from MusicBrainz using whatever MB id is embedded in the album's art URL.
 // Returns a formatted multi-line string, or null if no listing could be found.
-async function fetchTracklist(artUrl) {
-  const m = (artUrl||'').match(/coverartarchive\.org\/(release-group|release)\/([0-9a-f-]{36})/);
-  if (!m) return null;
-  const [, kind, id] = m;
+async function fetchTracklist(album) {
   const headers = { 'User-Agent': 'ListenLog/1.0 (https://faulty-ham.github.io/listenlog)' };
-  try {
-    let releaseId = kind === 'release' ? id : null;
-    if (kind === 'release-group') {
-      const rgRes = await fetchWithTimeout(
-        `https://musicbrainz.org/ws/2/release-group/${id}?inc=releases&fmt=json`, { headers }, 10000);
-      if (!rgRes.ok) return null;
-      const rgData = await rgRes.json();
-      const releases = rgData.releases || [];
-      if (!releases.length) return null;
-      releaseId = releases[0].id;
+  let releaseId = album.mbid || null;
+
+  // Legacy fallback: older entries (matched before we started storing mbid separately)
+  // may still have the MB id embedded in artUrl instead. Auto-uploaded Supabase art
+  // URLs won't match this, which is expected — those need a re-match to get an mbid.
+  if (!releaseId) {
+    const m = (album.artUrl||'').match(/coverartarchive\.org\/(release-group|release)\/([0-9a-f-]{36})/);
+    if (!m) return null;
+    const [, kind, id] = m;
+    if (kind === 'release') {
+      releaseId = id;
+    } else {
+      try {
+        const rgRes = await fetchWithTimeout(
+          `https://musicbrainz.org/ws/2/release-group/${id}?inc=releases&fmt=json`, { headers }, 10000);
+        if (!rgRes.ok) return null;
+        const rgData = await rgRes.json();
+        const releases = rgData.releases || [];
+        if (!releases.length) return null;
+        releaseId = releases[0].id;
+      } catch(e) {
+        console.error('Tracklist release-group lookup failed:', e);
+        return null;
+      }
     }
-    if (!releaseId) return null;
+  }
+
+  if (!releaseId) return null;
+  try {
     const relRes = await fetchWithTimeout(
       `https://musicbrainz.org/ws/2/release/${releaseId}?inc=recordings&fmt=json`, { headers }, 10000);
     if (!relRes.ok) return null;
@@ -1449,7 +1464,7 @@ async function openNotesModal(id) {
   ta.focus();
   ta.setSelectionRange(0, 0);
   hint.style.display = 'block';
-  const tracklist = await fetchTracklist(a.artUrl);
+  const tracklist = await fetchTracklist(a);
   hint.style.display = 'none';
   // Only apply if we're still looking at the same album and the user hasn't typed anything yet
   if (_notesId === id && tracklist && ta.value === NOTES_SEED) {
@@ -1788,6 +1803,7 @@ function applyMbResult(result) {
   if (result.date) document.getElementById('f-date').value = result.date;
   pendingArtUrl      = result.art||'';
   pendingArtFallback = result.artFallback||'';
+  pendingMbid        = result.mbid||'';
   // Show match card with art
   document.getElementById('match-artist').textContent     = result.matchedArtist||'';
   document.getElementById('match-album-name').textContent = result.matchedAlbum||'';
@@ -1914,7 +1930,7 @@ async function mbidLookup(mbid, attempt=1) {
       ]);
     } catch(e) { itunesArt = null; }
 
-    return { matchedArtist: artist, matchedAlbum: album, date, art: caaUrl, artFallback: itunesArt || null };
+    return { matchedArtist: artist, matchedAlbum: album, date, art: caaUrl, artFallback: itunesArt || null, mbid };
   } catch(e) {
     // Network error or timeout — retry
     if (attempt < MAX_ATTEMPTS) {
@@ -2117,6 +2133,7 @@ function albumToRow(a) {
     notes:          a.notes  || null,
     art_url:        a.artUrl      || null,
     art_fallback:   a.artFallback || null,
+    mbid:           a.mbid        || null,
     want_to_listen: a.wantToListen || false,
     hard_to_find:   a.hardToFind  || false,
     unmatched:      a.unmatched   || false,
@@ -2135,6 +2152,7 @@ function rowToAlbum(r) {
     notes:        r.notes        || null,
     artUrl:       r.art_url      || '',
     artFallback:  r.art_fallback || '',
+    mbid:         r.mbid         || '',
     wantToListen: r.want_to_listen || false,
     hardToFind:   r.hard_to_find   || false,
     unmatched:    r.unmatched       || false,
