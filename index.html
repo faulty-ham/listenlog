@@ -193,6 +193,7 @@ td{padding:7px 10px;vertical-align:middle}
 .src-badge{font-size:11px;padding:2px 6px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'Inter',sans-serif}
 .src-mb{background:rgba(122,153,201,.12);border-color:rgba(122,153,201,.3);color:#7a99c9}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
+.badge-nomb{background:rgba(153,122,201,.12);color:#9a7ec9;border:1px solid rgba(153,122,201,.25)}
 
 /* ── EMPTY STATE ── */
 .empty-state{text-align:center;padding:80px 40px;color:var(--muted)}
@@ -738,6 +739,7 @@ const TAG_OPTIONS = [
   { value:'hard',      label:'📦 Hard to find' },
   { value:'listened',  label:'✓ Listened' },
   { value:'unmatched', label:'⚠ Missing info' },
+  { value:'no-mbid',   label:'🔗 No MB link' },
 ];
 
 function extractYear(d) { const m = String(d||'').match(/\d{4}/); return m ? m[0] : ''; }
@@ -788,6 +790,7 @@ function getFiltered() {
       if (val === 'hard')      return !!a.hardToFind;
       if (val === 'listened')  return !a.wantToListen && !a.unmatched;
       if (val === 'unmatched') return !!a.unmatched;
+      if (val === 'no-mbid')   return !a.mbid;
       return false;
     })) return false;
 
@@ -1184,6 +1187,7 @@ function render() {
       a.wantToListen ? '<span class="badge badge-want">🎧 want</span>' : '',
       a.hardToFind   ? '<span class="badge badge-hard">📦 hard</span>' : '',
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
+      !a.mbid        ? '<span class="badge badge-nomb">🔗 no MB link</span>' : '',
     ].filter(Boolean).join(' ');
 
     const loaded = loadedArt[a.id];
