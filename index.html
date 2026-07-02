@@ -1296,7 +1296,7 @@ async function addOrUpdateAlbum() {
     notes:existing.notes||null,
     wantToListen:editingId ? (existing.wantToListen||false) : true,
     hardToFind:existing.hardToFind||false,
-    unmatched:existing.unmatched&&!pendingArtUrl||false,
+    unmatched: Boolean(existing.unmatched && !pendingArtUrl),
     artUrl,
     artFallback:pendingArtFallback||existing.artFallback||'',
     mbid:pendingMbid||existing.mbid||'',
@@ -1360,7 +1360,7 @@ function openQuickRate(id) {
   qrId=id; qrRating=a.rating||0; qrWant=!!a.wantToListen; qrHard=!!a.hardToFind; qrUnmatched=!!a.unmatched;
   document.getElementById('qr-artist').textContent=a.artist;
   document.getElementById('qr-album').textContent=a.album;
-  updateQrNotesBtn();
+  updateQrNotesBtn(a);
   const artEl=document.getElementById('qr-art');
   if(a.artUrl){artEl.src=a.artUrl;artEl.style.display='block';}else artEl.style.display='none';
   setQrRating(qrRating);
@@ -1368,8 +1368,8 @@ function openQuickRate(id) {
   document.getElementById('quick-rate-modal').classList.add('open');
 }
 
-function updateQrNotesBtn() {
-  const a = albums.find(x=>x.id===qrId);
+function updateQrNotesBtn(album) {
+  const a = album || albums.find(x=>x.id===qrId);
   const btn = document.getElementById('qr-notes-btn');
   if (!btn) return;
   btn.textContent = (a && a.notes) ? '📝 Notes ✓' : '📝 Notes';
@@ -1572,7 +1572,6 @@ on('notes-save','click',()=>{
   const raw = document.getElementById('notes-textarea').value.replace(/\s+$/,'');
   a.notes = raw.trim() ? raw : null;
   save(a); render();
-  updateQrNotesBtn();
   closeNotesModal();
 });
 on('notes-cancel','click', closeNotesModal);
@@ -1581,7 +1580,6 @@ on('notes-discard','click',()=>{
   const a = albums.find(x=>x.id===_notesId); if (!a) return;
   a.notes = null;
   save(a); render();
-  updateQrNotesBtn();
   closeNotesModal();
 });
 on('notes-modal','mousedown',e=>{_notesMousedownOnOverlay = e.target.id==='notes-modal';});
@@ -1749,12 +1747,21 @@ on('search-clear','click',()=>{
 on('add-modal','mousedown',e=>{_modalMousedownOnOverlay = e.target.id==='add-modal';});
 // Enter key submits the active modal's primary action
 document.addEventListener('keydown', e => {
-  // Escape closes lightbox first
+  // Escape closes topmost overlay: lightbox → notes → add/quick-rate/delete modals
   if (e.key === 'Escape') {
     const lb = document.getElementById('art-lightbox');
     if (lb && lb.style.display !== 'none') { lb.style.display='none'; document.getElementById('art-lightbox-img').src=''; return; }
     const nm = document.getElementById('notes-modal');
     if (nm && nm.classList.contains('open')) { closeNotesModal(); return; }
+    const am = document.getElementById('add-modal');
+    if (am && am.classList.contains('open')) {
+      if (_mbLookupInProgress) return; // don't close mid-lookup
+      closePanel(); return;
+    }
+    const qm = document.getElementById('quick-rate-modal');
+    if (qm && qm.classList.contains('open')) { qm.classList.remove('open'); qrId = null; return; }
+    const dm = document.getElementById('delete-modal');
+    if (dm && dm.classList.contains('open')) { dm.classList.remove('open'); pendingDeleteId = null; return; }
   }
   if (e.key !== 'Enter') return;
   if (e.target.tagName === 'TEXTAREA') return;
@@ -2303,6 +2310,7 @@ async function _pullFromCloudInner(retrying=false) {
         render();
       }
       setSyncStatus('ok', 'synced');
+      verifyCount(); // throttled internally to once per 60s
     } catch(e) {
       console.error('Incremental sync error:', e);
       if (!retrying) setTimeout(() => pullFromCloud(true), 3000);
@@ -2373,7 +2381,8 @@ async function verifyCount(force=false) {
           `Data may be out of sync (showing ${albums.length}, server has ${count}).`;
         banner.style.display = 'flex';
       }
-    } else {
+    } else if (!_storageWarned) {
+      // Only auto-hide if the banner isn't currently showing a storage warning
       const banner = document.getElementById('count-warning');
       if (banner) banner.style.display = 'none';
     }
