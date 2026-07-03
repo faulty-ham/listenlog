@@ -1312,10 +1312,11 @@ async function addOrUpdateAlbum() {
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
   else albums.unshift(entry);
+  const hadPendingArt = !!pendingArtUrl; // capture before closePanel() clears it
   save(entry); closePanel(); render();
 
   // Auto-upload art to Supabase Storage in the background if it's not already there
-  if (artUrl && !isSupabaseArt(artUrl) && pendingArtUrl) {
+  if (artUrl && !isSupabaseArt(artUrl) && hadPendingArt) {
     const targetId = entry.id;
     try {
       const resp = await fetch(artUrl);
