@@ -1329,6 +1329,7 @@ async function addOrUpdateAlbum() {
           if (current) {
             current.artUrl = publicUrl;
             save(current);
+            render(); // update "no art" badge now that artUrl is Supabase-hosted
           }
         }
       }
