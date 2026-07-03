@@ -2026,11 +2026,33 @@ async function artError(img) {
 
 const ART_BUCKET = 'listenlog-art';
 
+// Resize and compress an image blob to a max dimension before uploading.
+// Keeps file sizes manageable and avoids Supabase's file size limit.
+async function resizeImage(blob, maxDim=600, quality=0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width  * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas toBlob failed')), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+    img.src = url;
+  });
+}
+
 async function uploadArtToSupabase(blob, albumId) {
-  const ext  = blob.type === 'image/png' ? 'png' : 'jpg';
-  const path = `${_userId}/${albumId}.${ext}`;
-  const { error } = await _sb.storage.from(ART_BUCKET).upload(path, blob, {
-    contentType: blob.type,
+  // Always resize + convert to JPEG before uploading — keeps files small and consistent
+  const compressed = await resizeImage(blob);
+  const path = `${_userId}/${albumId}.jpg`;
+  const { error } = await _sb.storage.from(ART_BUCKET).upload(path, compressed, {
+    contentType: 'image/jpeg',
     upsert: true,
   });
   if (error) throw error;
