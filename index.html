@@ -1310,27 +1310,31 @@ async function addOrUpdateAlbum() {
   save(entry); closePanel(); render();
 
   // Auto-upload art to Supabase Storage in the background if it's not already there
-  if (artUrl && !isSupabaseArt(artUrl) && hadPendingArt) {
-    const targetId = entry.id;
+  if (hadPendingArt) {
+    const targetId    = entry.id;
+    const fallbackUrl = pendingArtFallback || entry.artFallback || '';
     try {
-      const resp = await fetch(artUrl);
-      if (resp.ok) {
-        const blob = await resp.blob();
-        if (blob.type.startsWith('image/')) {
-          const publicUrl = await uploadArtToSupabase(blob, targetId);
-          // Re-fetch the CURRENT version of this album — it may have changed
-          // (rating, notes, deletion) while the upload was in flight. Update only artUrl.
-          const current = albums.find(a => a.id === targetId);
-          if (current) {
-            current.artUrl = publicUrl;
-            save(current);
-            render(); // update "no art" badge now that artUrl is Supabase-hosted
-          }
+      // Try primary art URL first; fall back to iTunes/artFallback if it 404s
+      let blob = null;
+      for (const url of [artUrl, fallbackUrl]) {
+        if (!url || isSupabaseArt(url)) continue;
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const b = await resp.blob();
+          if (b.type.startsWith('image/')) { blob = b; break; }
+        }
+      }
+      if (blob) {
+        const publicUrl = await uploadArtToSupabase(blob, targetId);
+        const current = albums.find(a => a.id === targetId);
+        if (current) {
+          current.artUrl = publicUrl;
+          save(current);
+          render();
         }
       }
     } catch(e) {
       console.error('Auto art upload failed:', e);
-      // Non-fatal — the external URL is still stored as fallback
     }
   }
 }
