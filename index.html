@@ -1326,12 +1326,18 @@ async function addOrUpdateAlbum() {
       }
       if (blob) {
         const publicUrl = await uploadArtToSupabase(blob, targetId);
+        // Update Supabase directly — bypass the write queue entirely to avoid
+        // race with pullFromCloud() overwriting the new art_url
+        await _sb.from('albums')
+          .update({ art_url: publicUrl, updated_at: new Date().toISOString() })
+          .eq('id', targetId)
+          .eq('user_id', _userId);
+        // Also update local state
         const current = albums.find(a => a.id === targetId);
         if (current) {
           current.artUrl = publicUrl;
-          save(current);
+          safeSetItem('listenLog', JSON.stringify(albums));
           render();
-          flushQueue(); // flush immediately so DB has the new art_url before any pull can overwrite it
         }
       }
     } catch(e) {
