@@ -1331,6 +1331,7 @@ async function addOrUpdateAlbum() {
           current.artUrl = publicUrl;
           save(current);
           render();
+          flushQueue(); // flush immediately so DB has the new art_url before any pull can overwrite it
         }
       }
     } catch(e) {
