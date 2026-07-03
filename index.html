@@ -507,7 +507,11 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       </div>
       <div class="form-group" style="min-width:110px">
         <label>Release Date</label>
-        <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="width:100%" aria-label="Release date">
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="flex:1" aria-label="Release date">
+          <button type="button" class="btn-ghost btn-sm" id="art-browse-btn" style="white-space:nowrap;font-size:12px" title="Upload custom artwork">+ Art</button>
+          <input type="file" id="art-file-input" accept="image/*" style="display:none">
+        </div>
       </div>
     </div><!-- MB LINK -->
 
@@ -528,20 +532,11 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       </div>
     </div>
 
-    <!-- ART DROP ZONE -->
-    <div id="art-drop-zone" style="margin-bottom:10px">
-      <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px">Custom Artwork</label>
-      <div id="art-drop-inner" style="border:1.5px dashed var(--border);border-radius:6px;padding:12px;text-align:center;cursor:pointer;transition:border-color .15s;color:var(--muted);font-size:13px">
-        Drop image here or <span style="color:var(--accent);text-decoration:underline">click to browse</span>
-        <input type="file" id="art-file-input" accept="image/*" style="display:none">
-      </div>
-      <div id="art-upload-status" style="font-size:13px;color:var(--muted);margin-top:4px;min-height:18px"></div>
-    </div>
-
     <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
       <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">MB link</label>
       <input class="rescan-search-input" id="autofill-mb-input" placeholder="Paste MusicBrainz URL or release ID" style="flex:1;font-size:13px;padding:5px 8px" aria-label="MusicBrainz link">
     </div>
+    <div id="art-upload-status" style="font-size:13px;color:var(--muted);margin-bottom:6px;min-height:16px"></div>
 
     <span id="form-error" style="font-size:13px;color:var(--danger);display:block;min-height:16px;margin-bottom:6px"></span>
 
@@ -1267,7 +1262,6 @@ function resetForm() {
   document.getElementById('match-card').style.display='none';
   document.getElementById('match-art').style.display='none';
   document.getElementById('art-upload-status').textContent='';
-  document.getElementById('art-drop-inner').style.borderColor='';
   pendingArtUrl=''; pendingArtFallback=''; pendingMbid='';
 }
 
@@ -1623,13 +1617,7 @@ on('btn-delete-entry','click',()=>{
 
 
 // Art upload
-const _dropInner = document.getElementById('art-drop-inner');
-if (_dropInner) {
-  _dropInner.addEventListener('click', () => document.getElementById('art-file-input').click());
-  _dropInner.addEventListener('dragover', e => { e.preventDefault(); _dropInner.style.borderColor = 'var(--accent)'; });
-  _dropInner.addEventListener('dragleave', () => { _dropInner.style.borderColor = ''; });
-  _dropInner.addEventListener('drop', e => { e.preventDefault(); _dropInner.style.borderColor = ''; handleArtFile(e.dataTransfer.files[0]); });
-}
+on('art-browse-btn','click', () => document.getElementById('art-file-input').click());
 on('art-file-input','change', e => { handleArtFile(e.target.files[0]); e.target.value = ''; });
 on('autofill-mb-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur();runMbForce(e.target.value.trim(),null);}});
 on('autofill-mb-input','paste',e=>{
@@ -2062,15 +2050,13 @@ async function uploadArtToSupabase(blob, albumId) {
 
 async function handleArtFile(file) {
   const status = document.getElementById('art-upload-status');
-  const inner  = document.getElementById('art-drop-inner');
   if (!file || !file.type.startsWith('image/')) {
-    status.textContent = '✗ Please drop an image file';
+    status.textContent = '✗ Please select an image file';
     status.style.color = 'var(--danger)';
     return;
   }
   status.textContent = '⟳ Uploading…';
   status.style.color = 'var(--muted)';
-  inner.style.borderColor = 'var(--accent)';
   try {
     const id = editingId || '_new_' + Date.now();
     const publicUrl = await uploadArtToSupabase(file, id);
@@ -2080,12 +2066,10 @@ async function handleArtFile(file) {
     document.getElementById('match-card').style.display = 'block';
     status.textContent = '✓ Uploaded — will be saved with entry';
     status.style.color = 'var(--accent)';
-    inner.style.borderColor = '';
   } catch(e) {
     console.error('Art file upload error:', e);
     status.textContent = '✗ Upload failed — ' + e.message;
     status.style.color = 'var(--danger)';
-    inner.style.borderColor = '';
   }
 }
 
