@@ -22,29 +22,61 @@ jobs:
         run: |
           mkdir -p backups
 
-          # Fetch albums + originals from listenlog_data
-          curl -s \
-            -H "apikey: $SUPABASE_SERVICE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
-            -H "Content-Type: application/json" \
-            "$SUPABASE_URL/rest/v1/listenlog_data?select=albums,originals" \
-            | python3 -c "
-          import json, sys, datetime
-          data = json.load(sys.stdin)
-          if not data:
-              print('No data found')
-              sys.exit(1)
-          row = data[0]
-          albums = row.get('albums', [])
-          originals = row.get('originals', {})
-          out = {
-              'exported_at': datetime.datetime.utcnow().isoformat() + 'Z',
-              'album_count': len(albums),
-              'albums': albums,
-              'originals': originals
+          # Fetch all non-deleted albums from the albums table, paginated
+          python3 << 'PYEOF'
+          import json, sys, datetime, urllib.request, os
+
+          url    = os.environ['SUPABASE_URL']
+          key    = os.environ['SUPABASE_SERVICE_KEY']
+          headers = {
+              'apikey': key,
+              'Authorization': f'Bearer {key}',
+              'Content-Type': 'application/json',
+              'Prefer': 'count=exact',
           }
-          print(json.dumps(out, indent=2))
-          " > backups/latest.json
+
+          albums = []
+          page   = 0
+          limit  = 1000
+          while True:
+              req = urllib.request.Request(
+                  f"{url}/rest/v1/albums?select=*&deleted_at=is.null&order=added.desc&limit={limit}&offset={page*limit}",
+                  headers=headers
+              )
+              with urllib.request.urlopen(req) as r:
+                  batch = json.loads(r.read())
+              albums.extend(batch)
+              if len(batch) < limit:
+                  break
+              page += 1
+
+          # Convert snake_case Supabase rows to camelCase for the backup viewer
+          def to_camel(row):
+              return {
+                  'id':           row.get('id', ''),
+                  'artist':       row.get('artist', ''),
+                  'album':        row.get('album', ''),
+                  'date':         row.get('date', ''),
+                  'rating':       row.get('rating'),
+                  'notes':        row.get('notes'),
+                  'artUrl':       row.get('art_url', ''),
+                  'artFallback':  row.get('art_fallback', ''),
+                  'mbid':         row.get('mbid', ''),
+                  'wantToListen': row.get('want_to_listen', False),
+                  'hardToFind':   row.get('hard_to_find', False),
+                  'unmatched':    row.get('unmatched', False),
+                  'added':        row.get('added', 0),
+              }
+
+          out = {
+              'exported_at':  datetime.datetime.utcnow().isoformat() + 'Z',
+              'album_count':  len(albums),
+              'albums':       [to_camel(a) for a in albums],
+          }
+          with open('backups/latest.json', 'w') as f:
+              json.dump(out, f, indent=2)
+          print(f"Backed up {len(albums)} albums")
+          PYEOF
 
           # Also save a dated copy (keeps last 30 days)
           DATE=$(date +%Y-%m-%d)
@@ -53,13 +85,10 @@ jobs:
           # Remove backups older than 30 days
           find backups -name "????-??-??.json" -mtime +30 -delete
 
-          echo "Backed up $(cat backups/latest.json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[\"album_count\"])') albums"
-
       - name: Commit backup
         run: |
           git config user.name  "GitHub Actions"
           git config user.email "actions@github.com"
           git add backups/
-          # Only commit if something changed
           git diff --staged --quiet || git commit -m "Backup $(date +%Y-%m-%d)"
           git push
