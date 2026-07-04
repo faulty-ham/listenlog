@@ -3,10 +3,10 @@ name: Daily Backup
 on:
   schedule:
     - cron: '0 11 * * *'   # 4am PDT (UTC-7)
-  workflow_dispatch:        # also allows manual trigger from GitHub Actions tab
+  workflow_dispatch:
 
 permissions:
-  contents: write           # needed to push backup files back to the repo
+  contents: write
 
 jobs:
   backup:
@@ -22,35 +22,35 @@ jobs:
         run: |
           mkdir -p backups
 
-          # Fetch all non-deleted albums from the albums table, paginated
           python3 << 'PYEOF'
-          import json, sys, datetime, urllib.request, os
+          import json, datetime, urllib.request, os
 
-          url    = os.environ['SUPABASE_URL']
-          key    = os.environ['SUPABASE_SERVICE_KEY']
+          url     = os.environ['SUPABASE_URL']
+          key     = os.environ['SUPABASE_SERVICE_KEY']
           headers = {
               'apikey': key,
               'Authorization': f'Bearer {key}',
               'Content-Type': 'application/json',
-              'Prefer': 'count=exact',
           }
 
-          albums = []
-          page   = 0
+          # Paginate using id > last_id (keyset pagination) — stable, no duplicates
+          seen   = {}
+          last_id = ''
           limit  = 1000
           while True:
+              filter_part = f'&id=gt.{last_id}' if last_id else ''
               req = urllib.request.Request(
-                  f"{url}/rest/v1/albums?select=*&deleted_at=is.null&order=added.desc&limit={limit}&offset={page*limit}",
+                  f"{url}/rest/v1/albums?select=*&deleted_at=is.null&order=id.asc&limit={limit}{filter_part}",
                   headers=headers
               )
               with urllib.request.urlopen(req) as r:
                   batch = json.loads(r.read())
-              albums.extend(batch)
+              for row in batch:
+                  seen[row['id']] = row
               if len(batch) < limit:
                   break
-              page += 1
+              last_id = batch[-1]['id']
 
-          # Convert snake_case Supabase rows to camelCase for the backup viewer
           def to_camel(row):
               return {
                   'id':           row.get('id', ''),
@@ -62,27 +62,28 @@ jobs:
                   'artUrl':       row.get('art_url', ''),
                   'artFallback':  row.get('art_fallback', ''),
                   'mbid':         row.get('mbid', ''),
-                  'wantToListen': row.get('want_to_listen', False),
-                  'hardToFind':   row.get('hard_to_find', False),
-                  'unmatched':    row.get('unmatched', False),
+                  'wantToListen': row.get('want_to_listen', False) or False,
+                  'hardToFind':   row.get('hard_to_find', False) or False,
+                  'unmatched':    row.get('unmatched', False) or False,
                   'added':        row.get('added', 0),
               }
 
+          albums = [to_camel(r) for r in seen.values()]
+          # Sort by added desc to match app order
+          albums.sort(key=lambda a: a['added'] or 0, reverse=True)
+
           out = {
-              'exported_at':  datetime.datetime.utcnow().isoformat() + 'Z',
-              'album_count':  len(albums),
-              'albums':       [to_camel(a) for a in albums],
+              'exported_at': datetime.datetime.utcnow().isoformat() + 'Z',
+              'album_count': len(albums),
+              'albums':      albums,
           }
           with open('backups/latest.json', 'w') as f:
               json.dump(out, f, indent=2)
-          print(f"Backed up {len(albums)} albums")
+          print(f"Backed up {len(albums)} albums (no duplicates)")
           PYEOF
 
-          # Also save a dated copy (keeps last 30 days)
           DATE=$(date +%Y-%m-%d)
           cp backups/latest.json "backups/$DATE.json"
-
-          # Remove backups older than 30 days
           find backups -name "????-??-??.json" -mtime +30 -delete
 
       - name: Commit backup
