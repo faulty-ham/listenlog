@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-07-04T07:32:18.919256Z",
+  "exported_at": "2026-07-04T07:53:58.631424Z",
   "album_count": 2394,
   "albums": [
     {
@@ -817,12 +817,12 @@
       "artist": "Various Artists",
       "album": "The Funk Box",
       "date": "2000-11-21",
-      "rating": null,
+      "rating": 4,
       "notes": null,
       "artUrl": "https://jzyyhqudynpezkddhjhf.supabase.co/storage/v1/object/public/listenlog-art/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mqu5qq07meszz8gszzf.png",
-      "artFallback": "",
+      "artFallback": null,
       "mbid": "d5b006c8-ed3d-46dc-bdf6-59dd3c702f20",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "added": 1782431580967
