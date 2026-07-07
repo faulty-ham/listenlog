@@ -612,6 +612,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       </div>
     </div>
     <div class="qr-stars" id="qr-star-input"></div>
+    <div id="qr-plex-status" style="text-align:center;font-size:12px;min-height:16px;margin-bottom:8px"></div>
     <div class="qr-tags">
       <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
       <button class="tag-toggle hard" id="qr-hard-toggle" style="display:none">📦 Hard to find</button>
@@ -1372,6 +1373,7 @@ function openQuickRate(id) {
   if(a.artUrl){artEl.src=a.artUrl;artEl.style.display='block';}else artEl.style.display='none';
   setQrRating(qrRating);
   syncQrToggles();
+  document.getElementById('qr-plex-status').textContent='';
   document.getElementById('quick-rate-modal').classList.add('open');
 }
 
@@ -1560,6 +1562,30 @@ function initApp() {
 
 on('qr-want-toggle','click',()=>{qrWant=!qrWant;if(!qrWant)qrHard=false;syncQrToggles();});
 on('qr-hard-toggle','click',()=>{qrHard=!qrHard;syncQrToggles();});
+const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
+
+async function syncRatingToPlex(a) {
+  const status = document.getElementById('qr-plex-status');
+  if (!status) return;
+  status.textContent = '⟳ Syncing to Plex…';
+  status.style.color = 'var(--muted)';
+  try {
+    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&rating=${a.rating}`;
+    const res = await fetch(url);
+    const result = await res.json();
+    if (result.matched) {
+      status.textContent = 'Plex rating updated';
+      status.style.color = 'var(--accent)';
+    } else {
+      status.textContent = 'No match found';
+      status.style.color = 'var(--danger)';
+    }
+  } catch(e) {
+    status.textContent = 'No match found';
+    status.style.color = 'var(--danger)';
+  }
+}
+
 on('qr-unmatched-toggle','click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
 on('qr-save','click',()=>{
   if(!qrId)return;
@@ -1568,7 +1594,16 @@ on('qr-save','click',()=>{
   if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
   a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;
   save(a);render();
-  document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
+  if (ratingChanged && a.rating) {
+    // Keep the modal open briefly to show Plex sync status, then close
+    syncRatingToPlex(a);
+    setTimeout(()=>{
+      document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
+      document.getElementById('qr-plex-status').textContent='';
+    }, 1600);
+  } else {
+    document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
+  }
 });
 on('qr-cancel','click',()=>{document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;});
 
