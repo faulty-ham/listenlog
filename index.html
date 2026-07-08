@@ -104,15 +104,12 @@ button{font-family:'Inter',sans-serif;font-size:14px;border:none;cursor:pointer;
 .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
 .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
 .btn-ghost:disabled{opacity:.35;cursor:default;pointer-events:none}
-.btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid var(--border)}
-.btn-danger-ghost:hover{border-color:var(--danger)}
 .btn-sm{padding:2px 7px;font-size:13px}
 
 /* ── PANELS ── */
 .panel{display:none;padding:18px 40px;background:var(--surface);border-bottom:1px solid var(--border);animation:slideDown .18s ease}
 .panel.open{display:block}
 @keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.panel-title{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);margin-bottom:10px}
 .form-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
@@ -122,10 +119,8 @@ button{font-family:'Inter',sans-serif;font-size:14px;border:none;cursor:pointer;
 .star-input{display:flex;gap:3px;align-items:center;padding-top:2px;user-select:none}
 .star-btn{font-size:26px;cursor:pointer;color:var(--star-empty);transition:color .08s;background:none;border:none;padding:0;line-height:1}
 .star-btn.lit{color:var(--star)}
-.star-val-display{font-size:13px;color:var(--muted);margin-left:6px}
 
 /* ── TAG TOGGLES ── */
-.tag-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding-top:2px}
 .tag-toggle{font-size:13px;border-radius:20px;padding:3px 10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif}
 .tag-toggle.want.on{background:var(--want);color:#0d1117;border-color:var(--want)}
 .tag-toggle.hard.on{background:var(--hard);color:#0d1117;border-color:var(--hard)}
@@ -145,7 +140,6 @@ thead tr{border-bottom:none}
 th{text-align:left;padding:10px 10px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:400;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s}
 th:hover{color:var(--accent)}th.sorted{color:var(--accent)}
 th .sa{margin-left:3px;opacity:.4}th.sorted .sa{opacity:1}
-th.th-check{cursor:default;width:32px}
 
 /* Dark scrollbar */
 .table-wrap::-webkit-scrollbar{width:8px;height:8px}
@@ -155,7 +149,6 @@ th.th-check{cursor:default;width:32px}
 * { scrollbar-width:thin;scrollbar-color:#2a3340 var(--bg) }
 tr.album-row{border-bottom:1px solid #1c2128;transition:background .12s;cursor:pointer}
 tr.album-row:hover{background:var(--surface)}
-tr.album-row.selected{background:#1a2518}
 td{padding:7px 10px;vertical-align:middle}
 
 /* ── ART CELL ── bigger, rounded like Letterboxd ── */
@@ -227,15 +220,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .thumb-btn.active.up{background:var(--good);border-color:var(--good);color:#0d1117}
 .thumb-btn.active.down{background:var(--danger);border-color:var(--danger);color:#fff}
 /* Search panel spans full width below the 3 columns */
-.conf-high-pill{background:rgba(0,192,48,.15);color:var(--good);border:1px solid rgba(0,192,48,.3)}
-.conf-med-pill{background:rgba(232,201,122,.12);color:var(--accent);border:1px solid rgba(232,201,122,.25)}
-.conf-low-pill{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
-.field-old{color:var(--muted)}.field-new{color:var(--text-hi);font-weight:500}
-.change-arrow{color:var(--muted);margin:0 3px;font-size:12px}
 
 /* ── SPINNER ── */
-@keyframes spin{to{transform:rotate(360deg)}}
-.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 
 /* ── MULTI-SELECT FILTER DROPDOWNS ── */
 .ms-wrap{position:relative;display:inline-block}
@@ -335,7 +321,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .qr-actions{display:flex;gap:8px;justify-content:flex-end}
 
 /* ── MOBILE TOOLBAR ── */
-.mobile-hidden{display:inline-flex}
 /* Desktop: rows display as a single flex line */
 .toolbar-top-row,.toolbar-filter-row{display:contents}
 @media(max-width:700px){
@@ -343,7 +328,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   header{padding:12px 12px 10px}
   .header-title h1{font-size:28px}
   .header-stats{display:none}
-  .mobile-hidden{display:none!important}
   /* List text: larger on mobile */
   .td-artist{font-size:17px}
   .td-album{font-size:18px}
@@ -1302,15 +1286,17 @@ async function addOrUpdateAlbum() {
   const hadPendingArt = !!pendingArtUrl; // capture before closePanel() clears it
   save(entry); closePanel(); render();
 
-  // Auto-upload art to Supabase Storage in the background if it's not already there
-  if (hadPendingArt) {
+  // Auto-upload art to R2 in the background — but ONLY if the primary art URL
+  // isn't already hosted. Without this guard, editing any album whose art is
+  // already on R2 would re-fetch the iTunes fallback and overwrite better art.
+  if (hadPendingArt && artUrl && !isHostedArt(artUrl)) {
     const targetId    = entry.id;
     const fallbackUrl = pendingArtFallback || entry.artFallback || '';
     try {
       // Try primary art URL first; fall back to iTunes/artFallback if it 404s
       let blob = null;
       for (const url of [artUrl, fallbackUrl]) {
-        if (!url || isSupabaseArt(url)) continue;
+        if (!url || isHostedArt(url)) continue;
         const resp = await fetch(url);
         if (resp.ok) {
           const b = await resp.blob();
@@ -1318,7 +1304,7 @@ async function addOrUpdateAlbum() {
         }
       }
       if (blob) {
-        const publicUrl = await uploadArtToSupabase(blob, targetId);
+        const publicUrl = await uploadArtToR2(blob, targetId);
         // Update Supabase directly — bypass the write queue entirely to avoid
         // race with pullFromCloud() overwriting the new art_url
         await _sb.from('albums')
@@ -2091,8 +2077,6 @@ async function uploadArtToR2(blob, albumId) {
   return `${R2_PUBLIC_URL}/${path}`;
 }
 
-// Keep old name as alias so existing call sites don't need changing
-const uploadArtToSupabase = uploadArtToR2;
 
 async function handleArtFile(file) {
   const status = document.getElementById('art-upload-status');
@@ -2105,7 +2089,7 @@ async function handleArtFile(file) {
   status.style.color = 'var(--muted)';
   try {
     const id = editingId || '_new_' + Date.now();
-    const publicUrl = await uploadArtToSupabase(file, id);
+    const publicUrl = await uploadArtToR2(file, id);
     pendingArtUrl = publicUrl;
     const artEl = document.getElementById('match-art');
     if (artEl) { artEl.src = publicUrl; artEl.style.display = 'block'; }
@@ -2119,7 +2103,7 @@ async function handleArtFile(file) {
   }
 }
 
-function isSupabaseArt(url) {
+function isHostedArt(url) {
   // Recognise both old Supabase URLs and new R2 URLs as "already hosted"
   return url && (url.includes('supabase.co/storage') || url.includes('r2.dev'));
 }
