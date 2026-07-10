@@ -713,9 +713,8 @@ function starsHTML(n) {
 // ════════════════════════════════════════════════════════════
 // activeFilters: { artist: Set, year: Set, type: Set, rating: Set, tags: Set }
 const activeFilters = { artist: new Map(), year: new Map(), rating: new Map(), tags: new Map(), type: new Map() };
-// Default view: unrated albums that are NOT hard to find
-activeFilters.rating.set('unrated', 'include');
-activeFilters.tags.set('hard', 'exclude');
+// Default view: albums tagged Want to Listen
+activeFilters.tags.set('want', 'include');
 
 const RATING_OPTIONS = [
   { value:'5',      label:'★★★★★ (5)' },
@@ -1681,6 +1680,18 @@ on('autofill-mb-input','paste',e=>{
   e.preventDefault();
   e.target.value='';
   runMbForce(raw, null);
+});
+on('autofill-mb-input','contextmenu',e=>{
+  e.preventDefault();
+  if(!navigator.clipboard?.readText) return;
+  navigator.clipboard.readText().then(raw=>{
+    raw=(raw||'').trim();
+    if(!raw)return;
+    const mbid=raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
+    if(!mbid)return;
+    e.target.value='';
+    runMbForce(raw, null);
+  }).catch(()=>{}); // clipboard permission denied or unavailable — fail silently
 });
 // ── Page-wide drag and drop for MB links ──────────────────────
 (function() {
