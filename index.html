@@ -186,6 +186,9 @@ td{padding:7px 10px;vertical-align:middle}
 .src-badge{font-size:11px;padding:2px 6px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'Inter',sans-serif}
 .src-mb{background:rgba(122,153,201,.12);border-color:rgba(122,153,201,.3);color:#7a99c9}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
+.badge-comp{background:rgba(153,122,201,.12);color:#9a7ec9;border:1px solid rgba(153,122,201,.25)}
+.badge-live{background:rgba(201,122,153,.12);color:#c97ea3;border:1px solid rgba(201,122,153,.25)}
+.badge-single{background:rgba(122,153,201,.12);color:#7e9ac9;border:1px solid rgba(122,153,201,.25)}
 
 /* ── EMPTY STATE ── */
 .empty-state{text-align:center;padding:80px 40px;color:var(--muted)}
@@ -450,6 +453,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year">Date <span class="ms-arrow">▾</span></button></div>
     <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating">Rating <span class="ms-arrow">▾</span></button></div>
     <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
+    <div class="ms-wrap" id="ms-type"><button class="ms-btn" data-field="type">Type <span class="ms-arrow">▾</span></button></div>
     <select id="mobile-sort" class="mobile-sort-select" title="Sort by">
       <option value="date-desc">Release ↓</option>
       <option value="date-asc">Release ↑</option>
@@ -648,7 +652,7 @@ function migrateArtUrls(arr) {
 
 let editingId = null, pendingDeleteId = null;
 let openDropdown = null;
-let pendingArtUrl = '', pendingArtFallback = '', pendingMbid = '';
+let pendingArtUrl = '', pendingArtFallback = '', pendingMbid = '', pendingReleaseType = '';
 let sortKey = 'date', sortDir = -1;
 let _mbLookupInProgress = false; // block Enter-to-save while MB lookup is running
 let _storageWarned = false;
@@ -700,7 +704,7 @@ function starsHTML(n) {
 // MULTI-SELECT FILTER SYSTEM
 // ════════════════════════════════════════════════════════════
 // activeFilters: { artist: Set, year: Set, type: Set, rating: Set, tags: Set }
-const activeFilters = { artist: new Map(), year: new Map(), rating: new Map(), tags: new Map() };
+const activeFilters = { artist: new Map(), year: new Map(), rating: new Map(), tags: new Map(), type: new Map() };
 // Default view: unrated albums that are NOT hard to find
 activeFilters.rating.set('unrated', 'include');
 activeFilters.tags.set('hard', 'exclude');
@@ -718,6 +722,12 @@ const TAG_OPTIONS = [
   { value:'hard',      label:'📦 Hard to find' },
   { value:'listened',  label:'✓ Listened' },
   { value:'unmatched', label:'⚠ Missing info' },
+];
+const TYPE_OPTIONS = [
+  { value:'album',      label:'Album' },
+  { value:'compilation',label:'Compilation' },
+  { value:'live',       label:'Live' },
+  { value:'single_ep',  label:'Single/EP' },
 ];
 
 function extractYear(d) { const m = String(d||'').match(/\d{4}/); return m ? m[0] : ''; }
@@ -737,6 +747,7 @@ function getFiltered() {
   const yearF   = splitFilter(activeFilters.year);
   const ratingF = splitFilter(activeFilters.rating);
   const tagsF   = splitFilter(activeFilters.tags);
+  const typeF   = splitFilter(activeFilters.type);
 
   // Test a precomputed {includes,excludes} split against an album via testFn
   function passes(split, testFn) {
@@ -771,6 +782,8 @@ function getFiltered() {
       return false;
     })) return false;
 
+    if (!passes(typeF, val => a.releaseType === val)) return false;
+
     return true;
   });
 }
@@ -781,11 +794,13 @@ function getOptions(field) {
   if (field === 'year')   return [...new Set(albums.map(a=>extractYear(a.date)).filter(Boolean))].sort().reverse();
   if (field === 'rating') return RATING_OPTIONS.map(o=>o.value);
   if (field === 'tags')   return TAG_OPTIONS.map(o=>o.value);
+  if (field === 'type')   return TYPE_OPTIONS.map(o=>o.value);
   return [];
 }
 function getLabel(field, value) {
   if (field === 'rating') return RATING_OPTIONS.find(o=>o.value===value)?.label || value;
   if (field === 'tags')   return TAG_OPTIONS.find(o=>o.value===value)?.label || value;
+  if (field === 'type')   return TYPE_OPTIONS.find(o=>o.value===value)?.label || value;
   if (field === 'year' && value === 'no-date') return 'No date';
   return value;
 }
@@ -1164,6 +1179,9 @@ function render() {
       a.wantToListen ? '<span class="badge badge-want">🎧 want</span>' : '',
       a.hardToFind   ? '<span class="badge badge-hard">📦 hard</span>' : '',
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
+      a.releaseType === 'compilation' ? '<span class="badge badge-comp">Compilation</span>' : '',
+      a.releaseType === 'live'        ? '<span class="badge badge-live">Live</span>' : '',
+      a.releaseType === 'single_ep'   ? '<span class="badge badge-single">Single/EP</span>' : '',
     ].filter(Boolean).join(' ');
 
     const loaded = loadedArt[a.id];
@@ -1239,7 +1257,7 @@ function resetForm() {
   document.getElementById('match-card').style.display='none';
   document.getElementById('match-art').style.display='none';
   document.getElementById('art-upload-status').textContent='';
-  pendingArtUrl=''; pendingArtFallback=''; pendingMbid='';
+  pendingArtUrl=''; pendingArtFallback=''; pendingMbid=''; pendingReleaseType='';
 }
 
 // ── Autofill card display ────────────────────────────────────
@@ -1279,6 +1297,7 @@ async function addOrUpdateAlbum() {
     artUrl,
     artFallback:pendingArtFallback||existing.artFallback||'',
     mbid:pendingMbid||existing.mbid||'',
+    releaseType:pendingReleaseType||existing.releaseType||'',
     added:existing.added||Date.now(),
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
@@ -1330,7 +1349,7 @@ function editAlbum(id) {
   document.getElementById('f-artist').value=a.artist;
   document.getElementById('f-album').value=a.album;
   document.getElementById('f-date').value=a.date||'';
-  pendingArtUrl=a.artUrl||''; pendingMbid=a.mbid||'';
+  pendingArtUrl=a.artUrl||''; pendingMbid=a.mbid||''; pendingReleaseType=a.releaseType||'';
   // Show existing art if available
   if (a.artUrl) {
     document.getElementById('match-artist').textContent     = a.artist;
@@ -1833,6 +1852,7 @@ function applyMbResult(result) {
   pendingArtUrl      = result.art||'';
   pendingArtFallback = result.artFallback||'';
   pendingMbid        = result.mbid||'';
+  pendingReleaseType = result.releaseType||'';
   // Show match card with art
   document.getElementById('match-artist').textContent     = result.matchedArtist||'';
   document.getElementById('match-album-name').textContent = result.matchedAlbum||'';
@@ -1917,6 +1937,19 @@ async function fetchWithTimeout(url, opts={}, timeoutMs=10000) {
   }
 }
 
+// Map MusicBrainz release-group primary/secondary types to our 4 buckets.
+// Secondary types (Live, Compilation) take priority over primary type,
+// since a compilation or live album's primary-type is usually still "Album".
+function classifyReleaseType(primaryType, secondaryTypes) {
+  const secondary = (secondaryTypes || []).map(s => s.toLowerCase());
+  if (secondary.includes('live')) return 'live';
+  if (secondary.includes('compilation')) return 'compilation';
+  const primary = (primaryType || '').toLowerCase();
+  if (primary === 'album') return 'album';
+  if (primary === 'single' || primary === 'ep') return 'single_ep';
+  return ''; // Broadcast, Other, or unknown — leave untagged rather than guess
+}
+
 async function mbidLookup(mbid, attempt=1) {
   const MAX_ATTEMPTS = 3;
   try {
@@ -1945,10 +1978,12 @@ async function mbidLookup(mbid, attempt=1) {
     const artist = (data['artist-credit']?.[0]?.artist?.name) || (data['artist-credit']?.[0]?.name) || '';
     const album  = data.title || '';
     const date   = data.date || data['first-release-date'] || data['release-group']?.['first-release-date'] || null;
-    const rgid = data['release-group']?.id || null;
+    const rg = data['release-group'] || {};
+    const rgid = rg.id || null;
     const caaUrl = rgid
       ? `https://coverartarchive.org/release-group/${rgid}/front`
       : `https://coverartarchive.org/release/${mbid}/front`;
+    const releaseType = classifyReleaseType(rg['primary-type'], rg['secondary-types']);
 
     // iTunes art is a non-critical fallback — never let it block or fail the lookup
     let itunesArt = null;
@@ -1959,7 +1994,7 @@ async function mbidLookup(mbid, attempt=1) {
       ]);
     } catch(e) { itunesArt = null; }
 
-    return { matchedArtist: artist, matchedAlbum: album, date, art: caaUrl, artFallback: itunesArt || null, mbid };
+    return { matchedArtist: artist, matchedAlbum: album, date, art: caaUrl, artFallback: itunesArt || null, mbid, releaseType };
   } catch(e) {
     // Network error or timeout — retry
     if (attempt < MAX_ATTEMPTS) {
@@ -2188,6 +2223,7 @@ function albumToRow(a) {
     art_url:        a.artUrl      || null,
     art_fallback:   a.artFallback || null,
     mbid:           a.mbid        || null,
+    release_type:   a.releaseType || null,
     want_to_listen: a.wantToListen || false,
     hard_to_find:   a.hardToFind  || false,
     unmatched:      a.unmatched   || false,
@@ -2207,6 +2243,7 @@ function rowToAlbum(r) {
     artUrl:       r.art_url      || '',
     artFallback:  r.art_fallback || '',
     mbid:         r.mbid         || '',
+    releaseType:  r.release_type || '',
     wantToListen: r.want_to_listen || false,
     hardToFind:   r.hard_to_find   || false,
     unmatched:    r.unmatched       || false,
