@@ -71,7 +71,7 @@
   --accent:#00c030; --accent-dim:#00c03022;
   --text:#c8d0d8; --text-hi:#e8edf2;
   --muted:#8fa3b3;
-  --danger:#c97a7a; --want:#7ab0c9; --hard:#c9997a;
+  --danger:#c97a7a; --want:#7ab0c9; --hard:#c9a85a;
   --good:#00c030; --radius:4px;
   --star:#00e54b; --star-empty:#5a6472;
 }
@@ -182,7 +182,7 @@ td{padding:7px 10px;vertical-align:middle}
 .row-tags{display:flex;gap:4px;flex-wrap:wrap}
 .badge{font-size:11px;text-transform:uppercase;letter-spacing:.1em;border-radius:20px;padding:2px 7px;white-space:nowrap;font-family:'Inter',sans-serif}
 .badge-want{background:rgba(122,176,201,.12);color:var(--want);border:1px solid rgba(122,176,201,.25)}
-.badge-hard{background:rgba(201,153,122,.12);color:var(--hard);border:1px solid rgba(201,153,122,.25)}
+.badge-hard{background:rgba(201,168,90,.14);color:var(--hard);border:1px solid rgba(201,168,90,.3)}
 .src-badge{font-size:11px;padding:2px 6px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'Inter',sans-serif}
 .src-mb{background:rgba(122,153,201,.12);border-color:rgba(122,153,201,.3);color:#7a99c9}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
@@ -1183,10 +1183,10 @@ function render() {
       else editAlbum(a.id);
     });
     const tags = [
-      a.wantToListen ? '<span class="badge badge-want">🎧 want</span>' : '',
-      a.hardToFind   ? '<span class="badge badge-hard">📦 hard</span>' : '',
+      a.wantToListen ? '<span class="badge badge-want">🎧</span>' : '',
+      a.hardToFind   ? '<span class="badge badge-hard">👀</span>' : '',
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
-      a.releaseType === 'compilation' ? '<span class="badge badge-comp">Compilation</span>' : '',
+      a.releaseType === 'compilation' ? '<span class="badge badge-comp">Comp</span>' : '',
       a.releaseType === 'live'        ? '<span class="badge badge-live">Live</span>' : '',
       a.releaseType === 'single_ep'   ? '<span class="badge badge-single">EP</span>' : '',
     ].filter(Boolean).join(' ');
