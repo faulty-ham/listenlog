@@ -497,6 +497,14 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
           <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="flex:1" aria-label="Release date">
           <button type="button" class="btn-ghost btn-sm" id="art-browse-btn" style="white-space:nowrap;font-size:12px" title="Upload custom artwork">+ Art</button>
           <input type="file" id="art-file-input" accept="image/*" style="display:none">
+          <select id="f-type" title="Release type" aria-label="Release type"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:5px 6px;border-radius:var(--radius);outline:none">
+            <option value="">No type</option>
+            <option value="album">Album</option>
+            <option value="compilation">Compilation</option>
+            <option value="live">Live</option>
+            <option value="single_ep">EP</option>
+          </select>
         </div>
       </div>
     </div><!-- MB LINK -->
@@ -652,7 +660,7 @@ function migrateArtUrls(arr) {
 
 let editingId = null, pendingDeleteId = null;
 let openDropdown = null;
-let pendingArtUrl = '', pendingArtFallback = '', pendingMbid = '', pendingReleaseType = '';
+let pendingArtUrl = '', pendingArtFallback = '', pendingMbid = '';
 let sortKey = 'date', sortDir = -1;
 let _mbLookupInProgress = false; // block Enter-to-save while MB lookup is running
 let _storageWarned = false;
@@ -727,7 +735,7 @@ const TYPE_OPTIONS = [
   { value:'album',      label:'Album' },
   { value:'compilation',label:'Compilation' },
   { value:'live',       label:'Live' },
-  { value:'single_ep',  label:'Single/EP' },
+  { value:'single_ep',  label:'EP' },
 ];
 
 function extractYear(d) { const m = String(d||'').match(/\d{4}/); return m ? m[0] : ''; }
@@ -782,7 +790,7 @@ function getFiltered() {
       return false;
     })) return false;
 
-    if (!passes(typeF, val => a.releaseType === val)) return false;
+    if (!passes(typeF, val => val === 'no-type' ? !a.releaseType : a.releaseType === val)) return false;
 
     return true;
   });
@@ -794,13 +802,13 @@ function getOptions(field) {
   if (field === 'year')   return [...new Set(albums.map(a=>extractYear(a.date)).filter(Boolean))].sort().reverse();
   if (field === 'rating') return RATING_OPTIONS.map(o=>o.value);
   if (field === 'tags')   return TAG_OPTIONS.map(o=>o.value);
-  if (field === 'type')   return TYPE_OPTIONS.map(o=>o.value);
+  if (field === 'type')   return [...TYPE_OPTIONS.map(o=>o.value), 'no-type'];
   return [];
 }
 function getLabel(field, value) {
   if (field === 'rating') return RATING_OPTIONS.find(o=>o.value===value)?.label || value;
   if (field === 'tags')   return TAG_OPTIONS.find(o=>o.value===value)?.label || value;
-  if (field === 'type')   return TYPE_OPTIONS.find(o=>o.value===value)?.label || value;
+  if (field === 'type')   return TYPE_OPTIONS.find(o=>o.value===value)?.label || (value === 'no-type' ? 'No type' : value);
   if (field === 'year' && value === 'no-date') return 'No date';
   return value;
 }
@@ -1020,7 +1028,7 @@ function updateFilterButton(field, wrap) {
   const btn = wrap.querySelector('.ms-btn');
   const map = activeFilters[field];
   btn.classList.toggle('has-selection', map.size > 0);
-  const fieldLabel = { artist:'Artist', year:'Date', rating:'Rating', tags:'Tags' }[field];
+  const fieldLabel = { artist:'Artist', year:'Date', rating:'Rating', tags:'Tags', type:'Type' }[field];
   const countBadge = map.size ? `<span class="ms-count">${map.size}</span>` : '';
   btn.innerHTML = `${fieldLabel} ${countBadge}<span class="ms-arrow">▾</span>`;
 }
@@ -1181,7 +1189,7 @@ function render() {
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
       a.releaseType === 'compilation' ? '<span class="badge badge-comp">Compilation</span>' : '',
       a.releaseType === 'live'        ? '<span class="badge badge-live">Live</span>' : '',
-      a.releaseType === 'single_ep'   ? '<span class="badge badge-single">Single/EP</span>' : '',
+      a.releaseType === 'single_ep'   ? '<span class="badge badge-single">EP</span>' : '',
     ].filter(Boolean).join(' ');
 
     const loaded = loadedArt[a.id];
@@ -1257,7 +1265,8 @@ function resetForm() {
   document.getElementById('match-card').style.display='none';
   document.getElementById('match-art').style.display='none';
   document.getElementById('art-upload-status').textContent='';
-  pendingArtUrl=''; pendingArtFallback=''; pendingMbid=''; pendingReleaseType='';
+  pendingArtUrl=''; pendingArtFallback=''; pendingMbid='';
+  document.getElementById('f-type').value = '';
 }
 
 // ── Autofill card display ────────────────────────────────────
@@ -1297,7 +1306,7 @@ async function addOrUpdateAlbum() {
     artUrl,
     artFallback:pendingArtFallback||existing.artFallback||'',
     mbid:pendingMbid||existing.mbid||'',
-    releaseType:pendingReleaseType||existing.releaseType||'',
+    releaseType:document.getElementById('f-type').value || '',
     added:existing.added||Date.now(),
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
@@ -1349,7 +1358,8 @@ function editAlbum(id) {
   document.getElementById('f-artist').value=a.artist;
   document.getElementById('f-album').value=a.album;
   document.getElementById('f-date').value=a.date||'';
-  pendingArtUrl=a.artUrl||''; pendingMbid=a.mbid||''; pendingReleaseType=a.releaseType||'';
+  pendingArtUrl=a.artUrl||''; pendingMbid=a.mbid||'';
+  document.getElementById('f-type').value = a.releaseType||'';
   // Show existing art if available
   if (a.artUrl) {
     document.getElementById('match-artist').textContent     = a.artist;
@@ -1852,7 +1862,7 @@ function applyMbResult(result) {
   pendingArtUrl      = result.art||'';
   pendingArtFallback = result.artFallback||'';
   pendingMbid        = result.mbid||'';
-  pendingReleaseType = result.releaseType||'';
+  document.getElementById('f-type').value = result.releaseType||'';
   // Show match card with art
   document.getElementById('match-artist').textContent     = result.matchedArtist||'';
   document.getElementById('match-album-name').textContent = result.matchedAlbum||'';
