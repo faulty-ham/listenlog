@@ -97,7 +97,6 @@ select option{background:#1f2328}
 .search-wrap{position:relative}
 .search-wrap input{padding-left:26px;padding-right:22px;width:190px}
 .search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none}
-.toolbar-sep{width:1px;height:22px;background:var(--border);margin:0 2px}
 button{font-family:'Inter',sans-serif;font-size:14px;border:none;cursor:pointer;border-radius:var(--radius);padding:5px 11px;transition:all .15s}
 .btn-primary{background:var(--accent);color:#0d1117;font-weight:600;letter-spacing:.02em}
 .btn-primary:hover{background:#00e03a}
@@ -107,16 +106,12 @@ button{font-family:'Inter',sans-serif;font-size:14px;border:none;cursor:pointer;
 .btn-sm{padding:2px 7px;font-size:13px}
 
 /* ── PANELS ── */
-.panel{display:none;padding:18px 40px;background:var(--surface);border-bottom:1px solid var(--border);animation:slideDown .18s ease}
 .panel.open{display:block}
-@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .form-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
-.form-actions{display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 
 /* ── STAR RATING INPUT ── */
-.star-input{display:flex;gap:3px;align-items:center;padding-top:2px;user-select:none}
 .star-btn{font-size:26px;cursor:pointer;color:var(--star-empty);transition:color .08s;background:none;border:none;padding:0;line-height:1}
 .star-btn.lit{color:var(--star)}
 
@@ -212,16 +207,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .modal p{color:var(--muted);font-size:14px;margin-bottom:16px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 
-.thumb-btn{
-  width:44px;height:44px;border-radius:50%;border:2px solid var(--border);
-  background:transparent;font-size:24px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  transition:all .15s;flex-shrink:0;
-}
-.thumb-btn.up:hover{background:#0d2a12;border-color:var(--good);transform:scale(1.1)}
-.thumb-btn.down:hover{background:#2a0d0d;border-color:var(--danger);transform:scale(1.1)}
-.thumb-btn.active.up{background:var(--good);border-color:var(--good);color:#0d1117}
-.thumb-btn.active.down{background:var(--danger);border-color:var(--danger);color:#fff}
 /* Search panel spans full width below the 3 columns */
 
 /* ── SPINNER ── */
