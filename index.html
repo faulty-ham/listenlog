@@ -59,6 +59,7 @@
 @media(min-width:701px){
   #header-sync-links{display:none!important}
 }
+.hidden{display:none}
 .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
 .sync-dot.ok{background:var(--accent)}
 .sync-dot.busy{background:#d9a13b;animation:pulse 1.2s ease-in-out infinite}
@@ -395,7 +396,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 </div>
 
 <!-- SYNC INDICATOR -->
-<div id="sync-indicator" style="display:none">
+<div id="sync-indicator" class="hidden">
   <div class="sync-dot" id="sync-dot"></div>
   <span id="sync-label">synced</span>
   <span style="color:#3a4048">·</span>
@@ -453,7 +454,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
 <!-- ACTIVE FILTER PILLS -->
 <div id="filter-pills"></div>
-<div class="filter-count" id="filter-count" style="display:none"></div>
+<div class="filter-count hidden" id="filter-count"></div>
 </div><!-- /sticky-controls -->
 
 <!-- ART LIGHTBOX -->
@@ -481,7 +482,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
         <div style="display:flex;gap:6px;align-items:center">
           <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="flex:1" aria-label="Release date">
           <button type="button" class="btn-ghost btn-sm" id="art-browse-btn" style="white-space:nowrap;font-size:12px" title="Upload custom artwork">+ Art</button>
-          <input type="file" id="art-file-input" accept="image/*" style="display:none">
+          <input type="file" id="art-file-input" accept="image/*" class="hidden">
           <select id="f-type" title="Release type" aria-label="Release type"
             style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:5px 6px;border-radius:var(--radius);outline:none">
             <option value="">No type</option>
@@ -586,7 +587,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 <div class="modal-overlay" id="quick-rate-modal">
   <div class="modal quick-rate-card">
     <div class="qr-album-info">
-      <img id="qr-art" class="qr-art" alt="" style="display:none">
+      <img id="qr-art" class="qr-art hidden" alt="">
       <div>
         <div id="qr-artist" class="qr-artist"></div>
         <div id="qr-album" class="qr-album"></div>
@@ -596,7 +597,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div id="qr-plex-status" style="text-align:center;font-size:12px;min-height:16px;margin-bottom:8px"></div>
     <div class="qr-tags">
       <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
-      <button class="tag-toggle hard" id="qr-hard-toggle" style="display:none">🔎 Hard to find</button>
+      <button class="tag-toggle hard hidden" id="qr-hard-toggle">🔎 Hard to find</button>
       <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:13px">⚠ Missing info</button>
     </div>
     <div class="qr-notes-row">
