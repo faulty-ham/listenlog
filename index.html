@@ -1499,7 +1499,7 @@ function syncQrToggles() {
   const h=document.getElementById('qr-hard-toggle');
   const u=document.getElementById('qr-unmatched-toggle');
   w.classList.toggle('on', qrWant);
-  h.style.display = qrWant ? '' : 'none';
+  h.classList.toggle('hidden', !qrWant);
   h.classList.toggle('on', qrHard);
   u.classList.toggle('on', qrUnmatched);
 }
