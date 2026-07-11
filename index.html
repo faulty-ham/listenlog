@@ -2115,7 +2115,10 @@ async function uploadArtToR2(blob, albumId) {
     const text = await res.text();
     throw new Error(`R2 upload failed: ${text}`);
   }
-  return `${R2_PUBLIC_URL}/${path}`;
+  // Cache-bust: the file path is always the same for a given album, so without
+  // a changing query param, browsers/CDN keep serving the OLD image bytes even
+  // after a successful re-upload (looks like "art reverts" or "never updates").
+  return `${R2_PUBLIC_URL}/${path}?v=${Date.now()}`;
 }
 
 
