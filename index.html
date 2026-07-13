@@ -235,7 +235,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 .ms-btn.active{border-color:var(--accent);color:var(--text-hi)}
 .ms-btn.has-selection{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
 .ms-arrow{font-size:11px;opacity:.5}
-.ms-label-short{display:none}
 .ms-count{
   background:var(--accent);color:#0d1117;border-radius:20px;
   font-size:12px;font-weight:600;padding:1px 6px;margin-left:2px;
@@ -340,11 +339,12 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   .toolbar-top-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
   .toolbar-top-row .search-wrap{flex:1}
   .toolbar-top-row .search-wrap input{width:100%;font-size:14px}
-  /* Filter chips share the row evenly (5 items, no longer competing with
-     sort for space). Sort gets its own line below via the flex-basis:100%
-     trick — it starts a fresh row in the wrapped flex container rather than
-     squeezing in in-line, so it's never pushed off-screen. */
-  .toolbar-filter-row{display:flex;flex-wrap:wrap;gap:4px;row-gap:5px;align-items:center}
+  /* Tuned for a 440px-wide viewport (iPhone 17 Pro Max). All 6 controls
+     (5 filter chips + sort) share one row, sized evenly. Dropping the
+     chevron below frees up enough room for every chip's label + count
+     pill to fit comfortably at this width without needing to shorten
+     any label or push sort onto its own line. */
+  .toolbar-filter-row{display:flex;flex-wrap:nowrap;gap:4px;align-items:center}
   .toolbar-filter-row .ms-wrap{flex:1;min-width:0}
   .toolbar-filter-row .ms-btn{
     width:100%;font-size:12px;padding:4px 6px;gap:3px;white-space:nowrap;overflow:hidden;
@@ -354,10 +354,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     justify-content:flex-start;
   }
   .toolbar-filter-row .ms-btn .ms-arrow{display:none} /* redundant on a tappable chip; frees up room */
-  .toolbar-filter-row .ms-label-full{display:none}
-  .toolbar-filter-row .ms-label-short{display:inline}
   .toolbar-filter-row .ms-count{font-size:10.5px;padding:0 5px;margin-left:0;line-height:1.5}
-  .toolbar-filter-row #mobile-sort{flex-basis:100%;font-size:13px;padding:5px 8px}
+  .toolbar-filter-row #mobile-sort{flex:1;min-width:0;font-size:12px;padding:4px 4px}
   /* Card layout for table rows */
   table thead{display:none}
   table,tbody,tr.album-row,td{display:block;width:100%}
@@ -462,11 +460,11 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     </div>
   </div>
   <div class="toolbar-filter-row">
-    <div class="ms-wrap" id="ms-artist"><button class="ms-btn" data-field="artist"><span class="ms-label-full">Artist</span><span class="ms-label-short">Artist</span> <span class="ms-arrow">▾</span></button></div>
-    <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year"><span class="ms-label-full">Date</span><span class="ms-label-short">Date</span> <span class="ms-arrow">▾</span></button></div>
-    <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating"><span class="ms-label-full">Rating</span><span class="ms-label-short">Rate</span> <span class="ms-arrow">▾</span></button></div>
-    <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags"><span class="ms-label-full">Tags</span><span class="ms-label-short">Tags</span> <span class="ms-arrow">▾</span></button></div>
-    <div class="ms-wrap" id="ms-type"><button class="ms-btn" data-field="type"><span class="ms-label-full">Type</span><span class="ms-label-short">Type</span> <span class="ms-arrow">▾</span></button></div>
+    <div class="ms-wrap" id="ms-artist"><button class="ms-btn" data-field="artist">Artist <span class="ms-arrow">▾</span></button></div>
+    <div class="ms-wrap" id="ms-year"><button class="ms-btn" data-field="year">Date <span class="ms-arrow">▾</span></button></div>
+    <div class="ms-wrap" id="ms-rating"><button class="ms-btn" data-field="rating">Rating <span class="ms-arrow">▾</span></button></div>
+    <div class="ms-wrap" id="ms-tags"><button class="ms-btn" data-field="tags">Tags <span class="ms-arrow">▾</span></button></div>
+    <div class="ms-wrap" id="ms-type"><button class="ms-btn" data-field="type">Type <span class="ms-arrow">▾</span></button></div>
     <select id="mobile-sort" class="mobile-sort-select" title="Sort by">
       <option value="date-desc">Release ↓</option>
       <option value="date-asc">Release ↑</option>
@@ -1044,9 +1042,8 @@ function updateFilterButton(field, wrap) {
   const map = activeFilters[field];
   btn.classList.toggle('has-selection', map.size > 0);
   const fieldLabel = { artist:'Artist', year:'Date', rating:'Rating', tags:'Tags', type:'Type' }[field];
-  const shortLabel = { rating:'Rate' }[field] || fieldLabel; // mobile-only abbreviation where it matters
   const countBadge = map.size ? `<span class="ms-count">${map.size}</span>` : '';
-  btn.innerHTML = `<span class="ms-label-full">${fieldLabel}</span><span class="ms-label-short">${shortLabel}</span> ${countBadge}<span class="ms-arrow">▾</span>`;
+  btn.innerHTML = `${fieldLabel} ${countBadge}<span class="ms-arrow">▾</span>`;
 }
 
 // ── Wire up all filter buttons ────────────────────────────────
