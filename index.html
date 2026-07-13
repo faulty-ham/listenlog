@@ -131,12 +131,17 @@ button{font-family:'Inter',sans-serif;font-size:14px;border:none;cursor:pointer;
 
 /* ── TABLE — Letterboxd style ── */
 .table-wrap{flex:1;min-height:0;overflow-y:auto;overflow-x:auto;position:relative}
-table{width:100%;border-collapse:collapse}
+table{width:100%;border-collapse:separate;border-spacing:0}
 thead{position:sticky;top:0;z-index:5;background:var(--surface);box-shadow:0 1px 0 var(--border)}
 thead tr{border-bottom:none}
-th{text-align:left;padding:10px 10px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:400;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s}
-th:hover{color:var(--accent)}th.sorted{color:var(--accent)}
-th .sa{margin-left:3px;opacity:.4}th.sorted .sa{opacity:1}
+th{text-align:left;padding:6px 10px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:400;white-space:nowrap;user-select:none}
+/* Sortable headers read as quiet pills — same visual family as the filter buttons */
+th[data-sort]{cursor:pointer;border-radius:var(--radius);transition:background .15s,color .15s}
+th[data-sort]:hover{background:var(--surface2);color:var(--text-hi)}
+th[data-sort].sorted{color:var(--accent);background:var(--accent-dim)}
+th .sa{margin-left:4px;font-size:10px;opacity:0;transition:opacity .15s}
+th[data-sort]:hover .sa{opacity:.45}
+th[data-sort].sorted .sa{opacity:1}
 
 /* Dark scrollbar */
 .table-wrap::-webkit-scrollbar{width:8px;height:8px}
@@ -144,7 +149,8 @@ th .sa{margin-left:3px;opacity:.4}th.sorted .sa{opacity:1}
 .table-wrap::-webkit-scrollbar-thumb{background:#2a3340;border-radius:4px}
 .table-wrap::-webkit-scrollbar-thumb:hover{background:#3a4a5a}
 * { scrollbar-width:thin;scrollbar-color:#2a3340 var(--bg) }
-tr.album-row{border-bottom:1px solid #1c2128;transition:background .12s;cursor:pointer}
+tr.album-row{transition:background .12s;cursor:pointer}
+tr.album-row td{border-bottom:1px solid #1c2128}
 tr.album-row:hover{background:var(--surface)}
 td{padding:7px 10px;vertical-align:middle}
 
@@ -216,14 +222,15 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 /* ── MULTI-SELECT FILTER DROPDOWNS ── */
 .ms-wrap{position:relative;display:inline-block}
 .ms-btn{
-  background:var(--bg);border:1px solid var(--border);color:var(--muted);
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
   font-family:'Inter',sans-serif;font-size:14px;padding:5px 10px;
   border-radius:var(--radius);cursor:pointer;white-space:nowrap;
-  transition:border-color .15s,color .15s;display:flex;align-items:center;gap:5px;
+  transition:border-color .15s,color .15s,background .15s;display:flex;align-items:center;gap:5px;
 }
-.ms-btn:hover,.ms-btn.active{border-color:var(--accent);color:var(--text)}
+.ms-btn:hover{background:#2f353d;border-color:#4a515b;color:var(--text-hi)}
+.ms-btn.active{border-color:var(--accent);color:var(--text-hi)}
 .ms-btn.has-selection{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
-.ms-arrow{font-size:11px;opacity:.6}
+.ms-arrow{font-size:11px;opacity:.5}
 .ms-count{
   background:var(--accent);color:#0d1117;border-radius:20px;
   font-size:12px;font-weight:600;padding:1px 6px;margin-left:2px;
@@ -552,12 +559,12 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <thead>
       <tr>
           <th class="td-art"></th>
-        <th data-sort="artist">Artist <span class="sa">↕</span></th>
-        <th data-sort="album">Album <span class="sa">↕</span></th>
-        <th data-sort="date">Release <span class="sa">↕</span></th>
-        <th data-sort="rating">Rating <span class="sa">↕</span></th>
+        <th data-sort="artist">Artist <span class="sa">▼</span></th>
+        <th data-sort="album">Album <span class="sa">▼</span></th>
+        <th data-sort="date">Release <span class="sa">▼</span></th>
+        <th data-sort="rating">Rating <span class="sa">▼</span></th>
         <th>Tags</th>
-        <th data-sort="notes">Notes <span class="sa">↕</span></th>
+        <th data-sort="notes">Notes <span class="sa">▼</span></th>
       </tr>
     </thead>
     <tbody id="album-tbody"></tbody>
@@ -1146,9 +1153,12 @@ function render() {
   document.getElementById('empty-state').style.display = list.length ? 'none' : 'block';
 
   document.querySelectorAll('th[data-sort]').forEach(th => {
-    th.classList.toggle('sorted', th.dataset.sort===sortKey);
+    const isSorted = th.dataset.sort===sortKey;
+    th.classList.toggle('sorted', isSorted);
     const arr=th.querySelector('.sa');
-    if (arr) arr.textContent = th.dataset.sort===sortKey ? (sortDir===1?'↑':'↓') : '↕';
+    // Sorted column shows its actual direction; others show a faint hint chevron
+    // (revealed on hover via CSS) instead of an ambiguous up/down glyph.
+    if (arr) arr.textContent = isSorted ? (sortDir===1?'▲':'▼') : '▼';
   });
 
   const frag = document.createDocumentFragment();
