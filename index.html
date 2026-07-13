@@ -616,6 +616,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <button class="btn-ghost" id="qr-notes-btn" style="width:100%;text-align:left;font-size:14px">📝 Notes</button>
     </div>
     <div class="qr-actions">
+      <button class="btn-ghost" id="qr-jump-artist" style="margin-right:auto">Jump to Artist</button>
       <button class="btn-primary" id="qr-save">Save</button>
       <button class="btn-ghost" id="qr-cancel">Cancel</button>
     </div>
@@ -1626,6 +1627,31 @@ on('qr-save','click',()=>{
 on('qr-cancel','click',()=>{document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;});
 
 on('qr-notes-btn','click',()=>{ if(qrId) openNotesModal(qrId); });
+
+// Jump to Artist — show only this artist's releases, newest first.
+on('qr-jump-artist','click',()=>{
+  if(!qrId) return;
+  const a = albums.find(x=>x.id===qrId);
+  if(!a || !a.artist) return;
+
+  // Clear every existing filter, then include just this artist
+  document.getElementById('filter-search').value = '';
+  Object.values(activeFilters).forEach(m => m.clear());
+  activeFilters.artist.set(a.artist, 'include');
+  document.querySelectorAll('.ms-wrap').forEach(wrap => {
+    updateFilterButton(wrap.querySelector('.ms-btn').dataset.field, wrap);
+  });
+
+  sortKey = 'date'; sortDir = -1;   // newest first
+  syncMobileSort();
+
+  document.getElementById('quick-rate-modal').classList.remove('open');
+  qrId = null;
+
+  updateFilterPills();
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 on('notes-save','click',()=>{
   if (!_notesId) return;
   const a = albums.find(x=>x.id===_notesId); if (!a) return;
