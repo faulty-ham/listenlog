@@ -1583,9 +1583,10 @@ on('qr-want-toggle','click',()=>{qrWant=!qrWant;if(!qrWant)qrHard=false;syncQrTo
 on('qr-hard-toggle','click',()=>{qrHard=!qrHard;syncQrToggles();});
 const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
 
+// Returns true if the rating was successfully pushed to Plex, false otherwise.
 async function syncRatingToPlex(a) {
   const status = document.getElementById('qr-plex-status');
-  if (!status) return;
+  if (!status) return false;
   status.textContent = '⟳ Syncing to Plex…';
   status.style.color = 'var(--muted)';
   try {
@@ -1595,31 +1596,33 @@ async function syncRatingToPlex(a) {
     if (result.matched) {
       status.textContent = 'Plex rating updated';
       status.style.color = 'var(--accent)';
-    } else {
-      status.textContent = 'No match found';
-      status.style.color = 'var(--danger)';
+      return true;
     }
-  } catch(e) {
-    status.textContent = 'No match found';
-    status.style.color = 'var(--danger)';
-  }
+  } catch(e) { /* fall through to failure below */ }
+  status.textContent = 'Sync failed, please rate manually';
+  status.style.color = 'var(--danger)';
+  return false;
 }
 
 on('qr-unmatched-toggle','click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
-on('qr-save','click',()=>{
+on('qr-save','click', async ()=>{
   if(!qrId)return;
   const a=albums.find(x=>x.id===qrId); if(!a)return;
   const ratingChanged=qrRating!==(a.rating||0);
   if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
   a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;
   save(a);render();
+
   if (ratingChanged && a.rating) {
-    // Keep the modal open briefly to show Plex sync status, then close
-    syncRatingToPlex(a);
+    // Keep the modal open while syncing. On success, briefly show the green
+    // confirmation then close. On failure, stay open so the red message is
+    // readable and the album can be rated in Plex manually.
+    const ok = await syncRatingToPlex(a);
+    if (!ok) return;
     setTimeout(()=>{
       document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
       document.getElementById('qr-plex-status').textContent='';
-    }, 1600);
+    }, 900);
   } else {
     document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
   }
