@@ -135,13 +135,14 @@ table{width:100%;border-collapse:separate;border-spacing:0}
 thead{position:sticky;top:0;z-index:5;background:var(--surface);box-shadow:0 1px 0 var(--border)}
 thead tr{border-bottom:none}
 th{text-align:left;padding:6px 10px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:400;white-space:nowrap;user-select:none}
-/* Sortable headers read as quiet pills — same visual family as the filter buttons */
+/* Sortable headers: the chevron is the sole sort indicator. No persistent
+   highlight — exactly one column is always sorted, so a highlight would just
+   be permanent decoration rather than meaningful state. */
 th[data-sort]{cursor:pointer;border-radius:var(--radius);transition:background .15s,color .15s}
 th[data-sort]:hover{background:var(--surface2);color:var(--text-hi)}
-th[data-sort].sorted{color:var(--accent);background:var(--accent-dim)}
 th .sa{margin-left:4px;font-size:10px;opacity:0;transition:opacity .15s}
 th[data-sort]:hover .sa{opacity:.45}
-th[data-sort].sorted .sa{opacity:1}
+th[data-sort].sorted .sa{opacity:1;color:var(--accent)}
 
 /* Dark scrollbar */
 .table-wrap::-webkit-scrollbar{width:8px;height:8px}
@@ -1015,6 +1016,9 @@ function onOutsideClick(e) {
 
 function closeDropdown() {
   if (openDropdown) { openDropdown.classList.remove('open'); openDropdown.remove(); openDropdown = null; }
+  // Clear the lit "active" state — without this, the accent border persists on
+  // the button after the dropdown closes, even if nothing was selected.
+  document.querySelectorAll('.ms-btn.active').forEach(b => b.classList.remove('active'));
 }
 
 function updateFilterButton(field, wrap) {
