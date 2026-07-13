@@ -94,7 +94,10 @@ header{flex-shrink:0;padding:28px 40px 20px;border-bottom:1px solid var(--border
 .sticky-controls{flex-shrink:0;background:var(--surface)}
 .toolbar{padding:9px 40px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface)}
 input[type="text"],select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;padding:5px 9px;border-radius:var(--radius);outline:none;transition:border-color .15s}
-input[type="text"]:focus,select:focus{border-color:var(--accent)}
+input[type="text"]:focus{border-color:var(--accent)}
+/* Selects retain focus after a choice is made, so an accent border here would
+   stay lit until you click elsewhere. Use a neutral focus border instead. */
+select:focus{border-color:#4a515b}
 select option{background:#1f2328}
 .search-wrap{position:relative}
 .search-wrap input{padding-left:26px;padding-right:22px;width:230px}
