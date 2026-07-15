@@ -438,7 +438,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   <div class="header-stats">
     <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Albums</div></div>
     <div class="stat"><div class="stat-num" id="stat-want">0</div><div class="stat-label">Want to Hear</div></div>
-    <div class="stat"><div class="stat-num" id="stat-avg">—</div><div class="stat-label">Avg Rating</div></div>
+    <div class="stat"><div class="stat-num" id="stat-relisten">0</div><div class="stat-label">Re-listen</div></div>
   </div>
   <div id="header-sync-links" style="margin-left:auto;gap:8px;align-items:center;flex-direction:column;align-items:flex-end">
     <span id="header-sync-label" style="color:#738a9a;font-size:12px"></span>
@@ -1158,15 +1158,15 @@ function render() {
   });
 
   // Single pass over albums for all header stats, instead of two separate .filter() passes
-  let ratedCount = 0, ratedSum = 0, wantCount = 0;
+  let wantCount = 0, relistenCount = 0;
   for (const a of albums) {
-    if (a.rating) { ratedCount++; ratedSum += a.rating; }
-    if (a.wantToListen) wantCount++;
+    if (a.wantToListen) {
+      if (a.rating) relistenCount++; else wantCount++;
+    }
   }
-  const avg = ratedCount ? (ratedSum/ratedCount).toFixed(1) : '—';
-  document.getElementById('stat-total').textContent = albums.length;
-  document.getElementById('stat-want').textContent  = wantCount;
-  document.getElementById('stat-avg').textContent   = avg;
+  document.getElementById('stat-total').textContent    = albums.length;
+  document.getElementById('stat-want').textContent     = wantCount;
+  document.getElementById('stat-relisten').textContent = relistenCount;
 
   const fc = document.getElementById('filter-count');
   const isFiltered = list.length !== albums.length;
