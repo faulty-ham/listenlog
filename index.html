@@ -618,6 +618,9 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       </div>
     </div>
     <div class="qr-stars" id="qr-star-input"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:6px">
+      <button class="btn-ghost" id="qr-plex-sync-btn" title="Push the current rating to Plex" style="font-size:11px;padding:2px 9px;line-height:1.5">↻ Sync to Plex</button>
+    </div>
     <div id="qr-plex-status" style="text-align:center;font-size:12px;min-height:16px;margin-bottom:8px"></div>
     <div class="qr-tags">
       <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
@@ -1617,6 +1620,16 @@ async function syncRatingToPlex(a) {
 }
 
 on('qr-unmatched-toggle','click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
+
+// Manual Plex sync — for cases like adding an album to Plex *after* it was
+// already rated in ListenLog, where nothing here actually "changed" so the
+// normal save-triggered sync never fires.
+on('qr-plex-sync-btn','click', async ()=>{
+  if (!qrId || !qrRating) return;
+  const a = albums.find(x=>x.id===qrId);
+  if (!a) return;
+  await syncRatingToPlex({ artist: a.artist, album: a.album, rating: qrRating });
+});
 on('qr-save','click', async ()=>{
   if(!qrId)return;
   const a=albums.find(x=>x.id===qrId); if(!a)return;
