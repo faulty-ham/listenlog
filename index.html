@@ -181,6 +181,7 @@ td{padding:7px 10px;vertical-align:middle}
 .td-artist{font-weight:500;color:var(--text-hi);max-width:180px;font-size:15px;text-decoration:none;-webkit-text-decoration:none}
 .td-album{font-family:'Lora',serif;font-size:17px;color:var(--muted);max-width:220px}
 .td-date{color:var(--muted);white-space:nowrap;font-size:14px}
+.unreleased-tag{color:var(--want);font-style:italic;font-size:12px}
 .td-notes{color:var(--muted);font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── RATING DISPLAY — SVG half-stars, Letterboxd green ── */
@@ -755,6 +756,17 @@ const TYPE_OPTIONS = [
 
 function extractYear(d) { const m = String(d||'').match(/\d{4}/); return m ? m[0] : ''; }
 
+// Handles partial dates (YYYY, YYYY-MM) as well as full YYYY-MM-DD, since
+// MusicBrainz release dates aren't always full precision.
+function isFutureDate(d) {
+  if (!d) return false;
+  const parsed = new Date(d);
+  if (isNaN(parsed)) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return parsed > today;
+}
+
 function getFiltered() {
   const q = document.getElementById('filter-search')?.value.trim().toLowerCase() || '';
 
@@ -1235,7 +1247,7 @@ function render() {
       <td class="td-art" onclick="event.stopPropagation()">${artCell}</td>
       <td class="td-artist">${esc(a.artist)}</td>
       <td class="td-album">${esc(a.album)}</td>
-      <td class="td-date">${esc(a.date||'—')}</td>
+      <td class="td-date">${esc(a.date||'—')}${a.date && isFutureDate(a.date) ? ' <span class="unreleased-tag">(Unreleased)</span>' : ''}</td>
       <td>${a.rating ? starsHTML(a.rating) : DASH}</td>
       <td><div class="row-tags">${tags||DASH}</div></td>
       <td class="td-notes" title="${a.notes?'Has notes':''}">${a.notes ? '📝' : DASH}</td>`;
