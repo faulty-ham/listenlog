@@ -194,7 +194,8 @@ td{padding:7px 10px;vertical-align:middle}
 .badge-want{background:rgba(122,176,201,.12);color:var(--want);border:1px solid rgba(122,176,201,.25)}
 .badge-hard{background:rgba(201,168,90,.14);color:var(--hard);border:1px solid rgba(201,168,90,.3)}
 .src-badge{font-size:11px;padding:2px 6px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'Inter',sans-serif}
-.src-mb{background:rgba(122,153,201,.12);border-color:rgba(122,153,201,.3);color:#7a99c9}
+.src-mb{background:rgba(122,153,201,.12);border-color:rgba(122,153,201,.3);color:#7a99c9;cursor:pointer}
+.src-mb:hover{background:rgba(122,153,201,.22);border-color:#7a99c9}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
 .badge-comp{background:rgba(153,122,201,.12);color:#9a7ec9;border:1px solid rgba(153,122,201,.25)}
 .badge-live{background:rgba(201,122,153,.12);color:#c97ea3;border:1px solid rgba(201,122,153,.25)}
@@ -534,7 +535,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
           <div id="match-album-name" style="font-family:'Lora',serif;font-style:italic;color:var(--muted);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px"></div>
           <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
             <span id="match-date" style="font-size:13px;color:var(--muted);font-family:'Inter',sans-serif"></span>
-            <span class="src-badge src-mb">MB</span>
+            <span id="match-mb-badge" class="src-badge src-mb" title="Open this release on MusicBrainz">MB</span>
           </div>
         </div>
       </div>
@@ -1684,6 +1685,10 @@ on('qr-cancel','click',()=>{document.getElementById('quick-rate-modal').classLis
 on('qr-notes-btn','click',()=>{ if(qrId) openNotesModal(qrId); });
 
 // Jump to Artist — show only this artist's releases, newest first.
+on('match-mb-badge','click', () => {
+  if (pendingMbid) window.open(`https://musicbrainz.org/release/${pendingMbid}`, '_blank');
+});
+
 on('qr-jump-artist','click',()=>{
   if(!qrId) return;
   const a = albums.find(x=>x.id===qrId);
