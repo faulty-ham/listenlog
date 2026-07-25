@@ -1692,7 +1692,7 @@ on('match-mb-badge','click', () => {
   if (!pendingMbid) return;
   const url = `https://musicbrainz.org/release/${pendingMbid}`;
   const w = 900, h = 800;
-  const left = (window.screen.width  - w) / 2;
+  const left = window.screen.width - w - 20;   // hug the right edge, leaving the entry modal visible on the left
   const top  = (window.screen.height - h) / 2;
   window.open(url, 'mb-release-window', `width=${w},height=${h},left=${left},top=${top},noopener`);
 });
