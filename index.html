@@ -732,6 +732,7 @@ function starsHTML(n) {
 // ════════════════════════════════════════════════════════════
 // activeFilters: { artist: Set, year: Set, type: Set, rating: Set, tags: Set }
 const activeFilters = { artist: new Map(), year: new Map(), rating: new Map(), tags: new Map(), type: new Map() };
+let tagsMatchMode = 'or'; // 'or' (default) or 'and' — how multiple selected Tags combine
 // Default view: albums tagged Want to Listen
 activeFilters.tags.set('want', 'include');
 
@@ -794,6 +795,17 @@ function getFiltered() {
     return true;
   }
 
+  // Tags are independent boolean flags that can genuinely co-occur on the same
+  // album (e.g. Want to Listen AND Hard to Find), so checking multiple tags
+  // means "has all of these" rather than "has any of these" — unlike Artist/
+  // Year/Rating/Type, where multi-select naturally means "any of these values".
+  function passesAll(split, testFn) {
+    if (!split) return true;
+    if (split.excludes.length && split.excludes.some(val => testFn(val))) return false;
+    if (split.includes.length && !split.includes.every(val => testFn(val))) return false;
+    return true;
+  }
+
   return albums.filter(a => {
     if (q && !(a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))) return false;
 
@@ -811,7 +823,7 @@ function getFiltered() {
       return Math.round(a.rating||0) === parseInt(val);
     })) return false;
 
-    if (!passes(tagsF, val => {
+    if (!(tagsMatchMode === 'and' ? passesAll : passes)(tagsF, val => {
       if (val === 'want')      return !!a.wantToListen;
       if (val === 'hard')      return !!a.hardToFind;
       if (val === 'listened')  return !a.wantToListen && !a.unmatched;
@@ -974,6 +986,29 @@ function buildDropdown(field, wrap) {
     dd.innerHTML = `<div class="ms-search-wrap"><input class="ms-search" placeholder="Search…" type="text" aria-label="Search filter options"></div>`;
   }
 
+  // Tags is the one field where multi-select AND (has all selected) is a
+  // meaningful alternative to the default OR (has any selected) — tags are
+  // independent booleans that can co-occur, unlike Artist/Year/Rating/Type
+  // where an album only ever has one value, so OR is the only sensible mode.
+  if (field === 'tags') {
+    const modeRow = document.createElement('div');
+    modeRow.style.cssText = 'display:flex;gap:4px;padding:8px 8px 4px;border-bottom:1px solid var(--border);align-items:center';
+    modeRow.innerHTML = `
+      <span style="font-size:11px;color:var(--muted);margin-right:2px">Match:</span>
+      <button class="ms-mode-btn${tagsMatchMode==='or'?' active':''}" data-mode="or">Any (OR)</button>
+      <button class="ms-mode-btn${tagsMatchMode==='and'?' active':''}" data-mode="and">All (AND)</button>`;
+    modeRow.querySelectorAll('.ms-mode-btn').forEach(b => {
+      b.addEventListener('click', e => {
+        e.stopPropagation();
+        tagsMatchMode = b.dataset.mode;
+        modeRow.querySelectorAll('.ms-mode-btn').forEach(x => x.classList.toggle('active', x === b));
+        updateFilterButton(field, wrap);
+        render();
+      });
+    });
+    dd.appendChild(modeRow);
+  }
+
   const list = document.createElement('div');
   list.className = 'ms-list';
 
@@ -1028,7 +1063,9 @@ function buildDropdown(field, wrap) {
   footer.className = 'ms-footer';
   footer.innerHTML = `<button class="ms-clear">Clear</button><button class="ms-done">Done</button>`;
   footer.querySelector('.ms-clear').addEventListener('click', () => {
-    map.clear(); updateFilterButton(field, wrap); updateFilterPills(); render(); closeDropdown();
+    map.clear();
+    if (field === 'tags') tagsMatchMode = 'or';
+    updateFilterButton(field, wrap); updateFilterPills(); render(); closeDropdown();
   });
   footer.querySelector('.ms-done').addEventListener('click', closeDropdown);
   dd.appendChild(footer);
@@ -1062,7 +1099,9 @@ function updateFilterButton(field, wrap) {
   btn.classList.toggle('has-selection', map.size > 0);
   const fieldLabel = { artist:'Artist', year:'Date', rating:'Rating', tags:'Tags', type:'Type' }[field];
   const countBadge = map.size ? `<span class="ms-count">${map.size}</span>` : '';
-  btn.innerHTML = `${fieldLabel} ${countBadge}<span class="ms-arrow">▾</span>`;
+  const andBadge = (field === 'tags' && tagsMatchMode === 'and' && map.size > 1)
+    ? `<span class="ms-count" style="background:var(--accent);color:#0d1117" title="Matching ALL selected tags">AND</span>` : '';
+  btn.innerHTML = `${fieldLabel} ${countBadge}${andBadge}<span class="ms-arrow">▾</span>`;
 }
 
 // ── Wire up all filter buttons ────────────────────────────────
@@ -1115,6 +1154,7 @@ function updateFilterPills() {
 function clearFilters() {
   document.getElementById('filter-search').value = '';
   Object.values(activeFilters).forEach(s => s.clear());
+  tagsMatchMode = 'or';
   document.querySelectorAll('.ms-wrap').forEach(wrap => {
     const btn = wrap.querySelector('.ms-btn');
     const field = btn.dataset.field;
@@ -1128,6 +1168,7 @@ function clearFilters() {
 function applyStatFilter(setup) {
   document.getElementById('filter-search').value = '';
   Object.values(activeFilters).forEach(s => s.clear());
+  tagsMatchMode = 'or';
   setup();
   document.querySelectorAll('.ms-wrap').forEach(wrap => {
     updateFilterButton(wrap.querySelector('.ms-btn').dataset.field, wrap);
