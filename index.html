@@ -443,6 +443,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <div class="stat" id="stat-total-wrap" title="Show all albums"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Albums</div></div>
     <div class="stat" id="stat-want-wrap" title="Want to listen, unrated"><div class="stat-num" id="stat-want">0</div><div class="stat-label">Want to Hear</div></div>
     <div class="stat" id="stat-relisten-wrap" title="Want to listen, already rated"><div class="stat-num" id="stat-relisten">0</div><div class="stat-label">Re-listen</div></div>
+    <div class="stat" id="stat-hard-wrap" title="Tagged Hard to Find"><div class="stat-num" id="stat-hard">0</div><div class="stat-label">Hard to Find</div></div>
   </div>
   <div id="header-sync-links" style="margin-left:auto;gap:8px;align-items:center;flex-direction:column;align-items:flex-end">
     <span id="header-sync-label" style="color:#738a9a;font-size:12px"></span>
@@ -1186,15 +1187,17 @@ function render() {
   });
 
   // Single pass over albums for all header stats, instead of two separate .filter() passes
-  let wantCount = 0, relistenCount = 0;
+  let wantCount = 0, relistenCount = 0, hardCount = 0;
   for (const a of albums) {
     if (a.wantToListen) {
       if (a.rating) relistenCount++; else wantCount++;
     }
+    if (a.hardToFind) hardCount++;
   }
   document.getElementById('stat-total').textContent    = albums.length;
   document.getElementById('stat-want').textContent     = wantCount;
   document.getElementById('stat-relisten').textContent = relistenCount;
+  document.getElementById('stat-hard').textContent     = hardCount;
 
   const fc = document.getElementById('filter-count');
   const isFiltered = list.length !== albums.length;
@@ -1686,7 +1689,12 @@ on('qr-notes-btn','click',()=>{ if(qrId) openNotesModal(qrId); });
 
 // Jump to Artist — show only this artist's releases, newest first.
 on('match-mb-badge','click', () => {
-  if (pendingMbid) window.open(`https://musicbrainz.org/release/${pendingMbid}`, '_blank');
+  if (!pendingMbid) return;
+  const url = `https://musicbrainz.org/release/${pendingMbid}`;
+  const w = 900, h = 800;
+  const left = (window.screen.width  - w) / 2;
+  const top  = (window.screen.height - h) / 2;
+  window.open(url, 'mb-release-window', `width=${w},height=${h},left=${left},top=${top},noopener`);
 });
 
 on('qr-jump-artist','click',()=>{
@@ -1721,6 +1729,9 @@ on('stat-want-wrap','click', () => applyStatFilter(() => {
 on('stat-relisten-wrap','click', () => applyStatFilter(() => {
   activeFilters.tags.set('want', 'include');
   ['5','4','3','2','1'].forEach(v => activeFilters.rating.set(v, 'include'));
+}));
+on('stat-hard-wrap','click', () => applyStatFilter(() => {
+  activeFilters.tags.set('hard', 'include');
 }));
 
 on('notes-save','click',()=>{
