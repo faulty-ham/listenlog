@@ -511,8 +511,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
         <label>Release Date</label>
         <div style="display:flex;gap:6px;align-items:center">
           <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="flex:1" aria-label="Release date">
-          <button type="button" class="btn-ghost btn-sm" id="art-browse-btn" style="white-space:nowrap;font-size:12px" title="Upload custom artwork">+ Art</button>
-          <input type="file" id="art-file-input" accept="image/*" class="hidden">
+          <button type="button" class="btn-ghost btn-sm" id="art-browse-btn" style="white-space:nowrap;font-size:12px" title="Uses the image currently on your clipboard">+ Art</button>
           <select id="f-type" title="Release type" aria-label="Release type"
             style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:5px 6px;border-radius:var(--radius);outline:none">
             <option value="">No type</option>
@@ -544,7 +543,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 
     <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
       <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">MB link</label>
-      <input class="rescan-search-input" id="autofill-mb-input" placeholder="Paste MusicBrainz URL or release ID" style="flex:1;font-size:13px;padding:5px 8px" aria-label="MusicBrainz link">
+      <button type="button" class="btn-ghost btn-sm" id="mb-clipboard-btn" style="flex:1;font-size:13px" title="Reads a MusicBrainz URL or release ID from your clipboard">📋 Load from Clipboard</button>
     </div>
     <div id="art-upload-status" style="font-size:13px;color:var(--muted);margin-bottom:6px;min-height:16px"></div>
 
@@ -1344,7 +1343,7 @@ function openPanel(mode) {
   document.getElementById('btn-save').textContent = mode==='edit' ? 'Update Entry' : 'Save Entry';
   document.getElementById('btn-delete-entry').style.display = mode==='edit' ? '' : 'none';
   document.getElementById('add-modal').classList.add('open');
-  setTimeout(() => document.getElementById('autofill-mb-input')?.focus(), 50);
+  setTimeout(() => document.getElementById('mb-clipboard-btn')?.focus(), 50);
 }
 function closePanel() {
   document.getElementById('add-modal').classList.remove('open');
@@ -1352,7 +1351,6 @@ function closePanel() {
 }
 function resetForm() {
   ['f-artist','f-album','f-date'].forEach(id => document.getElementById(id).value='');
-  document.getElementById('autofill-mb-input').value='';
   document.getElementById('match-card').style.display='none';
   document.getElementById('match-art').style.display='none';
   document.getElementById('art-upload-status').textContent='';
@@ -1822,29 +1820,44 @@ on('btn-delete-entry','click',()=>{
 
 
 // Art upload
-on('art-browse-btn','click', () => document.getElementById('art-file-input').click());
-on('art-file-input','change', e => { handleArtFile(e.target.files[0]); e.target.value = ''; });
-on('autofill-mb-input','keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur();runMbForce(e.target.value.trim(),null);}});
-on('autofill-mb-input','paste',e=>{
-  const raw=(e.clipboardData||window.clipboardData).getData('text').trim();
-  if(!raw)return;
-  const mbid=raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
-  if(!mbid)return;
-  e.preventDefault();
-  e.target.value='';
-  runMbForce(raw, null);
+on('art-browse-btn','click', async () => {
+  const status = document.getElementById('art-upload-status');
+  if (!navigator.clipboard?.read) {
+    status.textContent = '✗ Clipboard image access isn\'t supported in this browser';
+    status.style.color = 'var(--danger)';
+    return;
+  }
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const imgType = item.types.find(t => t.startsWith('image/'));
+      if (imgType) {
+        const blob = await item.getType(imgType);
+        handleArtFile(blob);
+        return;
+      }
+    }
+    status.textContent = '✗ No image found on clipboard — copy an image first';
+    status.style.color = 'var(--danger)';
+  } catch(e) {
+    status.textContent = '✗ Couldn\'t read clipboard — ' + e.message;
+    status.style.color = 'var(--danger)';
+  }
 });
-on('autofill-mb-input','contextmenu',e=>{
-  e.preventDefault();
-  if(!navigator.clipboard?.readText) return;
-  navigator.clipboard.readText().then(raw=>{
-    raw=(raw||'').trim();
-    if(!raw)return;
-    const mbid=raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
-    if(!mbid)return;
-    e.target.value='';
+
+on('mb-clipboard-btn','click', async () => {
+  const ferr = document.getElementById('form-error');
+  if (!navigator.clipboard?.readText) {
+    if (ferr) ferr.textContent = 'Clipboard access isn\'t supported in this browser';
+    return;
+  }
+  try {
+    const raw = (await navigator.clipboard.readText()).trim();
+    if (!raw) { if (ferr) ferr.textContent = 'Clipboard is empty'; return; }
     runMbForce(raw, null);
-  }).catch(()=>{}); // clipboard permission denied or unavailable — fail silently
+  } catch(e) {
+    if (ferr) ferr.textContent = 'Couldn\'t read clipboard — ' + e.message;
+  }
 });
 // ── Page-wide drag and drop for MB links ──────────────────────
 (function() {
@@ -1982,8 +1995,7 @@ document.addEventListener('keydown', e => {
   if (e.target.tagName === 'TEXTAREA') return;
   if (e.metaKey || e.ctrlKey) return;
   // Don't intercept inside search/filter inputs
-  if (e.target.id === 'filter-search' || e.target.id === 'autofill-search-input' ||
-      e.target.id === 'autofill-mb-input') return;
+  if (e.target.id === 'filter-search' || e.target.id === 'autofill-search-input') return;
   // Don't intercept if a filter dropdown is open (item keydown handles it)
   if (document.querySelector('.ms-dropdown.open')) return;
   // Find the open modal and click its primary button
@@ -2047,7 +2059,6 @@ function applyMbResult(result) {
     artEl.style.display = 'none';
   }
   document.getElementById('match-card').style.display='block';
-  document.getElementById('autofill-mb-input').value='';
   const ferr = document.getElementById('form-error');
   if (ferr) ferr.textContent='';
 }
