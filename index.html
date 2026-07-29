@@ -512,6 +512,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
         <div style="display:flex;gap:6px;align-items:center">
           <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="flex:1" aria-label="Release date">
           <button type="button" class="btn-ghost btn-sm" id="art-browse-btn" style="white-space:nowrap;font-size:12px" title="Uses the image currently on your clipboard">+ Art</button>
+          <button type="button" class="btn-ghost btn-sm" id="mb-clipboard-btn" style="white-space:nowrap;font-size:12px" title="Reads a MusicBrainz URL or release ID from your clipboard">MB Link</button>
           <select id="f-type" title="Release type" aria-label="Release type"
             style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:5px 6px;border-radius:var(--radius);outline:none">
             <option value="">No type</option>
@@ -527,8 +528,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <!-- MATCH RESULT — shown after MB match -->
     <div id="match-card" style="display:none;margin-bottom:10px">
       <div style="display:flex;gap:12px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
-        <div id="match-art-slot" style="width:64px;height:64px;border-radius:4px;background:var(--surface);border:1px solid var(--border);flex-shrink:0;overflow:hidden">
-          <img id="match-art" style="width:64px;height:64px;object-fit:cover;display:none" alt="">
+        <div id="match-art-slot" style="width:92px;height:92px;border-radius:4px;background:var(--surface);border:1px solid var(--border);flex-shrink:0;overflow:hidden">
+          <img id="match-art" style="width:92px;height:92px;object-fit:cover;display:none" alt="">
         </div>
         <div style="min-width:0;flex:1">
           <div id="match-artist" style="font-weight:600;color:var(--text-hi);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
@@ -541,10 +542,6 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       </div>
     </div>
 
-    <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
-      <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">MB link</label>
-      <button type="button" class="btn-ghost btn-sm" id="mb-clipboard-btn" style="flex:1;font-size:13px" title="Reads a MusicBrainz URL or release ID from your clipboard">📋 Load from Clipboard</button>
-    </div>
     <div id="art-upload-status" style="font-size:13px;color:var(--muted);margin-bottom:6px;min-height:16px"></div>
 
     <span id="form-error" style="font-size:13px;color:var(--danger);display:block;min-height:16px;margin-bottom:6px"></span>
