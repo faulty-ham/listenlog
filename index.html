@@ -385,6 +385,13 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   tr.album-row td:nth-child(7),tr.album-row td:nth-child(8){display:none}
   /* All modals full-width on mobile */
   .modal,.modal.wide,.quick-rate-card{width:96vw!important;max-width:96vw!important;padding:16px;max-height:90vh;overflow-y:auto}
+  /* Stack Artist/Album/Release Date into full-width rows instead of letting
+     them compete for space side by side — otherwise Release Date's crowded
+     inner row (date + 2 buttons + Type select) ends up wider than a plain
+     text field like Artist, squeezing everything else in its row. */
+  .form-row{flex-direction:column;align-items:stretch}
+  .form-row .form-group{width:100%;min-width:0}
+  .date-controls-row{flex-wrap:wrap}
   #filter-pills{padding:5px 12px}
   .filter-pill{font-size:12px}
   /* Quick-rate stars slightly smaller on mobile */
@@ -509,7 +516,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       </div>
       <div class="form-group" style="min-width:110px">
         <label>Release Date</label>
-        <div style="display:flex;gap:6px;align-items:center">
+        <div class="date-controls-row" style="display:flex;gap:6px;align-items:center">
           <input type="text" id="f-date" placeholder="YYYY-MM-DD" style="flex:1" aria-label="Release date">
           <button type="button" class="btn-ghost btn-sm" id="art-browse-btn" style="white-space:nowrap;font-size:12px" title="Uses the image currently on your clipboard">+ Art</button>
           <button type="button" class="btn-ghost btn-sm" id="mb-clipboard-btn" style="white-space:nowrap;font-size:12px" title="Reads a MusicBrainz URL or release ID from your clipboard">MB Link</button>
@@ -1340,7 +1347,9 @@ function openPanel(mode) {
   document.getElementById('btn-save').textContent = mode==='edit' ? 'Update Entry' : 'Save Entry';
   document.getElementById('btn-delete-entry').style.display = mode==='edit' ? '' : 'none';
   document.getElementById('add-modal').classList.add('open');
-  setTimeout(() => document.getElementById('mb-clipboard-btn')?.focus(), 50);
+  // (no auto-focus here — this used to focus the old MB link text input so it
+  // was paste-ready, but it's a button now and auto-focusing it just triggers
+  // a stray focus-ring outline on the first modal open per page load)
 }
 function closePanel() {
   document.getElementById('add-modal').classList.remove('open');
