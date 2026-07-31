@@ -394,7 +394,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   /* Date input only needs room for "YYYY-MM-DD" — shrinking it (overriding
      its inline flex:1) frees enough space for +Art/MB Link/Type to stay on
      the same row instead of wrapping onto their own line. */
-  #f-date{flex:0 0 auto!important;width:100px!important}
+  #f-date{flex:0 0 auto!important;width:125px!important}
   .date-controls-row{flex-wrap:wrap}
   #filter-pills{padding:5px 12px}
   .filter-pill{font-size:12px}
@@ -1740,6 +1740,26 @@ on('qr-notes-btn','click',()=>{ if(qrId) openNotesModal(qrId); });
 on('match-mb-badge','click', () => {
   if (!pendingMbid) return;
   const url = `https://musicbrainz.org/release/${pendingMbid}`;
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if (isIOS) {
+    // iOS won't let a website pick which browser handles a link — the only
+    // way to route it to Chrome specifically is Chrome's own custom URL
+    // scheme, which only works if Chrome is actually installed. If it's not
+    // (or doesn't open in time), fall back to a normal link so this never
+    // just silently does nothing.
+    const chromeUrl = url.replace(/^https:/, 'googlechromes:');
+    let handedOff = false;
+    const markHandedOff = () => { handedOff = true; };
+    document.addEventListener('visibilitychange', markHandedOff, { once: true });
+    window.location.href = chromeUrl;
+    setTimeout(() => {
+      document.removeEventListener('visibilitychange', markHandedOff);
+      if (!handedOff) window.location.href = url;
+    }, 800);
+    return;
+  }
+
   const w = 900, h = 800;
   const left = window.screen.width - w - 20;   // hug the right edge, leaving the entry modal visible on the left
   const top  = (window.screen.height - h) / 2;
