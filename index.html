@@ -391,6 +391,10 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
      text field like Artist, squeezing everything else in its row. */
   .form-row{flex-direction:column;align-items:stretch}
   .form-row .form-group{width:100%;min-width:0}
+  /* Date input only needs room for "YYYY-MM-DD" — shrinking it (overriding
+     its inline flex:1) frees enough space for +Art/MB Link/Type to stay on
+     the same row instead of wrapping onto their own line. */
+  #f-date{flex:0 0 auto!important;width:100px!important}
   .date-controls-row{flex-wrap:wrap}
   #filter-pills{padding:5px 12px}
   .filter-pill{font-size:12px}
