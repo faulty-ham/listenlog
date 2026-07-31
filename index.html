@@ -1743,20 +1743,14 @@ on('match-mb-badge','click', () => {
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   if (isIOS) {
-    // iOS won't let a website pick which browser handles a link — the only
-    // way to route it to Chrome specifically is Chrome's own custom URL
-    // scheme, which only works if Chrome is actually installed. If it's not
-    // (or doesn't open in time), fall back to a normal link so this never
-    // just silently does nothing.
-    const chromeUrl = url.replace(/^https:/, 'googlechromes:');
-    let handedOff = false;
-    const markHandedOff = () => { handedOff = true; };
-    document.addEventListener('visibilitychange', markHandedOff, { once: true });
-    window.location.href = chromeUrl;
-    setTimeout(() => {
-      document.removeEventListener('visibilitychange', markHandedOff);
-      if (!handedOff) window.location.href = url;
-    }, 800);
+    // Hand off to Chrome via its custom URL scheme. No fallback timer here —
+    // detecting whether the handoff actually succeeded (visibilitychange,
+    // pagehide, etc.) isn't reliable across every context ListenLog might be
+    // running in (e.g. as an installed PWA vs. a regular Safari tab), and a
+    // false "it didn't work" reading was causing the link to ALSO load
+    // in-app on top of Chrome opening correctly. If Chrome isn't installed,
+    // this just silently does nothing — better than a confirmed double-load.
+    window.location.href = url.replace(/^https:/, 'googlechromes:');
     return;
   }
 
