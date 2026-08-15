@@ -634,6 +634,13 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <button class="btn-ghost" id="qr-plex-sync-btn" title="Push the current rating to Plex" style="font-size:11px;padding:2px 9px;line-height:1.5">↻ Sync to Plex</button>
     </div>
     <div id="qr-plex-status" style="text-align:center;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+    <div id="qr-plex-confirm" class="hidden" style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px">
+      <div id="qr-plex-confirm-text" style="margin-bottom:6px"></div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="btn-ghost" id="qr-plex-confirm-yes" style="font-size:16px;padding:3px 12px" title="Yes, this is the right album">👍</button>
+        <button class="btn-ghost" id="qr-plex-confirm-no" style="font-size:16px;padding:3px 12px" title="No, not a match">👎</button>
+      </div>
+    </div>
     <div class="qr-tags">
       <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
       <button class="tag-toggle hard hidden" id="qr-hard-toggle">🔎 Hard to find</button>
@@ -1394,13 +1401,19 @@ async function addOrUpdateAlbum() {
   ferr.textContent='';
   const existing = editingId ? (albums.find(a=>a.id===editingId)||{}) : {};
   const artUrl = pendingArtUrl||existing.artUrl||'';
+  const dateVal = document.getElementById('f-date').value.trim();
   const entry={
     id:editingId||uid(), artist, album,
-    date:document.getElementById('f-date').value.trim(),
+    date:dateVal,
     rating:existing.rating||null,
     notes:existing.notes||null,
     wantToListen:editingId ? (existing.wantToListen||false) : true,
-    hardToFind:existing.hardToFind||false,
+    // New entries with a future release date default to Hard to Find (makes
+    // sense — it's not out yet, physical copies won't exist). Only applied
+    // at creation; editing an existing entry never auto-changes this, and
+    // it's never auto-cleared once the release date passes — that's a
+    // manual call for the person to make.
+    hardToFind: editingId ? (existing.hardToFind||false) : isFutureDate(dateVal),
     unmatched: Boolean(existing.unmatched && !pendingArtUrl),
     artUrl,
     artFallback:pendingArtFallback||existing.artFallback||'',
@@ -1488,6 +1501,7 @@ function openQuickRate(id) {
   setQrRating(qrRating);
   syncQrToggles();
   document.getElementById('qr-plex-status').textContent='';
+  hidePlexConfirm();
   document.getElementById('quick-rate-modal').classList.add('open');
 }
 
@@ -1521,7 +1535,7 @@ async function fetchTracklist(album) {
   // URLs won't match this, which is expected — those need a re-match to get an mbid.
   if (!releaseId) {
     const m = (album.artUrl||'').match(/coverartarchive\.org\/(release-group|release)\/([0-9a-f-]{36})/);
-    if (!m) return null;
+    if (!m) return { tracklist: null, failed: false }; // no mbid at all — nothing to fetch, not an error
     const [, kind, id] = m;
     if (kind === 'release') {
       releaseId = id;
@@ -1529,26 +1543,26 @@ async function fetchTracklist(album) {
       try {
         const rgRes = await fetchWithTimeout(
           `https://musicbrainz.org/ws/2/release-group/${id}?inc=releases&fmt=json`, { headers }, 10000);
-        if (!rgRes.ok) return null;
+        if (!rgRes.ok) return { tracklist: null, failed: true };
         const rgData = await rgRes.json();
         const releases = rgData.releases || [];
-        if (!releases.length) return null;
+        if (!releases.length) return { tracklist: null, failed: false }; // release-group genuinely has no releases
         releaseId = releases[0].id;
       } catch(e) {
         console.error('Tracklist release-group lookup failed:', e);
-        return null;
+        return { tracklist: null, failed: true };
       }
     }
   }
 
-  if (!releaseId) return null;
+  if (!releaseId) return { tracklist: null, failed: false };
   try {
     const relRes = await fetchWithTimeout(
       `https://musicbrainz.org/ws/2/release/${releaseId}?inc=recordings&fmt=json`, { headers }, 10000);
-    if (!relRes.ok) return null;
+    if (!relRes.ok) return { tracklist: null, failed: true };
     const relData = await relRes.json();
     const media = relData.media || [];
-    if (!media.length) return null;
+    if (!media.length) return { tracklist: null, failed: false }; // release genuinely has no track data
     const lines = [];
     media.forEach((disc, i) => {
       if (media.length > 1) lines.push(`Disc ${i+1}`);
@@ -1557,10 +1571,10 @@ async function fetchTracklist(album) {
         lines.push(`${t.position}. ${t.title}${dur ? ' ('+dur+')' : ''}`);
       });
     });
-    return lines.length ? lines.join('\n') : null;
+    return { tracklist: lines.length ? lines.join('\n') : null, failed: false };
   } catch(e) {
     console.error('Tracklist fetch failed:', e);
-    return null;
+    return { tracklist: null, failed: true };
   }
 }
 
@@ -1587,11 +1601,18 @@ async function openNotesModal(id) {
   ta.focus();
   ta.setSelectionRange(0, 0);
   hint.style.display = 'block';
-  const tracklist = await fetchTracklist(a);
-  hint.style.display = 'none';
+  hint.textContent = '⟳ Looking up track listing…';
+  hint.style.color = 'var(--muted)';
+  const { tracklist, failed } = await fetchTracklist(a);
   // Only apply if we're still looking at the same album and the user hasn't typed anything yet
   if (_notesId === id && tracklist && ta.value === NOTES_SEED) {
     ta.value = NOTES_SEED + tracklist;
+    hint.style.display = 'none';
+  } else if (_notesId === id && failed) {
+    hint.textContent = '✗ Track listing lookup failed — check your connection and try reopening notes';
+    hint.style.color = 'var(--danger)';
+  } else {
+    hint.style.display = 'none';
   }
 }
 
@@ -1684,6 +1705,7 @@ async function syncRatingToPlex(a) {
   if (!status) return false;
   status.textContent = '⟳ Syncing to Plex…';
   status.style.color = 'var(--muted)';
+  hidePlexConfirm();
   try {
     const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&rating=${a.rating}`;
     const res = await fetch(url);
@@ -1693,11 +1715,60 @@ async function syncRatingToPlex(a) {
       status.style.color = 'var(--accent)';
       return true;
     }
+    if (result.partial) {
+      // Album title matched but the artist credit didn't (e.g. "Rufus" vs
+      // "Rufus feat. Chaka Khan") — don't guess, let the person confirm.
+      status.textContent = '';
+      showPlexConfirm(result.partial, a.rating);
+      return false;
+    }
   } catch(e) { /* fall through to failure below */ }
   status.textContent = 'Sync failed, please rate manually';
   status.style.color = 'var(--danger)';
   return false;
 }
+
+function showPlexConfirm(partial, rating) {
+  const box  = document.getElementById('qr-plex-confirm');
+  const text = document.getElementById('qr-plex-confirm-text');
+  text.textContent = `Found "${partial.artist} — ${partial.album}" in Plex — is this the right album?`;
+  box.classList.remove('hidden');
+  box.dataset.key = partial.key;
+  box.dataset.rating = rating;
+}
+function hidePlexConfirm() {
+  const box = document.getElementById('qr-plex-confirm');
+  box.classList.add('hidden');
+  delete box.dataset.key;
+  delete box.dataset.rating;
+}
+
+on('qr-plex-confirm-yes','click', async () => {
+  const box = document.getElementById('qr-plex-confirm');
+  const key = box.dataset.key, rating = box.dataset.rating;
+  if (!key) return;
+  const status = document.getElementById('qr-plex-status');
+  hidePlexConfirm();
+  status.textContent = '⟳ Syncing to Plex…';
+  status.style.color = 'var(--muted)';
+  try {
+    const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}&rating=${rating}`);
+    const result = await res.json();
+    if (result.matched) {
+      status.textContent = 'Plex rating updated';
+      status.style.color = 'var(--accent)';
+      return;
+    }
+  } catch(e) { /* fall through */ }
+  status.textContent = 'Sync failed, please rate manually';
+  status.style.color = 'var(--danger)';
+});
+on('qr-plex-confirm-no','click', () => {
+  hidePlexConfirm();
+  const status = document.getElementById('qr-plex-status');
+  status.textContent = 'Sync failed, please rate manually';
+  status.style.color = 'var(--danger)';
+});
 
 on('qr-unmatched-toggle','click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
 
