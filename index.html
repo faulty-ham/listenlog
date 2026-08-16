@@ -1490,6 +1490,52 @@ function editAlbum(id) {
 // ── Quick-Rate modal ──────────────────────────────────────────
 let qrId=null, qrRating=0, qrWant=false, qrHard=false, qrUnmatched=false;
 
+const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
+
+// Returns true if the rating was successfully pushed to Plex, false otherwise.
+async function syncRatingToPlex(a) {
+  const status = document.getElementById('qr-plex-status');
+  if (!status) return false;
+  status.textContent = '⟳ Syncing to Plex…';
+  status.style.color = 'var(--muted)';
+  hidePlexConfirm();
+  try {
+    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&rating=${a.rating}`;
+    const res = await fetch(url);
+    const result = await res.json();
+    if (result.matched) {
+      status.textContent = 'Plex rating updated';
+      status.style.color = 'var(--accent)';
+      return true;
+    }
+    if (result.partial) {
+      // Album title matched but the artist credit didn't (e.g. "Rufus" vs
+      // "Rufus feat. Chaka Khan") — don't guess, let the person confirm.
+      status.textContent = '';
+      showPlexConfirm(result.partial, a.rating);
+      return false;
+    }
+  } catch(e) { /* fall through to failure below */ }
+  status.textContent = 'Sync failed, please rate manually';
+  status.style.color = 'var(--danger)';
+  return false;
+}
+
+function showPlexConfirm(partial, rating) {
+  const box  = document.getElementById('qr-plex-confirm');
+  const text = document.getElementById('qr-plex-confirm-text');
+  text.textContent = `Found "${partial.artist} — ${partial.album}" in Plex — is this the right album?`;
+  box.classList.remove('hidden');
+  box.dataset.key = partial.key;
+  box.dataset.rating = rating;
+}
+function hidePlexConfirm() {
+  const box = document.getElementById('qr-plex-confirm');
+  box.classList.add('hidden');
+  delete box.dataset.key;
+  delete box.dataset.rating;
+}
+
 function openQuickRate(id) {
   const a=albums.find(x=>x.id===id); if(!a) return;
   qrId=id; qrRating=a.rating||0; qrWant=!!a.wantToListen; qrHard=!!a.hardToFind; qrUnmatched=!!a.unmatched;
@@ -1697,51 +1743,6 @@ function initApp() {
 
 on('qr-want-toggle','click',()=>{qrWant=!qrWant;if(!qrWant)qrHard=false;syncQrToggles();});
 on('qr-hard-toggle','click',()=>{qrHard=!qrHard;syncQrToggles();});
-const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
-
-// Returns true if the rating was successfully pushed to Plex, false otherwise.
-async function syncRatingToPlex(a) {
-  const status = document.getElementById('qr-plex-status');
-  if (!status) return false;
-  status.textContent = '⟳ Syncing to Plex…';
-  status.style.color = 'var(--muted)';
-  hidePlexConfirm();
-  try {
-    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&rating=${a.rating}`;
-    const res = await fetch(url);
-    const result = await res.json();
-    if (result.matched) {
-      status.textContent = 'Plex rating updated';
-      status.style.color = 'var(--accent)';
-      return true;
-    }
-    if (result.partial) {
-      // Album title matched but the artist credit didn't (e.g. "Rufus" vs
-      // "Rufus feat. Chaka Khan") — don't guess, let the person confirm.
-      status.textContent = '';
-      showPlexConfirm(result.partial, a.rating);
-      return false;
-    }
-  } catch(e) { /* fall through to failure below */ }
-  status.textContent = 'Sync failed, please rate manually';
-  status.style.color = 'var(--danger)';
-  return false;
-}
-
-function showPlexConfirm(partial, rating) {
-  const box  = document.getElementById('qr-plex-confirm');
-  const text = document.getElementById('qr-plex-confirm-text');
-  text.textContent = `Found "${partial.artist} — ${partial.album}" in Plex — is this the right album?`;
-  box.classList.remove('hidden');
-  box.dataset.key = partial.key;
-  box.dataset.rating = rating;
-}
-function hidePlexConfirm() {
-  const box = document.getElementById('qr-plex-confirm');
-  box.classList.add('hidden');
-  delete box.dataset.key;
-  delete box.dataset.rating;
-}
 
 on('qr-plex-confirm-yes','click', async () => {
   const box = document.getElementById('qr-plex-confirm');
