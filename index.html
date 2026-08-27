@@ -1502,6 +1502,11 @@ async function syncRatingToPlex(a) {
   try {
     const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&rating=${a.rating}`;
     const res = await fetch(url);
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error(`Plex sync: Worker returned HTTP ${res.status}`, body);
+      throw new Error(`Worker HTTP ${res.status}`);
+    }
     const result = await res.json();
     if (result.matched) {
       status.textContent = 'Plex rating updated';
@@ -1515,7 +1520,14 @@ async function syncRatingToPlex(a) {
       showPlexConfirm(result.partial, a.rating);
       return false;
     }
-  } catch(e) { /* fall through to failure below */ }
+    // Worker responded but couldn't match or reach Plex — it may have put a
+    // reason in result.error (e.g. Plex connection refused/timed out).
+    // Surface that to the console so failures are actually diagnosable.
+    if (result.error) console.error('Plex sync: Worker reported an error:', result.error);
+    else console.warn('Plex sync: no match found for', a.artist, '—', a.album);
+  } catch(e) {
+    console.error('Plex sync: request to Worker failed:', e);
+  }
   status.textContent = 'Sync failed, please rate manually';
   status.style.color = 'var(--danger)';
   return false;
@@ -1754,13 +1766,20 @@ on('qr-plex-confirm-yes','click', async () => {
   status.style.color = 'var(--muted)';
   try {
     const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}&rating=${rating}`);
+    if (!res.ok) {
+      console.error(`Plex confirm: Worker returned HTTP ${res.status}`, await res.text().catch(()=>''));
+      throw new Error(`Worker HTTP ${res.status}`);
+    }
     const result = await res.json();
     if (result.matched) {
       status.textContent = 'Plex rating updated';
       status.style.color = 'var(--accent)';
       return;
     }
-  } catch(e) { /* fall through */ }
+    if (result.error) console.error('Plex confirm: Worker reported an error:', result.error);
+  } catch(e) {
+    console.error('Plex confirm: request to Worker failed:', e);
+  }
   status.textContent = 'Sync failed, please rate manually';
   status.style.color = 'var(--danger)';
 });
