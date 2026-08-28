@@ -629,7 +629,10 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
         <div id="qr-album" class="qr-album"></div>
       </div>
     </div>
-    <div class="qr-stars" id="qr-star-input"></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px">
+      <div class="qr-stars" id="qr-star-input"></div>
+      <button class="btn-ghost" id="qr-clear-rating" title="Clear rating" style="font-size:11px;padding:2px 8px;line-height:1.5">✕</button>
+    </div>
     <div style="display:flex;justify-content:center;margin-bottom:6px">
       <button class="btn-ghost" id="qr-plex-sync-btn" title="Push the current rating to Plex" style="font-size:11px;padding:2px 9px;line-height:1.5">↻ Sync to Plex</button>
     </div>
@@ -1755,6 +1758,7 @@ function initApp() {
 
 on('qr-want-toggle','click',()=>{qrWant=!qrWant;if(!qrWant)qrHard=false;syncQrToggles();});
 on('qr-hard-toggle','click',()=>{qrHard=!qrHard;syncQrToggles();});
+on('qr-clear-rating','click',()=>{ setQrRating(0); });
 
 on('qr-plex-confirm-yes','click', async () => {
   const box = document.getElementById('qr-plex-confirm');
@@ -1809,11 +1813,10 @@ on('qr-save','click', async ()=>{
   a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;
   save(a);render();
 
-  if (ratingChanged && a.rating) {
-    // Keep the modal open while syncing. On success, briefly show the green
-    // confirmation then close. On failure, stay open so the red message is
-    // readable and the album can be rated in Plex manually.
-    const ok = await syncRatingToPlex(a);
+  if (ratingChanged) {
+    // Push both new ratings AND clears to Plex — a rating of 0 there is how
+    // you unset a star rating, so this correctly clears it on that side too.
+    const ok = await syncRatingToPlex({ artist: a.artist, album: a.album, rating: a.rating || 0 });
     if (!ok) return;
     setTimeout(()=>{
       document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
