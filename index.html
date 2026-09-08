@@ -2278,7 +2278,14 @@ async function mbidLookup(mbid, attempt=1) {
       return { error: `MusicBrainz error (${r.status}).` };
     }
     const data = await r.json();
-    const artist = (data['artist-credit']?.[0]?.artist?.name) || (data['artist-credit']?.[0]?.name) || '';
+    // Build the full credited-artist string exactly as MB displays it — e.g.
+    // "Rufus feat. Chaka Khan" — rather than just the first credited artist.
+    // Each artist-credit entry has a name plus a joinphrase (often " feat. ",
+    // " & ", etc.) that goes between it and the next credit.
+    const credits = data['artist-credit'] || [];
+    const artist = credits.length
+      ? credits.map(c => (c.name || c.artist?.name || '') + (c.joinphrase || '')).join('').trim()
+      : '';
     const album  = data.title || '';
     const date   = data.date || data['first-release-date'] || data['release-group']?.['first-release-date'] || null;
     const rg = data['release-group'] || {};
