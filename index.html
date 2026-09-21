@@ -2750,11 +2750,16 @@ async function _pullFromCloudInner(retrying=false) {
     render(); // show cached data instantly
     setSyncStatus('busy', 'syncing…');
     try {
-      // Fetch only rows changed since last sync (includes soft-deletes)
+      // Fetch rows changed since last sync (includes soft-deletes). Uses >=
+      // rather than > — a bulk script writing many rows within the same
+      // second can give them an identical updated_at; if that exact value
+      // ever becomes the watermark, a strict > would permanently exclude any
+      // other row sharing it. Re-fetching the boundary row(s) is harmless
+      // since they're merged into the album map by id (idempotent).
       const changed = await fetchAlbumPages(
         _sb.from('albums').select('*')
           .eq('user_id', _userId)
-          .gt('updated_at', lastSync)
+          .gte('updated_at', lastSync)
           .order('updated_at', { ascending: true })
       );
       if (changed.length) {
