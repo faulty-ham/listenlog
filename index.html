@@ -197,6 +197,7 @@ td{padding:7px 10px;vertical-align:middle}
 .src-mb{background:rgba(122,153,201,.12);border-color:rgba(122,153,201,.3);color:#7a99c9;cursor:pointer}
 .src-mb:hover{background:rgba(122,153,201,.22);border-color:#7a99c9}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
+.badge-inplex{background:rgba(229,160,13,.12);color:#e5a00d;border:1px solid rgba(229,160,13,.3)}
 .badge-comp{background:rgba(153,122,201,.12);color:#9a7ec9;border:1px solid rgba(153,122,201,.25)}
 .badge-live{background:rgba(201,122,153,.12);color:#c97ea3;border:1px solid rgba(201,122,153,.25)}
 .badge-single{background:rgba(122,153,201,.12);color:#7e9ac9;border:1px solid rgba(122,153,201,.25)}
@@ -766,6 +767,7 @@ const TAG_OPTIONS = [
   { value:'hard',      label:'🔎 Hard to find' },
   { value:'listened',  label:'✓ Listened' },
   { value:'unmatched', label:'⚠ Missing info' },
+  { value:'inPlex',    label:'📀 In Plex' },
 ];
 const TYPE_OPTIONS = [
   { value:'album',      label:'Album' },
@@ -845,6 +847,7 @@ function getFiltered() {
       if (val === 'hard')      return !!a.hardToFind;
       if (val === 'listened')  return !a.wantToListen && !a.unmatched;
       if (val === 'unmatched') return !!a.unmatched;
+      if (val === 'inPlex')    return !!a.inPlexLibrary;
       return false;
     })) return false;
 
@@ -1295,6 +1298,7 @@ function render() {
       a.wantToListen ? '<span class="badge badge-want">🎧</span>' : '',
       a.hardToFind   ? '<span class="badge badge-hard">🔎</span>' : '',
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
+      a.inPlexLibrary ? '<span class="badge badge-inplex" title="In your Plex library">📀</span>' : '',
       a.releaseType === 'compilation' ? '<span class="badge badge-comp">Comp</span>' : '',
       a.releaseType === 'live'        ? '<span class="badge badge-live">Live</span>' : '',
       a.releaseType === 'single_ep'   ? '<span class="badge badge-single">EP</span>' : '',
@@ -1417,6 +1421,10 @@ async function addOrUpdateAlbum() {
     // it's never auto-cleared once the release date passes — that's a
     // manual call for the person to make.
     hardToFind: editingId ? (existing.hardToFind||false) : isFutureDate(dateVal),
+    // Checked against Plex asynchronously right after creation (see below) —
+    // starts false and gets patched in once the lookup resolves, same pattern
+    // as the background art upload just below.
+    inPlexLibrary: existing.inPlexLibrary || false,
     unmatched: Boolean(existing.unmatched && !pendingArtUrl),
     artUrl,
     artFallback:pendingArtFallback||existing.artFallback||'',
@@ -1427,7 +1435,40 @@ async function addOrUpdateAlbum() {
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
   else albums.unshift(entry);
   const hadPendingArt = !!pendingArtUrl; // capture before closePanel() clears it
+  const isNewEntry = !editingId;
   save(entry); closePanel(); render();
+
+  // Check whether this new entry is already in the Plex library — fires in
+  // the background so it never slows down adding an album. Exact match OR an
+  // album-title-only match both count (a mismatched artist credit like
+  // "Rufus" vs "Rufus feat. Chaka Khan" shouldn't stop this from tagging —
+  // unlike pushing a rating, mistagging a boolean presence flag is low-stakes
+  // enough not to need a confirmation step).
+  if (isNewEntry) {
+    (async () => {
+      try {
+        const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(entry.artist)}&album=${encodeURIComponent(entry.album)}&checkOnly=1`;
+        const res = await fetch(url);
+        if (!res.ok) { console.error(`Plex library check: HTTP ${res.status}`); return; }
+        const result = await res.json();
+        if (result.error) { console.error('Plex library check reported an error:', result.error); return; }
+        if (!result.inLibrary) return;
+
+        await _sb.from('albums')
+          .update({ in_plex_library: true, updated_at: new Date().toISOString() })
+          .eq('id', entry.id)
+          .eq('user_id', _userId);
+        const current = albums.find(a => a.id === entry.id);
+        if (current) {
+          current.inPlexLibrary = true;
+          safeSetItem('listenLog', JSON.stringify(albums));
+          render();
+        }
+      } catch(e) {
+        console.error('Plex library check failed:', e);
+      }
+    })();
+  }
 
   // Auto-upload art to R2 in the background — but ONLY if the primary art URL
   // isn't already hosted. Without this guard, editing any album whose art is
@@ -2539,6 +2580,7 @@ function albumToRow(a) {
     release_type:   a.releaseType || null,
     want_to_listen: a.wantToListen || false,
     hard_to_find:   a.hardToFind  || false,
+    in_plex_library: a.inPlexLibrary || false,
     unmatched:      a.unmatched   || false,
     added:          a.added       || Date.now(),
     updated_at:     new Date().toISOString(),
@@ -2559,6 +2601,7 @@ function rowToAlbum(r) {
     releaseType:  r.release_type || '',
     wantToListen: r.want_to_listen || false,
     hardToFind:   r.hard_to_find   || false,
+    inPlexLibrary: r.in_plex_library || false,
     unmatched:    r.unmatched       || false,
     added:        r.added           || 0,
   };
