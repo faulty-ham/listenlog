@@ -1447,7 +1447,7 @@ async function addOrUpdateAlbum() {
   if (isNewEntry) {
     (async () => {
       try {
-        const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(entry.artist)}&album=${encodeURIComponent(entry.album)}&checkOnly=1`;
+        const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(entry.artist)}&album=${encodeURIComponent(entry.album)}&year=${encodeURIComponent(extractYear(entry.date))}&checkOnly=1`;
         const res = await fetch(url);
         if (!res.ok) { console.error(`Plex library check: HTTP ${res.status}`); return; }
         const result = await res.json();
@@ -1565,7 +1565,7 @@ async function syncRatingToPlex(a) {
   status.style.color = 'var(--muted)';
   hidePlexConfirm();
   try {
-    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&rating=${a.rating}`;
+    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}&rating=${a.rating}`;
     const res = await fetch(url);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
@@ -1867,7 +1867,7 @@ on('qr-plex-sync-btn','click', async ()=>{
   if (!qrId || !qrRating) return;
   const a = albums.find(x=>x.id===qrId);
   if (!a) return;
-  await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, rating: qrRating });
+  await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, date: a.date, rating: qrRating });
 });
 on('qr-save','click', async ()=>{
   if(!qrId)return;
@@ -1880,7 +1880,7 @@ on('qr-save','click', async ()=>{
   if (ratingChanged) {
     // Push both new ratings AND clears to Plex — a rating of 0 there is how
     // you unset a star rating, so this correctly clears it on that side too.
-    const ok = await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, rating: a.rating || 0 });
+    const ok = await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, date: a.date, rating: a.rating || 0 });
     if (!ok) return;
     setTimeout(()=>{
       document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
