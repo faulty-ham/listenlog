@@ -127,6 +127,7 @@ button{font-family:'Inter',sans-serif;font-size:14px;border:none;cursor:pointer;
 .tag-toggle.want.on{background:var(--want);color:#0d1117;border-color:var(--want)}
 .tag-toggle.hard.on{background:var(--hard);color:#0d1117;border-color:var(--hard)}
 .tag-toggle.unmatch.on{background:var(--danger);color:#fff;border-color:var(--danger)}
+.tag-toggle.inplex.on{background:#e5a00d;color:#0d1117;border-color:#e5a00d}
 
 /* ── IMPORT PANEL ── */
 #import-status.ok{color:var(--good)}
@@ -649,6 +650,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
       <button class="tag-toggle hard hidden" id="qr-hard-toggle">🔎 Hard to find</button>
       <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:13px">⚠ Missing info</button>
+      <button class="tag-toggle inplex" id="qr-inplex-toggle" style="font-size:13px">📀 In Plex</button>
     </div>
     <div class="qr-notes-row">
       <button class="btn-ghost" id="qr-notes-btn" style="width:100%;text-align:left;font-size:14px">📝 Notes</button>
@@ -1532,7 +1534,7 @@ function editAlbum(id) {
 }
 
 // ── Quick-Rate modal ──────────────────────────────────────────
-let qrId=null, qrRating=0, qrWant=false, qrHard=false, qrUnmatched=false;
+let qrId=null, qrRating=0, qrWant=false, qrHard=false, qrUnmatched=false, qrInPlex=false;
 
 const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
 
@@ -1616,7 +1618,7 @@ function hidePlexConfirm() {
 
 function openQuickRate(id) {
   const a=albums.find(x=>x.id===id); if(!a) return;
-  qrId=id; qrRating=a.rating||0; qrWant=!!a.wantToListen; qrHard=!!a.hardToFind; qrUnmatched=!!a.unmatched;
+  qrId=id; qrRating=a.rating||0; qrWant=!!a.wantToListen; qrHard=!!a.hardToFind; qrUnmatched=!!a.unmatched; qrInPlex=!!a.inPlexLibrary;
   document.getElementById('qr-artist').textContent=a.artist;
   document.getElementById('qr-album').textContent=a.album;
   updateQrNotesBtn(a);
@@ -1757,10 +1759,12 @@ function syncQrToggles() {
   const w=document.getElementById('qr-want-toggle');
   const h=document.getElementById('qr-hard-toggle');
   const u=document.getElementById('qr-unmatched-toggle');
+  const p=document.getElementById('qr-inplex-toggle');
   w.classList.toggle('on', qrWant);
   h.classList.toggle('hidden', !qrWant);
   h.classList.toggle('on', qrHard);
   u.classList.toggle('on', qrUnmatched);
+  p.classList.toggle('on', qrInPlex);
 }
 function doDelete() {
   if(pendingDeleteId){
@@ -1859,6 +1863,7 @@ on('qr-plex-confirm-no','click', () => {
 });
 
 on('qr-unmatched-toggle','click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
+on('qr-inplex-toggle','click',()=>{qrInPlex=!qrInPlex;syncQrToggles();});
 
 // Manual Plex sync — for cases like adding an album to Plex *after* it was
 // already rated in ListenLog, where nothing here actually "changed" so the
@@ -1874,7 +1879,7 @@ on('qr-save','click', async ()=>{
   const a=albums.find(x=>x.id===qrId); if(!a)return;
   const ratingChanged=qrRating!==(a.rating||0);
   if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
-  a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;
+  a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;a.inPlexLibrary=qrInPlex;
   save(a);render();
 
   if (ratingChanged) {
