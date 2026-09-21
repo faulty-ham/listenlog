@@ -1298,7 +1298,7 @@ function render() {
       a.wantToListen ? '<span class="badge badge-want">🎧</span>' : '',
       a.hardToFind   ? '<span class="badge badge-hard">🔎</span>' : '',
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
-      a.inPlexLibrary ? '<span class="badge badge-inplex" title="In your Plex library">📀</span>' : '',
+      a.inPlexLibrary ? '<span class="badge badge-inplex" title="In your Plex library"><svg width="11" height="11" viewBox="0 0 100 100" style="vertical-align:-1px"><path d="M50 8 L88 50 L50 92 L50 64 L64 50 L50 36 Z" fill="currentColor"/></svg></span>' : '',
       a.releaseType === 'compilation' ? '<span class="badge badge-comp">Comp</span>' : '',
       a.releaseType === 'live'        ? '<span class="badge badge-live">Live</span>' : '',
       a.releaseType === 'single_ep'   ? '<span class="badge badge-single">EP</span>' : '',
@@ -1537,6 +1537,27 @@ let qrId=null, qrRating=0, qrWant=false, qrHard=false, qrUnmatched=false;
 const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
 
 // Returns true if the rating was successfully pushed to Plex, false otherwise.
+// A successful Plex match (rating pushed, or confirmed via thumbs up) proves
+// the album is actually in the library — tag it. Only ever sets this to
+// true; it's never auto-cleared, same as Hard to Find — removing it is a
+// manual call for the person to make.
+async function markInPlexLibrary(albumId) {
+  if (!albumId) return;
+  const current = albums.find(x => x.id === albumId);
+  if (!current || current.inPlexLibrary) return; // already tagged, nothing to do
+  try {
+    await _sb.from('albums')
+      .update({ in_plex_library: true, updated_at: new Date().toISOString() })
+      .eq('id', albumId)
+      .eq('user_id', _userId);
+    current.inPlexLibrary = true;
+    safeSetItem('listenLog', JSON.stringify(albums));
+    render();
+  } catch(e) {
+    console.error('Failed to tag album as In Plex:', e);
+  }
+}
+
 async function syncRatingToPlex(a) {
   const status = document.getElementById('qr-plex-status');
   if (!status) return false;
@@ -1555,6 +1576,7 @@ async function syncRatingToPlex(a) {
     if (result.matched) {
       status.textContent = 'Plex rating updated';
       status.style.color = 'var(--accent)';
+      markInPlexLibrary(a.id);
       return true;
     }
     if (result.partial) {
@@ -1819,6 +1841,7 @@ on('qr-plex-confirm-yes','click', async () => {
     if (result.matched) {
       status.textContent = 'Plex rating updated';
       status.style.color = 'var(--accent)';
+      markInPlexLibrary(qrId);
       return;
     }
     if (result.error) console.error('Plex confirm: Worker reported an error:', result.error);
@@ -1844,7 +1867,7 @@ on('qr-plex-sync-btn','click', async ()=>{
   if (!qrId || !qrRating) return;
   const a = albums.find(x=>x.id===qrId);
   if (!a) return;
-  await syncRatingToPlex({ artist: a.artist, album: a.album, rating: qrRating });
+  await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, rating: qrRating });
 });
 on('qr-save','click', async ()=>{
   if(!qrId)return;
@@ -1857,7 +1880,7 @@ on('qr-save','click', async ()=>{
   if (ratingChanged) {
     // Push both new ratings AND clears to Plex — a rating of 0 there is how
     // you unset a star rating, so this correctly clears it on that side too.
-    const ok = await syncRatingToPlex({ artist: a.artist, album: a.album, rating: a.rating || 0 });
+    const ok = await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, rating: a.rating || 0 });
     if (!ok) return;
     setTimeout(()=>{
       document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
