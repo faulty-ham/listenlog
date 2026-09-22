@@ -1658,7 +1658,11 @@ async function confirmPlexSuggestion(key, rating) {
     if (result.matched) {
       status.textContent = 'Plex rating updated';
       status.style.color = 'var(--accent)';
-      if (qrId) markInPlexLibrary(qrId);
+      if (qrId) {
+        markInPlexLibrary(qrId);
+        qrInPlex = true;
+        syncQrToggles();
+      }
       return;
     }
     if (result.error) console.error('Plex confirm: Worker reported an error:', result.error);
@@ -1900,6 +1904,8 @@ on('qr-plex-confirm-yes','click', async () => {
       status.textContent = 'Plex rating updated';
       status.style.color = 'var(--accent)';
       markInPlexLibrary(qrId);
+      qrInPlex = true;
+      syncQrToggles();
       return;
     }
     if (result.error) console.error('Plex confirm: Worker reported an error:', result.error);
@@ -1931,7 +1937,11 @@ on('qr-plex-sync-btn','click', async ()=>{
   if (!a) return;
 
   if (qrRating) {
-    await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, date: a.date, rating: qrRating });
+    const ok = await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, date: a.date, rating: qrRating });
+    if (ok) {
+      qrInPlex = true;
+      syncQrToggles();
+    }
     return;
   }
 
