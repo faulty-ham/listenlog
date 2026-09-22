@@ -646,6 +646,10 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
         <button class="btn-ghost" id="qr-plex-confirm-no" style="font-size:16px;padding:3px 12px" title="No, not a match">👎</button>
       </div>
     </div>
+    <div id="qr-plex-suggestions" class="hidden" style="font-size:12px;color:var(--muted);margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px">
+      <div style="margin-bottom:6px;text-align:center">No exact match — closest albums in Plex:</div>
+      <div id="qr-plex-suggestions-list" style="display:flex;flex-direction:column;gap:4px"></div>
+    </div>
     <div class="qr-tags">
       <button class="tag-toggle want" id="qr-want-toggle">🎧 Want to listen</button>
       <button class="tag-toggle hard hidden" id="qr-hard-toggle">🔎 Hard to find</button>
@@ -1566,6 +1570,7 @@ async function syncRatingToPlex(a) {
   status.textContent = '⟳ Syncing to Plex…';
   status.style.color = 'var(--muted)';
   hidePlexConfirm();
+  hidePlexSuggestions();
   try {
     const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}&rating=${a.rating}`;
     const res = await fetch(url);
@@ -1588,6 +1593,11 @@ async function syncRatingToPlex(a) {
       showPlexConfirm(result.partial, a.rating);
       return false;
     }
+    if (result.suggestions && result.suggestions.length) {
+      status.textContent = '';
+      showPlexSuggestions(result.suggestions, a.rating);
+      return false;
+    }
     // Worker responded but couldn't match or reach Plex — it may have put a
     // reason in result.error (e.g. Plex connection refused/timed out).
     // Surface that to the console so failures are actually diagnosable.
@@ -1602,6 +1612,7 @@ async function syncRatingToPlex(a) {
 }
 
 function showPlexConfirm(partial, rating) {
+  hidePlexSuggestions();
   const box  = document.getElementById('qr-plex-confirm');
   const text = document.getElementById('qr-plex-confirm-text');
   text.textContent = `Found "${partial.artist} — ${partial.album}" in Plex — is this the right album?`;
@@ -1616,6 +1627,48 @@ function hidePlexConfirm() {
   delete box.dataset.rating;
 }
 
+function showPlexSuggestions(suggestions, rating) {
+  hidePlexConfirm();
+  const box  = document.getElementById('qr-plex-suggestions');
+  const list = document.getElementById('qr-plex-suggestions-list');
+  list.innerHTML = '';
+  suggestions.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-ghost';
+    btn.style.cssText = 'text-align:left;font-size:12px;padding:5px 8px';
+    btn.textContent = `${s.artist} — ${s.album}`;
+    btn.addEventListener('click', () => confirmPlexSuggestion(s.key, rating));
+    list.appendChild(btn);
+  });
+  box.classList.remove('hidden');
+}
+function hidePlexSuggestions() {
+  document.getElementById('qr-plex-suggestions').classList.add('hidden');
+}
+
+async function confirmPlexSuggestion(key, rating) {
+  hidePlexSuggestions();
+  const status = document.getElementById('qr-plex-status');
+  status.textContent = '⟳ Syncing to Plex…';
+  status.style.color = 'var(--muted)';
+  try {
+    const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}&rating=${rating}`);
+    if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
+    const result = await res.json();
+    if (result.matched) {
+      status.textContent = 'Plex rating updated';
+      status.style.color = 'var(--accent)';
+      if (qrId) markInPlexLibrary(qrId);
+      return;
+    }
+    if (result.error) console.error('Plex confirm: Worker reported an error:', result.error);
+  } catch(e) {
+    console.error('Plex confirm: request to Worker failed:', e);
+  }
+  status.textContent = 'Sync failed, please rate manually';
+  status.style.color = 'var(--danger)';
+}
+
 function openQuickRate(id) {
   const a=albums.find(x=>x.id===id); if(!a) return;
   qrId=id; qrRating=a.rating||0; qrWant=!!a.wantToListen; qrHard=!!a.hardToFind; qrUnmatched=!!a.unmatched; qrInPlex=!!a.inPlexLibrary;
@@ -1628,6 +1681,7 @@ function openQuickRate(id) {
   syncQrToggles();
   document.getElementById('qr-plex-status').textContent='';
   hidePlexConfirm();
+  hidePlexSuggestions();
   document.getElementById('quick-rate-modal').classList.add('open');
 }
 
