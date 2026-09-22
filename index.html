@@ -1867,12 +1867,44 @@ on('qr-inplex-toggle','click',()=>{qrInPlex=!qrInPlex;syncQrToggles();});
 
 // Manual Plex sync — for cases like adding an album to Plex *after* it was
 // already rated in ListenLog, where nothing here actually "changed" so the
-// normal save-triggered sync never fires.
+// normal save-triggered sync never fires. With no rating entered, there's
+// nothing to push, so this instead just checks whether the album is in the
+// Plex library at all and flips the tag on if so — same year-aware logic
+// used for new entries.
 on('qr-plex-sync-btn','click', async ()=>{
-  if (!qrId || !qrRating) return;
+  if (!qrId) return;
   const a = albums.find(x=>x.id===qrId);
   if (!a) return;
-  await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, date: a.date, rating: qrRating });
+
+  if (qrRating) {
+    await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, date: a.date, rating: qrRating });
+    return;
+  }
+
+  const status = document.getElementById('qr-plex-status');
+  status.textContent = '⟳ Checking Plex library…';
+  status.style.color = 'var(--muted)';
+  try {
+    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}&checkOnly=1`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+    if (result.inLibrary) {
+      await markInPlexLibrary(a.id);
+      qrInPlex = true;
+      syncQrToggles();
+      status.textContent = 'Found in Plex library';
+      status.style.color = 'var(--accent)';
+    } else {
+      status.textContent = 'Not found in Plex library';
+      status.style.color = 'var(--danger)';
+    }
+  } catch(e) {
+    console.error('Plex library check failed:', e);
+    status.textContent = 'Check failed, try again';
+    status.style.color = 'var(--danger)';
+  }
 });
 on('qr-save','click', async ()=>{
   if(!qrId)return;
