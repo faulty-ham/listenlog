@@ -2521,29 +2521,58 @@ document.getElementById('art-lightbox').addEventListener('click', () => {
   document.getElementById('art-lightbox-img').src = '';
 });
 async function artError(img) {
-  if (img.dataset.tried) {
+  // Stage tracks how far through the fallback chain we've gotten, so a
+  // failure at ANY stage (including the fallback URL itself) advances to
+  // the NEXT stage rather than giving up immediately. Previously a single
+  // "tried" boolean was set after the first failure, so if the fallback
+  // URL also failed to load, we skipped straight to "give up" and never
+  // attempted the iTunes search or the CAA cache-busting retry — with no
+  // console output, making transient CDN hiccups look like silent,
+  // unfixable failures that only a full page refresh could clear.
+  let stage = parseInt(img.dataset.stage || '0', 10);
+  const artist = img.dataset.artist || '';
+  const album  = img.dataset.album  || '';
+
+  while (true) {
+    if (stage === 0) {
+      stage = 1;
+      if (img.dataset.fb && img.src !== img.dataset.fb) {
+        img.dataset.stage = String(stage);
+        img.src = img.dataset.fb;
+        return;
+      }
+      continue;
+    }
+    if (stage === 1) {
+      stage = 2;
+      if (artist && album) {
+        const url = await fetchItunesArt(artist, album);
+        if (url) {
+          img.dataset.stage = String(stage);
+          img.src = url;
+          return;
+        }
+      }
+      continue;
+    }
+    if (stage === 2) {
+      stage = 3;
+      // If iTunes has nothing and CAA failed (possibly via redirect), try
+      // the original CAA URL directly — CAA may redirect to a different,
+      // working node on a fresh request.
+      const caa = img.dataset.caa || '';
+      if (caa && caa.includes('coverartarchive.org') && img.src !== caa) {
+        img.dataset.stage = String(stage);
+        img.src = caa + (caa.includes('?') ? '&' : '?') + '_t=' + Date.now();
+        return;
+      }
+      continue;
+    }
+    console.warn(`Art failed to load for "${artist} - ${album}" after all fallbacks (fb, iTunes, CAA retry).`);
     img.style.display = 'none';
     if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
     return;
   }
-  img.dataset.tried = '1';
-  if (img.dataset.fb) { img.src = img.dataset.fb; return; }
-  const artist = img.dataset.artist || '';
-  const album  = img.dataset.album  || '';
-  // Try iTunes first
-  if (artist && album) {
-    const url = await fetchItunesArt(artist, album);
-    if (url) { img.src = url; return; }
-  }
-  // If iTunes has nothing and CAA failed via redirect, try the original CAA URL directly
-  // (CAA may redirect to a different, working node on a fresh request)
-  const caa = img.dataset.caa || '';
-  if (caa && caa.includes('coverartarchive.org') && img.src !== caa) {
-    img.src = caa + (caa.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    return;
-  }
-  img.style.display = 'none';
-  if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
 }
 
 const R2_WORKER_URL = 'https://listenlog-upload.kellbeckerle.workers.dev';
