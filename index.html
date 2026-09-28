@@ -475,7 +475,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 <div class="sticky-controls">
 <div class="toolbar">
   <div class="toolbar-top-row">
-    <button class="btn-primary" id="btn-toggle-add">+ Add Album</button><button class="btn-ghost btn-sm" id="btn-open-bookmarks" title="View your bookmarked lists" style="white-space:nowrap">🔖</button><div class="search-wrap">
+    <button class="btn-primary" id="btn-toggle-add">+ Add Album</button><button class="btn-ghost btn-sm" id="btn-open-bookmarks" title="View your bookmarked lists" style="white-space:nowrap">📑</button><div class="search-wrap">
       <span class="search-icon">⌕</span>
       <input type="text" id="filter-search" placeholder="Search artist or album" aria-label="Search albums">
       <button id="search-clear" title="Clear search" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
@@ -690,8 +690,8 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <button class="tag-toggle inplex" id="qr-inplex-toggle" style="font-size:13px">📀 In Plex</button>
     </div>
     <div class="qr-bookmark-row" style="display:flex;gap:8px;margin-bottom:10px">
-      <button class="btn-ghost" id="qr-add-bookmark" style="flex:1;font-size:13px">🔖 Add to Bookmark</button>
-      <button class="btn-ghost hidden" id="qr-remove-bookmark" style="flex:1;font-size:13px;color:var(--danger)">🔖 Remove from Bookmark</button>
+      <button class="btn-ghost" id="qr-add-bookmark" style="flex:1;font-size:13px">📑 Add to Bookmark</button>
+      <button class="btn-ghost hidden" id="qr-remove-bookmark" style="flex:1;font-size:13px;color:var(--danger)">📑 Remove from Bookmark</button>
     </div>
     <div class="qr-notes-row">
       <button class="btn-ghost" id="qr-notes-btn" style="width:100%;text-align:left;font-size:14px">📝 Notes</button>
@@ -815,7 +815,7 @@ const TAG_OPTIONS = [
   { value:'listened',  label:'✓ Listened' },
   { value:'unmatched', label:'⚠ Missing info' },
   { value:'inPlex',    label:'📀 In Plex' },
-  { value:'inBookmark',label:'🔖 In a Bookmark List' },
+  { value:'inBookmark',label:'📑 In a Bookmark List' },
 ];
 const TYPE_OPTIONS = [
   { value:'album',      label:'Album' },
@@ -1208,7 +1208,7 @@ function updateFilterPills() {
     const bm = bookmarks.find(b => b.id === activeBookmarkId);
     const pill = document.createElement('span');
     pill.className = 'filter-pill';
-    pill.innerHTML = `<span>🔖 ${esc(bm ? bm.name : 'Bookmark')}</span><button title="Stop viewing bookmark">×</button>`;
+    pill.innerHTML = `<span>📑 ${esc(bm ? bm.name : 'Bookmark')}</span><button title="Stop viewing bookmark">×</button>`;
     pill.querySelector('button').addEventListener('click', () => {
       activeBookmarkId = null;
       updateFilterPills(); render();
@@ -1390,8 +1390,8 @@ function render() {
       a.wantToListen ? '<span class="badge badge-want">🎧</span>' : '',
       a.hardToFind   ? '<span class="badge badge-hard">🔎</span>' : '',
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
-      a.inPlexLibrary ? '<span class="badge badge-inplex" title="In your Plex library"><svg width="15" height="15" viewBox="0 0 100 100" style="vertical-align:-2px"><path d="M50 2 L96 50 L50 98 L50 60 L72 50 L50 40 Z" fill="currentColor"/></svg></span>' : '',
-      bookmarkedIds.has(a.id) ? '<span class="badge badge-bookmark" title="Saved in a bookmark list">🔖</span>' : '',
+      a.inPlexLibrary ? '<span class="badge badge-inplex" title="In your Plex library"><svg width="15" height="15" viewBox="0 0 100 100" style="vertical-align:-2px"><path d="M22 8 L88 50 L22 92 L40 92 L62 50 L40 8 Z" fill="currentColor"/></svg></span>' : '',
+      bookmarkedIds.has(a.id) ? '<span class="badge badge-bookmark" title="Saved in a bookmark list">📑</span>' : '',
       a.releaseType === 'compilation' ? '<span class="badge badge-comp">Comp</span>' : '',
       a.releaseType === 'live'        ? '<span class="badge badge-live">Live</span>' : '',
       a.releaseType === 'single_ep'   ? '<span class="badge badge-single">EP</span>' : '',
