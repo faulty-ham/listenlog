@@ -202,6 +202,7 @@ td{padding:7px 10px;vertical-align:middle}
 .src-mb:hover{background:rgba(122,153,201,.22);border-color:#7a99c9}
 .badge-unmatch{background:rgba(201,122,122,.12);color:var(--danger);border:1px solid rgba(201,122,122,.25)}
 .badge-inplex{background:rgba(229,160,13,.12);color:#e5a00d;border:1px solid rgba(229,160,13,.3)}
+.badge-bookmark{background:rgba(0,192,48,.12);color:var(--accent);border:1px solid rgba(0,192,48,.3)}
 .badge-comp{background:rgba(153,122,201,.12);color:#9a7ec9;border:1px solid rgba(153,122,201,.25)}
 .badge-live{background:rgba(201,122,153,.12);color:#c97ea3;border:1px solid rgba(201,122,153,.25)}
 .badge-single{background:rgba(122,153,201,.12);color:#7e9ac9;border:1px solid rgba(122,153,201,.25)}
@@ -814,6 +815,7 @@ const TAG_OPTIONS = [
   { value:'listened',  label:'✓ Listened' },
   { value:'unmatched', label:'⚠ Missing info' },
   { value:'inPlex',    label:'📀 In Plex' },
+  { value:'inBookmark',label:'🔖 In a Bookmark List' },
 ];
 const TYPE_OPTIONS = [
   { value:'album',      label:'Album' },
@@ -857,6 +859,7 @@ function getFiltered() {
   const ratingF = splitFilter(activeFilters.rating);
   const tagsF   = splitFilter(activeFilters.tags);
   const typeF   = splitFilter(activeFilters.type);
+  const bookmarkedIds = tagsF ? bookmarkedAlbumIdSet() : null;
 
   // Test a precomputed {includes,excludes} split against an album via testFn
   function passes(split, testFn) {
@@ -902,6 +905,7 @@ function getFiltered() {
       if (val === 'listened')  return !a.wantToListen && !a.unmatched;
       if (val === 'unmatched') return !!a.unmatched;
       if (val === 'inPlex')    return !!a.inPlexLibrary;
+      if (val === 'inBookmark') return bookmarkedIds.has(a.id);
       return false;
     })) return false;
 
@@ -1327,6 +1331,7 @@ function render() {
   const tbody = document.getElementById('album-tbody');
   if (!tbody) return; // DOM not ready yet
   const list = getSorted(getFiltered());
+  const bookmarkedIds = bookmarkedAlbumIdSet();
   // Snapshot already-loaded artwork so we can reuse src after re-render
   const loadedArt = {};
   tbody.querySelectorAll('tr[data-id]').forEach(row => {
@@ -1385,7 +1390,8 @@ function render() {
       a.wantToListen ? '<span class="badge badge-want">🎧</span>' : '',
       a.hardToFind   ? '<span class="badge badge-hard">🔎</span>' : '',
       a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
-      a.inPlexLibrary ? '<span class="badge badge-inplex" title="In your Plex library"><svg width="11" height="11" viewBox="0 0 100 100" style="vertical-align:-1px"><path d="M50 8 L88 50 L50 92 L50 64 L64 50 L50 36 Z" fill="currentColor"/></svg></span>' : '',
+      a.inPlexLibrary ? '<span class="badge badge-inplex" title="In your Plex library"><svg width="15" height="15" viewBox="0 0 100 100" style="vertical-align:-2px"><path d="M50 2 L96 50 L50 98 L50 60 L72 50 L50 40 Z" fill="currentColor"/></svg></span>' : '',
+      bookmarkedIds.has(a.id) ? '<span class="badge badge-bookmark" title="Saved in a bookmark list">🔖</span>' : '',
       a.releaseType === 'compilation' ? '<span class="badge badge-comp">Comp</span>' : '',
       a.releaseType === 'live'        ? '<span class="badge badge-live">Live</span>' : '',
       a.releaseType === 'single_ep'   ? '<span class="badge badge-single">EP</span>' : '',
@@ -1847,6 +1853,13 @@ function removeAlbumFromBookmark(bookmarkId, albumId) {
 }
 function getBookmarksContaining(albumId) {
   return bookmarks.filter(b => b.albumIds.includes(albumId));
+}
+// Every album id saved in any bookmark, for the "In a Bookmark List" tag —
+// computed once per call site rather than re-scanning bookmarks per album.
+function bookmarkedAlbumIdSet() {
+  const set = new Set();
+  bookmarks.forEach(b => b.albumIds.forEach(id => set.add(id)));
+  return set;
 }
 
 // The same modal doubles as a plain "Bookmarks" list (mode=null) and as an
