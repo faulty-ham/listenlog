@@ -129,6 +129,9 @@ button{font-family:'Inter',sans-serif;font-size:14px;border:none;cursor:pointer;
 .tag-toggle.unmatch.on{background:var(--danger);color:#fff;border-color:var(--danger)}
 .tag-toggle.inplex.on{background:#e5a00d;color:#0d1117;border-color:#e5a00d}
 
+/* ── BOOKMARKS ── */
+.bookmark-row:hover{border-color:var(--accent)}
+
 /* ── IMPORT PANEL ── */
 #import-status.ok{color:var(--good)}
 /* ── PROGRESS BAR ── */
@@ -471,7 +474,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
 <div class="sticky-controls">
 <div class="toolbar">
   <div class="toolbar-top-row">
-    <button class="btn-primary" id="btn-toggle-add">+ Add Album</button><div class="search-wrap">
+    <button class="btn-primary" id="btn-toggle-add">+ Add Album</button><button class="btn-ghost btn-sm" id="btn-open-bookmarks" title="View your bookmarked lists" style="white-space:nowrap">🔖</button><div class="search-wrap">
       <span class="search-icon">⌕</span>
       <input type="text" id="filter-search" placeholder="Search artist or album" aria-label="Search albums">
       <button id="search-clear" title="Clear search" style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1">✕</button>
@@ -618,6 +621,19 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   </div>
 </div>
 
+<!-- BOOKMARKS MODAL — also reused as an "add to" / "remove from" picker,
+     opened on top of Quick Rate (z-index above it, same as Notes). -->
+<div class="modal-overlay" id="bookmarks-modal" style="z-index:150">
+  <div class="modal" style="width:400px">
+    <h3 id="bookmarks-modal-title" style="margin-bottom:14px">Bookmarks</h3>
+    <button class="btn-primary" id="btn-add-bookmark" style="width:100%;margin-bottom:14px">+ Add Bookmark</button>
+    <div id="bookmarks-list" style="display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow-y:auto"></div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-ghost" id="bookmarks-close" style="margin-left:auto">Close</button>
+    </div>
+  </div>
+</div>
+
   </div>
 </div>
 
@@ -655,6 +671,10 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
       <button class="tag-toggle hard hidden" id="qr-hard-toggle">🔎 Hard to find</button>
       <button class="tag-toggle unmatch" id="qr-unmatched-toggle" style="font-size:13px">⚠ Missing info</button>
       <button class="tag-toggle inplex" id="qr-inplex-toggle" style="font-size:13px">📀 In Plex</button>
+    </div>
+    <div class="qr-bookmark-row" style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="btn-ghost" id="qr-add-bookmark" style="flex:1;font-size:13px">🔖 Add to Bookmark</button>
+      <button class="btn-ghost hidden" id="qr-remove-bookmark" style="flex:1;font-size:13px;color:var(--danger)">🔖 Remove from Bookmark</button>
     </div>
     <div class="qr-notes-row">
       <button class="btn-ghost" id="qr-notes-btn" style="width:100%;text-align:left;font-size:14px">📝 Notes</button>
@@ -705,6 +725,10 @@ let editingId = null, pendingDeleteId = null;
 let openDropdown = null;
 let pendingArtUrl = '', pendingArtFallback = '', pendingMbid = '';
 let sortKey = 'date', sortDir = -1;
+let bookmarks = [];             // [{id, name, albumIds:[...], createdAt}, ...]
+let activeBookmarkId = null;    // set while viewing a bookmarked list
+let _bmPickerMode = null;       // null | 'add' | 'remove' — bookmarks-modal reused as a picker
+let _bmPickerAlbumId = null;
 let _mbLookupInProgress = false; // block Enter-to-save while MB lookup is running
 let _storageWarned = false;
 
@@ -798,6 +822,12 @@ function isFutureDate(d) {
 function getFiltered() {
   const q = document.getElementById('filter-search')?.value.trim().toLowerCase() || '';
 
+  // Viewing a bookmark restricts the pool to just its saved album ids, before
+  // any of the normal search/filter controls are applied on top of it.
+  const bookmarkSet = activeBookmarkId
+    ? new Set((bookmarks.find(b => b.id === activeBookmarkId) || {}).albumIds || [])
+    : null;
+
   // Pre-split each filter Map into includes/excludes ONCE, before the per-album loop —
   // these only depend on activeFilters, not on the album being tested.
   function splitFilter(map) {
@@ -832,6 +862,8 @@ function getFiltered() {
   }
 
   return albums.filter(a => {
+    if (bookmarkSet && !bookmarkSet.has(a.id)) return false;
+
     if (q && !(a.artist.toLowerCase().includes(q) || a.album.toLowerCase().includes(q))) return false;
 
     if (!passes(artistF, val => a.artist === val)) return false;
@@ -1150,6 +1182,20 @@ function updateFilterPills() {
   const container = document.getElementById('filter-pills');
   container.innerHTML = '';
   let any = false;
+
+  if (activeBookmarkId) {
+    any = true;
+    const bm = bookmarks.find(b => b.id === activeBookmarkId);
+    const pill = document.createElement('span');
+    pill.className = 'filter-pill';
+    pill.innerHTML = `<span>🔖 ${esc(bm ? bm.name : 'Bookmark')}</span><button title="Stop viewing bookmark">×</button>`;
+    pill.querySelector('button').addEventListener('click', () => {
+      activeBookmarkId = null;
+      updateFilterPills(); render();
+    });
+    container.appendChild(pill);
+  }
+
   Object.entries(activeFilters).forEach(([field, map]) => {
     map.forEach((state, val) => {
       any = true;
@@ -1181,6 +1227,7 @@ function clearFilters() {
   document.getElementById('filter-search').value = '';
   Object.values(activeFilters).forEach(s => s.clear());
   tagsMatchMode = 'or';
+  activeBookmarkId = null;
   document.querySelectorAll('.ms-wrap').forEach(wrap => {
     const btn = wrap.querySelector('.ms-btn');
     const field = btn.dataset.field;
@@ -1195,11 +1242,29 @@ function applyStatFilter(setup) {
   document.getElementById('filter-search').value = '';
   Object.values(activeFilters).forEach(s => s.clear());
   tagsMatchMode = 'or';
+  activeBookmarkId = null;
   setup();
   document.querySelectorAll('.ms-wrap').forEach(wrap => {
     updateFilterButton(wrap.querySelector('.ms-btn').dataset.field, wrap);
   });
   updateFilterPills(); render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Clicking a bookmark in the Bookmarks modal jumps straight to its saved
+// list, same as a header stat — clears whatever else was filtered/searched
+// so the bookmarked list is shown on its own rather than intersected with it.
+function viewBookmark(id) {
+  document.getElementById('filter-search').value = '';
+  Object.values(activeFilters).forEach(s => s.clear());
+  tagsMatchMode = 'or';
+  activeBookmarkId = id;
+  document.querySelectorAll('.ms-wrap').forEach(wrap => {
+    updateFilterButton(wrap.querySelector('.ms-btn').dataset.field, wrap);
+  });
+  updateFilterPills();
+  closeBookmarksModal();
+  render();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1673,6 +1738,183 @@ async function confirmPlexSuggestion(key, rating) {
   status.style.color = 'var(--danger)';
 }
 
+// ════════════════════════════════════════════════════════════
+// BOOKMARKS — named, saved snapshots of an album-id list. Synced to
+// Supabase like everything else, but written directly (no offline write
+// queue) since bookmarks change far less often than album edits do.
+// ════════════════════════════════════════════════════════════
+function bookmarkToRow(b) {
+  return {
+    id:         b.id,
+    user_id:    _userId,
+    name:       b.name || '',
+    album_ids:  b.albumIds || [],
+    updated_at: new Date().toISOString(),
+  };
+}
+function rowToBookmark(r) {
+  return {
+    id:        r.id,
+    name:      r.name || '',
+    albumIds:  r.album_ids || [],
+    createdAt: r.created_at ? Date.parse(r.created_at) : Date.now(),
+  };
+}
+
+async function loadBookmarks() {
+  if (!_userId) return;
+  try {
+    const { data, error } = await _sb.from('bookmarks')
+      .select('*').eq('user_id', _userId).order('created_at', { ascending: true });
+    if (error) throw error;
+    bookmarks = (data || []).map(rowToBookmark);
+    safeSetItem('listenLogBookmarks', JSON.stringify(bookmarks));
+  } catch(e) {
+    console.error('Failed to load bookmarks from cloud, using local cache:', e);
+    try { bookmarks = JSON.parse(localStorage.getItem('listenLogBookmarks') || '[]'); }
+    catch(e2) { bookmarks = []; }
+  }
+  if (document.getElementById('bookmarks-modal')?.classList.contains('open')) renderBookmarksList();
+}
+
+async function createBookmark(name, albumIds) {
+  const bm = { id: uid(), name, albumIds: albumIds.slice(), createdAt: Date.now() };
+  bookmarks.push(bm);
+  safeSetItem('listenLogBookmarks', JSON.stringify(bookmarks));
+  try {
+    const { error } = await _sb.from('bookmarks').insert(bookmarkToRow(bm));
+    if (error) throw error;
+  } catch(e) {
+    console.error('Failed to save bookmark to cloud:', e);
+  }
+  return bm;
+}
+
+async function deleteBookmark(id) {
+  bookmarks = bookmarks.filter(b => b.id !== id);
+  safeSetItem('listenLogBookmarks', JSON.stringify(bookmarks));
+  if (activeBookmarkId === id) { activeBookmarkId = null; updateFilterPills(); render(); }
+  try {
+    const { error } = await _sb.from('bookmarks').delete().eq('id', id).eq('user_id', _userId);
+    if (error) throw error;
+  } catch(e) {
+    console.error('Failed to delete bookmark from cloud:', e);
+  }
+}
+
+async function saveBookmarkAlbumIds(bookmarkId) {
+  const bm = bookmarks.find(b => b.id === bookmarkId);
+  if (!bm) return;
+  safeSetItem('listenLogBookmarks', JSON.stringify(bookmarks));
+  try {
+    const { error } = await _sb.from('bookmarks')
+      .update({ album_ids: bm.albumIds, updated_at: new Date().toISOString() })
+      .eq('id', bookmarkId).eq('user_id', _userId);
+    if (error) throw error;
+  } catch(e) {
+    console.error('Failed to update bookmark in cloud:', e);
+  }
+  if (activeBookmarkId === bookmarkId) render();
+}
+
+function addAlbumToBookmark(bookmarkId, albumId) {
+  const bm = bookmarks.find(b => b.id === bookmarkId);
+  if (!bm || bm.albumIds.includes(albumId)) return;
+  bm.albumIds.push(albumId);
+  return saveBookmarkAlbumIds(bookmarkId);
+}
+function removeAlbumFromBookmark(bookmarkId, albumId) {
+  const bm = bookmarks.find(b => b.id === bookmarkId);
+  if (!bm) return;
+  bm.albumIds = bm.albumIds.filter(id => id !== albumId);
+  return saveBookmarkAlbumIds(bookmarkId);
+}
+function getBookmarksContaining(albumId) {
+  return bookmarks.filter(b => b.albumIds.includes(albumId));
+}
+
+// The same modal doubles as a plain "Bookmarks" list (mode=null) and as an
+// "add to" / "remove from" picker launched from Quick Rate (mode='add'|'remove').
+function openBookmarksModal(mode = null, albumId = null) {
+  _bmPickerMode = mode;
+  _bmPickerAlbumId = albumId;
+  document.getElementById('bookmarks-modal-title').textContent =
+    mode === 'add'    ? 'Add to Bookmark' :
+    mode === 'remove' ? 'Remove from Bookmark' :
+    'Bookmarks';
+  document.getElementById('btn-add-bookmark').style.display = mode ? 'none' : 'block';
+  renderBookmarksList();
+  document.getElementById('bookmarks-modal').classList.add('open');
+}
+function closeBookmarksModal() {
+  document.getElementById('bookmarks-modal').classList.remove('open');
+  _bmPickerMode = null;
+  _bmPickerAlbumId = null;
+}
+
+function renderBookmarksList() {
+  const box = document.getElementById('bookmarks-list');
+  const mode = _bmPickerMode;
+  let list = bookmarks;
+  if (mode === 'add')    list = bookmarks.filter(b => !b.albumIds.includes(_bmPickerAlbumId));
+  if (mode === 'remove') list = bookmarks.filter(b =>  b.albumIds.includes(_bmPickerAlbumId));
+
+  box.innerHTML = '';
+  if (!list.length) {
+    const msg = document.createElement('p');
+    msg.style.cssText = 'color:var(--muted);font-size:13px;text-align:center;padding:12px 0';
+    msg.textContent =
+      mode === 'add'    ? (bookmarks.length ? 'Already in every bookmark.' : 'You don\'t have any bookmarks yet — close this and use "+ Add Bookmark" to create one.') :
+      mode === 'remove' ? 'Not saved in any bookmark.' :
+      'No bookmarks yet — tap "+ Add Bookmark" to save your current list.';
+    box.appendChild(msg);
+    return;
+  }
+
+  list.forEach(b => {
+    const row = document.createElement('div');
+    row.className = 'bookmark-row';
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer';
+
+    const info = document.createElement('div');
+    info.innerHTML = `<div style="font-weight:500">${esc(b.name)}</div>` +
+      `<div style="font-size:12px;color:var(--muted)">${b.albumIds.length} album${b.albumIds.length===1?'':'s'}</div>`;
+    row.appendChild(info);
+
+    if (mode) {
+      row.addEventListener('click', async () => {
+        if (mode === 'add')    await addAlbumToBookmark(b.id, _bmPickerAlbumId);
+        if (mode === 'remove') await removeAlbumFromBookmark(b.id, _bmPickerAlbumId);
+        closeBookmarksModal();
+        syncQrBookmarkButtons();
+      });
+    } else {
+      row.addEventListener('click', () => viewBookmark(b.id));
+      const del = document.createElement('button');
+      del.className = 'btn-ghost btn-sm';
+      del.title = 'Delete bookmark';
+      del.style.color = 'var(--danger)';
+      del.textContent = '✕';
+      del.addEventListener('click', async e => {
+        e.stopPropagation();
+        if (!confirm(`Delete bookmark "${b.name}"? This only removes the bookmark, not the albums in it.`)) return;
+        await deleteBookmark(b.id);
+        renderBookmarksList();
+      });
+      row.appendChild(del);
+    }
+    box.appendChild(row);
+  });
+}
+
+// Keeps Quick Rate's bookmark buttons in sync with whatever bookmarks the
+// current entry belongs to — called on open and after any add/remove.
+function syncQrBookmarkButtons() {
+  if (!qrId) return;
+  const containing = getBookmarksContaining(qrId);
+  document.getElementById('qr-remove-bookmark').classList.toggle('hidden', containing.length === 0);
+}
+
 function openQuickRate(id) {
   const a=albums.find(x=>x.id===id); if(!a) return;
   qrId=id; qrRating=a.rating||0; qrWant=!!a.wantToListen; qrHard=!!a.hardToFind; qrUnmatched=!!a.unmatched; qrInPlex=!!a.inPlexLibrary;
@@ -1683,6 +1925,7 @@ function openQuickRate(id) {
   if(a.artUrl){artEl.src=a.artUrl;artEl.style.display='block';}else artEl.style.display='none';
   setQrRating(qrRating);
   syncQrToggles();
+  syncQrBookmarkButtons();
   document.getElementById('qr-plex-status').textContent='';
   hidePlexConfirm();
   hidePlexSuggestions();
@@ -1925,6 +2168,38 @@ on('qr-plex-confirm-no','click', () => {
 on('qr-unmatched-toggle','click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
 on('qr-inplex-toggle','click',()=>{qrInPlex=!qrInPlex;syncQrToggles();});
 
+on('qr-add-bookmark','click',()=>{
+  if(!qrId) return;
+  openBookmarksModal('add', qrId);
+});
+on('qr-remove-bookmark','click', async ()=>{
+  if(!qrId) return;
+  const containing = getBookmarksContaining(qrId);
+  if (!containing.length) return;
+  if (containing.length === 1) {
+    // Only one list to remove from — no need to make the user pick.
+    await removeAlbumFromBookmark(containing[0].id, qrId);
+    syncQrBookmarkButtons();
+  } else {
+    openBookmarksModal('remove', qrId);
+  }
+});
+
+on('btn-open-bookmarks','click',()=>openBookmarksModal());
+on('btn-add-bookmark','click', async ()=>{
+  const name = (prompt('Name this bookmark:')||'').trim();
+  if (!name) return;
+  const list = getSorted(getFiltered());
+  await createBookmark(name, list.map(a=>a.id));
+  renderBookmarksList();
+});
+on('bookmarks-close','click', closeBookmarksModal);
+let _bmMousedownOnOverlay = false;
+on('bookmarks-modal','mousedown',e=>{_bmMousedownOnOverlay = e.target.id==='bookmarks-modal';});
+on('bookmarks-modal','click',e=>{
+  if(e.target.id==='bookmarks-modal' && _bmMousedownOnOverlay) closeBookmarksModal();
+});
+
 // Manual Plex sync — for cases like adding an album to Plex *after* it was
 // already rated in ListenLog, where nothing here actually "changed" so the
 // normal save-triggered sync never fires. With no rating entered, there's
@@ -2027,6 +2302,7 @@ on('qr-jump-artist','click',()=>{
   // Clear every existing filter, then include just this artist
   document.getElementById('filter-search').value = '';
   Object.values(activeFilters).forEach(m => m.clear());
+  activeBookmarkId = null;
   activeFilters.artist.set(a.artist, 'include');
   document.querySelectorAll('.ms-wrap').forEach(wrap => {
     updateFilterButton(wrap.querySelector('.ms-btn').dataset.field, wrap);
@@ -2264,6 +2540,8 @@ document.addEventListener('keydown', e => {
     if (lb && lb.style.display !== 'none') { lb.style.display='none'; document.getElementById('art-lightbox-img').src=''; return; }
     const nm = document.getElementById('notes-modal');
     if (nm && nm.classList.contains('open')) { closeNotesModal(); return; }
+    const bm = document.getElementById('bookmarks-modal');
+    if (bm && bm.classList.contains('open')) { closeBookmarksModal(); return; }
     const am = document.getElementById('add-modal');
     if (am && am.classList.contains('open')) {
       if (_mbLookupInProgress) return; // don't close mid-lookup
@@ -3079,6 +3357,7 @@ function showApp(user) {
   } else {
     pullFromCloud();
   }
+  loadBookmarks();
 }
 function showAuth() {
   _userId = null;
