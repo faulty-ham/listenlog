@@ -1860,14 +1860,32 @@ function renderBookmarksList() {
   if (mode === 'remove') list = bookmarks.filter(b =>  b.albumIds.includes(_bmPickerAlbumId));
 
   box.innerHTML = '';
+
+  // In "add" mode, offer creating a brand-new bookmark right from the picker
+  // instead of forcing a detour through Close → "+ Add Bookmark".
+  if (mode === 'add') {
+    const newRow = document.createElement('div');
+    newRow.className = 'bookmark-row';
+    newRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);cursor:pointer;color:var(--accent);font-weight:500';
+    newRow.textContent = '+ New Bookmark';
+    newRow.addEventListener('click', async () => {
+      const name = (prompt('Name this bookmark:')||'').trim();
+      if (!name) return;
+      await createBookmark(name, [_bmPickerAlbumId]);
+      closeBookmarksModal();
+      syncQrBookmarkButtons();
+    });
+    box.appendChild(newRow);
+  }
+
   if (!list.length) {
     const msg = document.createElement('p');
     msg.style.cssText = 'color:var(--muted);font-size:13px;text-align:center;padding:12px 0';
     msg.textContent =
-      mode === 'add'    ? (bookmarks.length ? 'Already in every bookmark.' : 'You don\'t have any bookmarks yet — close this and use "+ Add Bookmark" to create one.') :
+      mode === 'add'    ? (bookmarks.length ? 'Already in every other bookmark.' : '') :
       mode === 'remove' ? 'Not saved in any bookmark.' :
       'No bookmarks yet — tap "+ Add Bookmark" to save your current list.';
-    box.appendChild(msg);
+    if (msg.textContent) box.appendChild(msg);
     return;
   }
 
