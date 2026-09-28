@@ -609,14 +609,30 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   </div>
 </div>
 
-<!-- DELETE MODAL -->
-<div class="modal-overlay" id="delete-modal">
+<!-- CONFIRM MODAL — generic, reused for every "are you sure?" prompt so they
+     all pop up centered like the rest of the app, instead of a native
+     confirm() (which browsers pin to the top of the page). z-index above
+     Notes/Bookmarks so it can interrupt either of those too. -->
+<div class="modal-overlay" id="delete-modal" style="z-index:200">
   <div class="modal">
-    <h3>Remove album?</h3>
+    <h3 id="delete-modal-title">Remove album?</h3>
     <p id="delete-desc"></p>
     <div class="modal-actions">
       <button class="btn-ghost" id="delete-cancel">Keep it</button>
       <button class="btn-primary" id="delete-confirm" style="background:var(--danger);color:#fff">Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROMPT MODAL — generic single-line text input (e.g. naming a bookmark),
+     replacing native prompt() for the same centering reason. -->
+<div class="modal-overlay" id="prompt-modal" style="z-index:200">
+  <div class="modal" style="width:360px">
+    <h3 id="prompt-modal-title">Name this</h3>
+    <input type="text" id="prompt-modal-input" style="width:100%;margin:14px 0" aria-label="Name">
+    <div class="modal-actions">
+      <button class="btn-ghost" id="prompt-cancel">Cancel</button>
+      <button class="btn-primary" id="prompt-save">Save</button>
     </div>
   </div>
 </div>
@@ -721,7 +737,7 @@ function migrateArtUrls(arr) {
   });
 }
 
-let editingId = null, pendingDeleteId = null;
+let editingId = null;
 let openDropdown = null;
 let pendingArtUrl = '', pendingArtFallback = '', pendingMbid = '';
 let sortKey = 'date', sortDir = -1;
@@ -1869,7 +1885,7 @@ function renderBookmarksList() {
     newRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);cursor:pointer;color:var(--accent);font-weight:500';
     newRow.textContent = '+ New Bookmark';
     newRow.addEventListener('click', async () => {
-      const name = (prompt('Name this bookmark:')||'').trim();
+      const name = await showPromptModal('Name this bookmark');
       if (!name) return;
       await createBookmark(name, [_bmPickerAlbumId]);
       closeBookmarksModal();
@@ -1915,7 +1931,8 @@ function renderBookmarksList() {
       del.textContent = '✕';
       del.addEventListener('click', async e => {
         e.stopPropagation();
-        if (!confirm(`Delete bookmark "${b.name}"? This only removes the bookmark, not the albums in it.`)) return;
+        const ok = await showConfirmModal('Delete bookmark?', `Delete bookmark "${b.name}"? This only removes the bookmark, not the albums in it.`);
+        if (!ok) return;
         await deleteBookmark(b.id);
         renderBookmarksList();
       });
@@ -2085,15 +2102,39 @@ function syncQrToggles() {
   u.classList.toggle('on', qrUnmatched);
   p.classList.toggle('on', qrInPlex);
 }
-function doDelete() {
-  if(pendingDeleteId){
-    const id = pendingDeleteId;
-    albums = albums.filter(a => a.id !== id);
-    safeSetItem('listenLog', JSON.stringify(albums));
-    queueDelete(id);
-    render();
-  }
-  document.getElementById('delete-modal').classList.remove('open'); pendingDeleteId=null;
+// ── Generic centered dialogs ────────────────────────────────────
+// Replace native confirm()/prompt() (which browsers pin to the top of the
+// page, not centered like the rest of the app's modals) with Promise-based
+// equivalents built from the same modal-overlay system.
+let _confirmResolve = null;
+function showConfirmModal(title, desc, { confirmLabel = 'Remove', danger = true } = {}) {
+  document.getElementById('delete-modal-title').textContent = title;
+  document.getElementById('delete-desc').textContent = desc;
+  const btn = document.getElementById('delete-confirm');
+  btn.textContent = confirmLabel;
+  btn.style.background = danger ? 'var(--danger)' : 'var(--accent)';
+  btn.style.color = danger ? '#fff' : '#0d1117';
+  document.getElementById('delete-modal').classList.add('open');
+  return new Promise(resolve => { _confirmResolve = resolve; });
+}
+function closeConfirmModal(result) {
+  document.getElementById('delete-modal').classList.remove('open');
+  if (_confirmResolve) { const r = _confirmResolve; _confirmResolve = null; r(result); }
+}
+
+let _promptResolve = null;
+function showPromptModal(title, { placeholder = '', defaultValue = '' } = {}) {
+  document.getElementById('prompt-modal-title').textContent = title;
+  const input = document.getElementById('prompt-modal-input');
+  input.value = defaultValue;
+  input.placeholder = placeholder;
+  document.getElementById('prompt-modal').classList.add('open');
+  setTimeout(() => input.focus(), 30);
+  return new Promise(resolve => { _promptResolve = resolve; });
+}
+function closePromptModal(result) {
+  document.getElementById('prompt-modal').classList.remove('open');
+  if (_promptResolve) { const r = _promptResolve; _promptResolve = null; r(result); }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -2205,7 +2246,7 @@ on('qr-remove-bookmark','click', async ()=>{
 
 on('btn-open-bookmarks','click',()=>openBookmarksModal());
 on('btn-add-bookmark','click', async ()=>{
-  const name = (prompt('Name this bookmark:')||'').trim();
+  const name = await showPromptModal('Name this bookmark');
   if (!name) return;
   const list = getSorted(getFiltered());
   await createBookmark(name, list.map(a=>a.id));
@@ -2383,10 +2424,11 @@ on('btn-toggle-add','click',()=>{editingId=null;resetForm();openPanel('add');});
 
 on('btn-cancel','click',closePanel);
 on('btn-save','click',addOrUpdateAlbum);
-on('btn-delete-entry','click',()=>{
+on('btn-delete-entry','click', async ()=>{
   if(!editingId)return;
   const a=albums.find(x=>x.id===editingId);if(!a)return;
-  if(confirm(`Delete "${a.artist} – ${a.album}"?`)){
+  const ok = await showConfirmModal('Remove album?', `Delete "${a.artist} – ${a.album}"?`);
+  if(ok){
     const id=editingId;
     albums=albums.filter(x=>x.id!==id);
     safeSetItem('listenLog', JSON.stringify(albums));
@@ -2567,8 +2609,10 @@ document.addEventListener('keydown', e => {
     }
     const qm = document.getElementById('quick-rate-modal');
     if (qm && qm.classList.contains('open')) { qm.classList.remove('open'); qrId = null; return; }
+    const pm = document.getElementById('prompt-modal');
+    if (pm && pm.classList.contains('open')) { closePromptModal(null); return; }
     const dm = document.getElementById('delete-modal');
-    if (dm && dm.classList.contains('open')) { dm.classList.remove('open'); pendingDeleteId = null; return; }
+    if (dm && dm.classList.contains('open')) { closeConfirmModal(false); return; }
   }
   if (e.key !== 'Enter') return;
   if (e.target.tagName === 'TEXTAREA') return;
@@ -2585,6 +2629,9 @@ document.addEventListener('keydown', e => {
   if (document.getElementById('quick-rate-modal').classList.contains('open')) {
     e.preventDefault(); document.getElementById('qr-save').click(); return;
   }
+  if (document.getElementById('prompt-modal').classList.contains('open')) {
+    e.preventDefault(); document.getElementById('prompt-save').click(); return;
+  }
   if (document.getElementById('delete-modal').classList.contains('open')) {
     e.preventDefault(); document.getElementById('delete-confirm').click(); return;
   }
@@ -2593,12 +2640,27 @@ on('add-modal','click',e=>{
   if(e.target.id==='add-modal' && _modalMousedownOnOverlay) closePanel();
   else e.stopPropagation();
 });
-on('delete-confirm','click',doDelete);
-on('delete-cancel','click',()=>{document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;});
+on('delete-confirm','click',()=>closeConfirmModal(true));
+on('delete-cancel','click',()=>closeConfirmModal(false));
 let _delMousedownOnOverlay = false;
 on('delete-modal','mousedown',e=>{_delMousedownOnOverlay = e.target.id==='delete-modal';});
 on('delete-modal','click',e=>{
-  if(e.target.id==='delete-modal' && _delMousedownOnOverlay){document.getElementById('delete-modal').classList.remove('open');pendingDeleteId=null;}
+  if(e.target.id==='delete-modal' && _delMousedownOnOverlay){closeConfirmModal(false);}
+  else e.stopPropagation();
+});
+
+on('prompt-save','click',()=>{
+  const v = document.getElementById('prompt-modal-input').value.trim();
+  closePromptModal(v || null);
+});
+on('prompt-cancel','click',()=>closePromptModal(null));
+on('prompt-modal-input','keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); document.getElementById('prompt-save').click(); }
+});
+let _promptMousedownOnOverlay = false;
+on('prompt-modal','mousedown',e=>{_promptMousedownOnOverlay = e.target.id==='prompt-modal';});
+on('prompt-modal','click',e=>{
+  if(e.target.id==='prompt-modal' && _promptMousedownOnOverlay){closePromptModal(null);}
   else e.stopPropagation();
 });
 
