@@ -1666,10 +1666,11 @@ async function syncRatingToPlex(a, { writeRating = true } = {}) {
   hidePlexSuggestions();
   try {
     // writeRating=false is the "just find/confirm the match" mode (e.g. the
-    // manual Sync button when nothing has been rated yet) — omitting the
-    // rating param entirely so there's nothing to push, as opposed to a
-    // literal rating=0 which tells Plex to *clear* an existing rating.
-    const ratingParam = writeRating ? `&rating=${a.rating || 0}` : '';
+    // manual Sync button when nothing has been rated yet) — the Worker
+    // requires either a rating or checkOnly=1 on every request, so this
+    // sends checkOnly=1 instead of a rating, rather than a literal rating=0
+    // which would tell Plex to *clear* an existing rating.
+    const ratingParam = writeRating ? `&rating=${a.rating || 0}` : '&checkOnly=1';
     const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}${ratingParam}`;
     const res = await fetch(url);
     if (!res.ok) {
@@ -1678,7 +1679,7 @@ async function syncRatingToPlex(a, { writeRating = true } = {}) {
       throw new Error(`Worker HTTP ${res.status}`);
     }
     const result = await res.json();
-    if (result.matched) {
+    if (result.matched || result.inLibrary) {
       status.textContent = writeRating ? 'Plex rating updated' : 'Found in Plex library';
       status.style.color = 'var(--accent)';
       markInPlexLibrary(a.id);
