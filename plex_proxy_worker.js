@@ -95,16 +95,32 @@ function levenshtein(a, b) {
   return prev[n];
 }
 
-// Closest-title candidates when nothing matched at all — prefers the same
-// artist if that artist has any albums in Plex, otherwise searches the
-// whole library (helps when the artist credit itself is also off).
+// How close two strings are, as a fraction of their length rather than a
+// raw edit count — so a long correct title (a reissue's "...Outtakes and
+// Extras From the Illinois Album" subtitle, say) isn't crowded out by a
+// short, merely coincidentally-closer, unrelated title elsewhere in a
+// large library. Raw Levenshtein distance alone penalizes length
+// differences too heavily for that. A genuine prefix relationship (the
+// same thing isTitlePrefixOf checks for an exact-artist edition/reissue)
+// is treated as very close even though the lengths differ a lot.
+function closeness(a, b) {
+  const na = normalize(a), nb = normalize(b);
+  if (!na && !nb) return 0;
+  if (na === nb) return 0;
+  if (isTitlePrefixOf(na, nb) || isTitlePrefixOf(nb, na)) return 0.15;
+  return levenshtein(na, nb) / Math.max(na.length, nb.length, 1);
+}
+
+// Closest candidates when nothing matched at all — scored on title AND
+// artist together (title weighted higher) rather than restricting to a
+// same-artist pool first, so a candidate whose artist credit is ALSO off
+// (not just the title) can still surface instead of being hidden behind
+// an empty same-artist pool that silently falls back to ranking by title
+// alone across the whole library.
 function findClosestSuggestions(plexAlbums, artist, album, limit = 3) {
-  const normArtist = normalize(artist), normAlbum = normalize(album);
-  const sameArtist = plexAlbums.filter(p => normalize(p.artist) === normArtist);
-  const pool = sameArtist.length ? sameArtist : plexAlbums;
-  return pool
-    .map(p => ({ p, dist: levenshtein(normAlbum, normalize(p.title)) }))
-    .sort((a, b) => a.dist - b.dist)
+  return plexAlbums
+    .map(p => ({ p, score: closeness(album, p.title) * 2 + closeness(artist, p.artist) }))
+    .sort((a, b) => a.score - b.score)
     .slice(0, limit)
     .map(x => x.p);
 }
