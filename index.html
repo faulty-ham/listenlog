@@ -1657,7 +1657,7 @@ async function markInPlexLibrary(albumId) {
   }
 }
 
-async function syncRatingToPlex(a) {
+async function syncRatingToPlex(a, { writeRating = true } = {}) {
   const status = document.getElementById('qr-plex-status');
   if (!status) return false;
   status.textContent = '⟳ Syncing to Plex…';
@@ -1665,7 +1665,12 @@ async function syncRatingToPlex(a) {
   hidePlexConfirm();
   hidePlexSuggestions();
   try {
-    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}&rating=${a.rating}`;
+    // writeRating=false is the "just find/confirm the match" mode (e.g. the
+    // manual Sync button when nothing has been rated yet) — omitting the
+    // rating param entirely so there's nothing to push, as opposed to a
+    // literal rating=0 which tells Plex to *clear* an existing rating.
+    const ratingParam = writeRating ? `&rating=${a.rating || 0}` : '';
+    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}${ratingParam}`;
     const res = await fetch(url);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
@@ -1674,7 +1679,7 @@ async function syncRatingToPlex(a) {
     }
     const result = await res.json();
     if (result.matched) {
-      status.textContent = 'Plex rating updated';
+      status.textContent = writeRating ? 'Plex rating updated' : 'Found in Plex library';
       status.style.color = 'var(--accent)';
       markInPlexLibrary(a.id);
       return true;
@@ -1683,12 +1688,12 @@ async function syncRatingToPlex(a) {
       // Album title matched but the artist credit didn't (e.g. "Rufus" vs
       // "Rufus feat. Chaka Khan") — don't guess, let the person confirm.
       status.textContent = '';
-      showPlexConfirm(result.partial, a.rating);
+      showPlexConfirm(result.partial, writeRating ? (a.rating || 0) : null);
       return false;
     }
     if (result.suggestions && result.suggestions.length) {
       status.textContent = '';
-      showPlexSuggestions(result.suggestions, a.rating);
+      showPlexSuggestions(result.suggestions, writeRating ? (a.rating || 0) : null);
       return false;
     }
     // Worker responded but couldn't match or reach Plex — it may have put a
@@ -1711,7 +1716,11 @@ function showPlexConfirm(partial, rating) {
   text.textContent = `Found "${partial.artist} — ${partial.album}" in Plex — is this the right album?`;
   box.classList.remove('hidden');
   box.dataset.key = partial.key;
-  box.dataset.rating = rating;
+  // null/undefined means "just confirm the match, don't push a rating" —
+  // dataset values are always strings, so track that with presence/absence
+  // of the attribute rather than risk stringifying null/undefined.
+  if (rating === null || rating === undefined) delete box.dataset.rating;
+  else box.dataset.rating = String(rating);
 }
 function hidePlexConfirm() {
   const box = document.getElementById('qr-plex-confirm');
@@ -1744,12 +1753,14 @@ async function confirmPlexSuggestion(key, rating) {
   const status = document.getElementById('qr-plex-status');
   status.textContent = '⟳ Syncing to Plex…';
   status.style.color = 'var(--muted)';
+  const hasRating = rating !== null && rating !== undefined;
   try {
-    const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}&rating=${rating}`);
+    const ratingParam = hasRating ? `&rating=${rating}` : '';
+    const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}${ratingParam}`);
     if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
     const result = await res.json();
     if (result.matched) {
-      status.textContent = 'Plex rating updated';
+      status.textContent = hasRating ? 'Plex rating updated' : 'Found in Plex library';
       status.style.color = 'var(--accent)';
       if (qrId) {
         markInPlexLibrary(qrId);
@@ -2208,21 +2219,23 @@ on('qr-clear-rating','click',()=>{ setQrRating(0); });
 
 on('qr-plex-confirm-yes','click', async () => {
   const box = document.getElementById('qr-plex-confirm');
-  const key = box.dataset.key, rating = box.dataset.rating;
+  const key = box.dataset.key;
+  const hasRating = 'rating' in box.dataset;
   if (!key) return;
   const status = document.getElementById('qr-plex-status');
   hidePlexConfirm();
   status.textContent = '⟳ Syncing to Plex…';
   status.style.color = 'var(--muted)';
   try {
-    const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}&rating=${rating}`);
+    const ratingParam = hasRating ? `&rating=${box.dataset.rating}` : '';
+    const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}${ratingParam}`);
     if (!res.ok) {
       console.error(`Plex confirm: Worker returned HTTP ${res.status}`, await res.text().catch(()=>''));
       throw new Error(`Worker HTTP ${res.status}`);
     }
     const result = await res.json();
     if (result.matched) {
-      status.textContent = 'Plex rating updated';
+      status.textContent = hasRating ? 'Plex rating updated' : 'Found in Plex library';
       status.style.color = 'var(--accent)';
       markInPlexLibrary(qrId);
       qrInPlex = true;
@@ -2280,47 +2293,23 @@ on('bookmarks-modal','click',e=>{
 
 // Manual Plex sync — for cases like adding an album to Plex *after* it was
 // already rated in ListenLog, where nothing here actually "changed" so the
-// normal save-triggered sync never fires. With no rating entered, there's
-// nothing to push, so this instead just checks whether the album is in the
-// Plex library at all and flips the tag on if so — same year-aware logic
-// used for new entries.
+// normal save-triggered sync never fires. Always runs the same fuzzy
+// artist/album/year matching used when a rating is present (including the
+// partial-match confirm and suggestions fallback) — only whether a rating
+// gets pushed differs, so a match found with no rating entered gets exactly
+// the same "is this the right album?" treatment as one found with a rating.
 on('qr-plex-sync-btn','click', async ()=>{
   if (!qrId) return;
   const a = albums.find(x=>x.id===qrId);
   if (!a) return;
 
-  if (qrRating) {
-    const ok = await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, date: a.date, rating: qrRating });
-    if (ok) {
-      qrInPlex = true;
-      syncQrToggles();
-    }
-    return;
-  }
-
-  const status = document.getElementById('qr-plex-status');
-  status.textContent = '⟳ Checking Plex library…';
-  status.style.color = 'var(--muted)';
-  try {
-    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}&checkOnly=1`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
-    const result = await res.json();
-    if (result.error) throw new Error(result.error);
-    if (result.inLibrary) {
-      await markInPlexLibrary(a.id);
-      qrInPlex = true;
-      syncQrToggles();
-      status.textContent = 'Found in Plex library';
-      status.style.color = 'var(--accent)';
-    } else {
-      status.textContent = 'Not found in Plex library';
-      status.style.color = 'var(--danger)';
-    }
-  } catch(e) {
-    console.error('Plex library check failed:', e);
-    status.textContent = 'Check failed, try again';
-    status.style.color = 'var(--danger)';
+  const ok = await syncRatingToPlex(
+    { id: a.id, artist: a.artist, album: a.album, date: a.date, rating: qrRating || 0 },
+    { writeRating: !!qrRating }
+  );
+  if (ok) {
+    qrInPlex = true;
+    syncQrToggles();
   }
 });
 on('qr-save','click', async ()=>{
