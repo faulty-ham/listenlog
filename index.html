@@ -1552,17 +1552,7 @@ async function addOrUpdateAlbum() {
         const result = await res.json();
         if (result.error) { console.error('Plex library check reported an error:', result.error); return; }
         if (!result.inLibrary) return;
-
-        await _sb.from('albums')
-          .update({ in_plex_library: true, updated_at: new Date().toISOString() })
-          .eq('id', entry.id)
-          .eq('user_id', _userId);
-        const current = albums.find(a => a.id === entry.id);
-        if (current) {
-          current.inPlexLibrary = true;
-          safeSetItem('listenLog', JSON.stringify(albums));
-          render();
-        }
+        await markInPlexLibrary(entry.id); // also clears Hard to Find, same as every other path that tags In Plex
       } catch(e) {
         console.error('Plex library check failed:', e);
       }
@@ -1639,19 +1629,31 @@ const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
 // A successful Plex match (rating pushed, or confirmed via thumbs up) proves
 // the album is actually in the library — tag it. Only ever sets this to
 // true; it's never auto-cleared, same as Hard to Find — removing it is a
-// manual call for the person to make.
+// manual call for the person to make. Being confirmed in Plex also means
+// it's no longer "hard to find", so that tag gets cleared in the same move.
 async function markInPlexLibrary(albumId) {
   if (!albumId) return;
   const current = albums.find(x => x.id === albumId);
   if (!current || current.inPlexLibrary) return; // already tagged, nothing to do
+  const clearingHard = !!current.hardToFind;
   try {
+    const patch = { in_plex_library: true, updated_at: new Date().toISOString() };
+    if (clearingHard) patch.hard_to_find = false;
     await _sb.from('albums')
-      .update({ in_plex_library: true, updated_at: new Date().toISOString() })
+      .update(patch)
       .eq('id', albumId)
       .eq('user_id', _userId);
     current.inPlexLibrary = true;
+    if (clearingHard) current.hardToFind = false;
     safeSetItem('listenLog', JSON.stringify(albums));
     render();
+    // Keep the Quick Rate modal's own toggle state in sync if it's open
+    // for this same album — otherwise "In Plex" would show on but "Hard
+    // to Find" would still show on too, until the modal is reopened.
+    if (clearingHard && qrId === albumId && qrHard) {
+      qrHard = false;
+      syncQrToggles();
+    }
   } catch(e) {
     console.error('Failed to tag album as In Plex:', e);
   }
@@ -1766,6 +1768,7 @@ async function confirmPlexSuggestion(key, rating) {
       if (qrId) {
         markInPlexLibrary(qrId);
         qrInPlex = true;
+        qrHard = false;
         syncQrToggles();
       }
       return;
@@ -2240,6 +2243,7 @@ on('qr-plex-confirm-yes','click', async () => {
       status.style.color = 'var(--accent)';
       markInPlexLibrary(qrId);
       qrInPlex = true;
+      qrHard = false;
       syncQrToggles();
       return;
     }
@@ -2258,7 +2262,7 @@ on('qr-plex-confirm-no','click', () => {
 });
 
 on('qr-unmatched-toggle','click',()=>{qrUnmatched=!qrUnmatched;syncQrToggles();});
-on('qr-inplex-toggle','click',()=>{qrInPlex=!qrInPlex;syncQrToggles();});
+on('qr-inplex-toggle','click',()=>{qrInPlex=!qrInPlex;if(qrInPlex)qrHard=false;syncQrToggles();});
 
 on('qr-add-bookmark','click',()=>{
   if(!qrId) return;
@@ -2310,6 +2314,7 @@ on('qr-plex-sync-btn','click', async ()=>{
   );
   if (ok) {
     qrInPlex = true;
+    qrHard = false;
     syncQrToggles();
   }
 });
@@ -2318,6 +2323,7 @@ on('qr-save','click', async ()=>{
   const a=albums.find(x=>x.id===qrId); if(!a)return;
   const ratingChanged=qrRating!==(a.rating||0);
   if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
+  if(qrInPlex)qrHard=false; // in Plex means it's not hard to find anymore
   a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;a.inPlexLibrary=qrInPlex;
   save(a);render();
 
