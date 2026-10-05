@@ -22,8 +22,13 @@ jobs:
         run: |
           mkdir -p backups
 
-          python3 << 'PYEOF'
-          import json, datetime, urllib.request, os
+          # Transient network/API hiccups (not the "runner never started" kind
+          # of failure — a separate workflow handles that one) shouldn't fail
+          # the whole backup. Retry the export a few times before giving up.
+          attempt=1
+          max_attempts=3
+          until python3 << 'PYEOF'
+          import json, datetime, urllib.request, urllib.error, os, sys
 
           url     = os.environ['SUPABASE_URL']
           key     = os.environ['SUPABASE_SERVICE_KEY']
@@ -43,7 +48,7 @@ jobs:
                   f"{url}/rest/v1/albums?select=*&deleted_at=is.null&order=id.asc&limit={limit}{filter_part}",
                   headers=headers
               )
-              with urllib.request.urlopen(req) as r:
+              with urllib.request.urlopen(req, timeout=30) as r:
                   batch = json.loads(r.read())
               for row in batch:
                   seen[row['id']] = row
@@ -81,6 +86,15 @@ jobs:
               json.dump(out, f, indent=2)
           print(f"Backed up {len(albums)} albums (no duplicates)")
           PYEOF
+          do
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "Export failed after $max_attempts attempts, giving up."
+              exit 1
+            fi
+            echo "Export attempt $attempt failed, retrying in 15s…"
+            attempt=$((attempt + 1))
+            sleep 15
+          done
 
           DATE=$(date +%Y-%m-%d)
           cp backups/latest.json "backups/$DATE.json"
@@ -91,5 +105,20 @@ jobs:
           git config user.name  "GitHub Actions"
           git config user.email "actions@github.com"
           git add backups/
-          git diff --staged --quiet || git commit -m "Backup $(date +%Y-%m-%d)"
-          git push
+          git diff --staged --quiet && exit 0
+          git commit -m "Backup $(date +%Y-%m-%d)"
+
+          # Rare, but guard against a concurrent push (e.g. a manual re-run
+          # landing at the same time) rejecting this one.
+          attempt=1
+          max_attempts=3
+          until git push; do
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "Push failed after $max_attempts attempts, giving up."
+              exit 1
+            fi
+            echo "Push attempt $attempt failed, retrying in 10s…"
+            attempt=$((attempt + 1))
+            sleep 10
+            git pull --rebase
+          done
