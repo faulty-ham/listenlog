@@ -12,15 +12,14 @@ on:
     workflows: ["Daily Backup"]
     types: [completed]
 
-permissions:
-  actions: write
-
 jobs:
   retry:
     if: >
       github.event.workflow_run.conclusion == 'failure' &&
       github.event.workflow_run.run_attempt < 3
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
       - name: Wait before retrying
         run: sleep 60
@@ -31,3 +30,26 @@ jobs:
         run: |
           gh api -X POST \
             "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/rerun-failed-jobs"
+
+  # Retries are exhausted and it's still failing — this is the one case
+  # worth actually interrupting someone for, so open an issue (which emails
+  # the repo owner same as a failed-run notification would) instead of
+  # relying on GitHub's own per-attempt Actions emails, which fire on every
+  # transient attempt above even when the retry job then fixes it quietly.
+  alert:
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.run_attempt >= 3
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open an issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Daily Backup failed ${{ github.event.workflow_run.run_attempt }} times in a row" \
+            --label "ci-failure" \
+            --body "Daily Backup kept failing after automatic retries. Run: ${{ github.event.workflow_run.html_url }}"
