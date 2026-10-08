@@ -14,6 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="ListenLog">
 <meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#14181c">
 <title>ListenLog</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -420,6 +421,136 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
   header{padding:6px 12px}
   .header-title h1{font-size:22px}
 }
+
+/* ══ POLISH LAYER ═════════════════════════════════════════════
+   Design tokens + interaction details layered over the rules above.
+   Kept in one place so the visual system is easy to tune. */
+:root{
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:40px;
+  --fs-xs:12px; --fs-sm:14px; --fs-md:16px; --fs-lg:18px;
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --t-fast:.12s; --t-med:.18s; --t-slow:.28s;
+  --shadow-pop:0 8px 24px rgba(0,0,0,.5);
+  --focus-ring:0 0 0 2px var(--bg),0 0 0 4px var(--accent);
+  --warn:#d9a13b;
+}
+html{-webkit-text-size-adjust:100%}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+::selection{background:rgba(0,192,48,.3);color:var(--text-hi)}
+.stat-num,.filter-count,.ms-count,.pill,.td-date,.stars-display,#sync-indicator{font-variant-numeric:tabular-nums}
+.td-album,.modal h3{text-wrap:balance}
+
+/* Keyboard focus: visible for keyboard users only */
+:focus{outline:none}
+button:focus-visible,[tabindex]:focus-visible,summary:focus-visible,th[data-sort]:focus-visible,
+.ms-btn:focus-visible,.tag-toggle:focus-visible,.star-btn:focus-visible,select:focus-visible,
+input[type=checkbox]:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+input[type=text]:focus-visible,input:not([type]):focus-visible,textarea:focus-visible,.auth-input:focus-visible{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+tr.album-row:focus-visible{outline:none;background:var(--surface);box-shadow:inset 3px 0 0 var(--accent)}
+
+/* Press + hover feedback */
+button{transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast),transform var(--t-fast) var(--ease),opacity var(--t-fast),box-shadow var(--t-fast)}
+button:active:not(:disabled){transform:scale(.97)}
+.btn-primary:active{background:#00a828}
+.btn-ghost:active{background:var(--accent-dim)}
+.tag-toggle:hover{border-color:#4a515b;color:var(--text-hi)}
+.tag-toggle:active{transform:scale(.95)}
+.star-btn{transition:color var(--t-fast),transform var(--t-fast) var(--ease)}
+.star-btn:hover{transform:scale(1.12)}
+.star-btn:active{transform:scale(.94)}
+.stat{transition:background var(--t-med),transform var(--t-fast) var(--ease)}
+.stat:active{transform:scale(.97)}
+.stat-num{transition:color var(--t-med)}
+
+/* Rows: stronger title, quieter metadata, tidy hover */
+tr.album-row{transition:background var(--t-fast),box-shadow var(--t-fast)}
+tr.album-row:hover{background:var(--surface);box-shadow:inset 3px 0 0 var(--accent)}
+tr.album-row:active{background:var(--surface2)}
+.td-artist{letter-spacing:-.005em}
+.td-album{color:var(--text);line-height:1.25}
+.td-date{font-size:13px}
+.td-notes{opacity:.85}
+
+/* Album art: consistent radius, soft depth, fade-in on load, no layout shift */
+.art-thumb,.art-placeholder{border-radius:6px;flex-shrink:0;aspect-ratio:1/1}
+.art-thumb{background:var(--surface2);box-shadow:0 1px 3px rgba(0,0,0,.45),0 4px 10px rgba(0,0,0,.18);
+  transition:opacity var(--t-slow) var(--ease),transform var(--t-med) var(--ease),box-shadow var(--t-med)}
+.art-thumb.lazy:not(.in){opacity:0}
+tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.5),0 8px 18px rgba(0,0,0,.28)}
+.art-placeholder{background:linear-gradient(135deg,var(--surface2) 0%,var(--surface) 100%);border-color:var(--border)}
+.art-placeholder svg{opacity:.7}
+
+/* Badges: calmer, consistently aligned */
+.badge{font-size:11px;font-weight:500;line-height:1.5;display:inline-flex;align-items:center;gap:3px}
+.row-tags{align-items:center}
+.badge-inplex{padding:2px 6px}
+
+/* Modals: fade the backdrop, lift the card */
+.modal-overlay{opacity:0;pointer-events:none;display:flex;visibility:hidden;
+  transition:opacity var(--t-med) var(--ease),visibility 0s linear var(--t-med);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.modal-overlay.open{opacity:1;pointer-events:auto;visibility:visible;transition:opacity var(--t-med) var(--ease),visibility 0s}
+.modal{animation:none;transform:translateY(8px) scale(.985);opacity:0;
+  transition:transform var(--t-slow) var(--ease),opacity var(--t-med) var(--ease);box-shadow:0 20px 50px rgba(0,0,0,.55)}
+.modal-overlay.open .modal{transform:none;opacity:1}
+
+/* Dropdowns: animate in */
+.ms-dropdown{display:flex;opacity:0;visibility:hidden;transform:translateY(-4px);pointer-events:none;
+  transition:opacity var(--t-fast) var(--ease),transform var(--t-med) var(--ease),visibility 0s linear var(--t-med)}
+.ms-dropdown.open{opacity:1;visibility:visible;transform:none;pointer-events:auto;transition:opacity var(--t-fast) var(--ease),transform var(--t-med) var(--ease),visibility 0s}
+.ms-item{min-height:30px}
+.filter-pill{animation:pillIn var(--t-med) var(--ease)}
+@keyframes pillIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+
+/* Loading skeleton */
+#skeleton{display:none}
+#skeleton.show{display:block}
+.sk-row{display:flex;align-items:center;gap:var(--s3);padding:7px 40px;border-bottom:1px solid #1c2128}
+.sk-art,.sk-line{background:linear-gradient(100deg,var(--surface) 30%,var(--surface2) 50%,var(--surface) 70%);background-size:200% 100%;animation:shimmer 1.4s linear infinite;border-radius:6px}
+.sk-art{width:90px;height:90px;flex-shrink:0}
+.sk-lines{display:flex;flex-direction:column;gap:10px;flex:1;max-width:420px}
+.sk-line{height:12px;border-radius:4px}
+.sk-line.l1{width:38%}.sk-line.l2{width:62%;height:15px}.sk-line.l3{width:24%}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+
+/* Empty state */
+.empty-state{padding:72px 24px}
+.empty-state .ei{opacity:.35}
+.empty-state .es-title{font-family:'Lora',serif;font-size:20px;color:var(--text-hi)}
+.empty-state .es-sub{font-size:14px;color:var(--muted);margin-top:6px}
+.empty-state .es-action{margin-top:var(--s4)}
+
+/* Toasts */
+#toast-host{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:400;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:max-content;max-width:92vw}
+.toast{background:var(--surface2);color:var(--text-hi);border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:6px;padding:9px 14px;font-size:14px;box-shadow:var(--shadow-pop);
+  animation:toastIn var(--t-slow) var(--ease);transition:opacity var(--t-med),transform var(--t-med)}
+.toast.err{border-left-color:var(--danger)}
+.toast.out{opacity:0;transform:translateY(6px)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* Phones: comfortable touch targets */
+@media(max-width:700px){
+  button,.ms-btn,.tag-toggle,select,input[type="text"]{min-height:36px}
+  .toolbar-filter-row .ms-btn,.toolbar-filter-row #mobile-sort{min-height:38px}
+  .btn-sm{min-height:32px;padding:4px 10px}
+  .ms-item{min-height:40px}
+  .star-btn{min-height:0}
+  .tag-toggle{min-height:36px;padding:6px 14px}
+  .sk-row{padding:6px 12px}
+  #toast-host{bottom:max(16px,env(safe-area-inset-bottom))}
+}
+@media(hover:none){
+  tr.album-row:hover{box-shadow:none}
+  tr.album-row:hover .art-thumb{transform:none}
+  .star-btn:hover{transform:none}
+}
+
+/* Respect reduced motion */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
 </style>
 </head>
 <body>
@@ -601,10 +732,17 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     </thead>
     <tbody id="album-tbody"></tbody>
   </table>
-  <div id="empty-state" class="empty-state">
+  <div id="skeleton" aria-hidden="true">
+    <div class="sk-row"><div class="sk-art"></div><div class="sk-lines"><div class="sk-line l1"></div><div class="sk-line l2"></div><div class="sk-line l3"></div></div></div>
+    <div class="sk-row"><div class="sk-art"></div><div class="sk-lines"><div class="sk-line l1"></div><div class="sk-line l2"></div><div class="sk-line l3"></div></div></div>
+    <div class="sk-row"><div class="sk-art"></div><div class="sk-lines"><div class="sk-line l1"></div><div class="sk-line l2"></div><div class="sk-line l3"></div></div></div>
+    <div class="sk-row"><div class="sk-art"></div><div class="sk-lines"><div class="sk-line l1"></div><div class="sk-line l2"></div><div class="sk-line l3"></div></div></div>
+  </div>
+  <div id="empty-state" class="empty-state" style="display:none">
     <div class="ei">🎵</div>
-    <p style="font-size:15px">No albums logged yet.</p>
-    <p style="font-size:13px;color:#4a4a4a;margin-top:4px">Click "Add Album" or import a CSV to start.</p>
+    <p class="es-title" id="es-title">No albums logged yet</p>
+    <p class="es-sub" id="es-sub">Add your first album, or import a CSV.</p>
+    <div class="es-action"><button class="btn-ghost" id="es-action" onclick="clearFilters()" style="display:none">Clear filters</button></div>
   </div>
 </div>
 
@@ -1327,6 +1465,22 @@ function getSorted(list) {
 // ════════════════════════════════════════════════════════════
 // RENDER
 // ════════════════════════════════════════════════════════════
+// ── Toasts ────────────────────────────────────────────────────
+function showToast(msg, kind) {
+  const host = document.getElementById('toast-host');
+  if (!host || !msg) return;
+  const t = document.createElement('div');
+  t.className = 'toast' + (kind === 'err' ? ' err' : '');
+  t.textContent = msg;
+  host.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 220); }, kind === 'err' ? 4500 : 2200);
+}
+// Fade album art in once it has actually loaded (images start transparent)
+document.addEventListener('load', e => {
+  if (e.target.classList && e.target.classList.contains('art-thumb')) e.target.classList.add('in');
+}, true);
+let _dataReady = false; // false until the first load from cache/cloud finishes
+
 const ART_PLACEHOLDER = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span>`;
 const DASH = '<span style="color:var(--border);font-size:13px">—</span>';
 
@@ -1360,7 +1514,16 @@ function render() {
   fc.style.display = isFiltered ? 'flex' : 'none';
   if (isFiltered) fc.innerHTML = `Showing <span class="pill">${list.length} of ${albums.length}</span> albums &nbsp;<button class="clear-btn" onclick="clearFilters()">Clear filters</button>`;
 
-  document.getElementById('empty-state').style.display = list.length ? 'none' : 'block';
+  const showSkeleton = !_dataReady && !albums.length;
+  document.getElementById('skeleton').classList.toggle('show', showSkeleton);
+  const showEmpty = _dataReady && !list.length;
+  document.getElementById('empty-state').style.display = showEmpty ? 'block' : 'none';
+  if (showEmpty) {
+    const filtered = albums.length > 0;
+    document.getElementById('es-title').textContent = filtered ? 'No albums match these filters' : 'No albums logged yet';
+    document.getElementById('es-sub').textContent   = filtered ? 'Try removing a filter or changing your search.' : 'Add your first album, or import a CSV.';
+    document.getElementById('es-action').style.display = filtered ? '' : 'none';
+  }
 
   document.querySelectorAll('th[data-sort]').forEach(th => {
     const isSorted = th.dataset.sort===sortKey;
@@ -1680,7 +1843,7 @@ async function syncRatingToPlex(a, { writeRating = true } = {}) {
     const result = await res.json();
     if (result.matched || result.inLibrary) {
       status.textContent = writeRating ? 'Plex rating updated' : 'Found in Plex library';
-      status.style.color = 'var(--accent)';
+      showToast(status.textContent); status.textContent = '';
       markInPlexLibrary(a.id);
       return true;
     }
@@ -1761,7 +1924,7 @@ async function confirmPlexSuggestion(key, rating) {
     const result = await res.json();
     if (result.matched) {
       status.textContent = hasRating ? 'Plex rating updated' : 'Found in Plex library';
-      status.style.color = 'var(--accent)';
+      showToast(status.textContent); status.textContent = '';
       if (qrId) {
         markInPlexLibrary(qrId);
         qrInPlex = true;
@@ -2237,7 +2400,7 @@ on('qr-plex-confirm-yes','click', async () => {
     const result = await res.json();
     if (result.matched) {
       status.textContent = hasRating ? 'Plex rating updated' : 'Found in Plex library';
-      status.style.color = 'var(--accent)';
+      showToast(status.textContent); status.textContent = '';
       markInPlexLibrary(qrId);
       qrInPlex = true;
       qrHard = false;
@@ -3238,6 +3401,7 @@ async function pullFromCloud(retrying=false) {
     await _pullFromCloudInner(retrying);
   } finally {
     _pulling = false;
+    if (!_dataReady) { _dataReady = true; render(); }
   }
 }
 
@@ -3248,6 +3412,7 @@ async function _pullFromCloudInner(retrying=false) {
   // Incremental path: we have a cache and a last-sync timestamp
   if (lastSync && cached.length) {
     albums = cached;
+    _dataReady = true;
     render(); // show cached data instantly
     setSyncStatus('busy', 'syncing…');
     try {
@@ -3468,5 +3633,6 @@ _sb.auth.onAuthStateChange((event, session) => {
 showAuth();
 </script>
 </div><!-- /app-wrap -->
+<div id="toast-host" role="status" aria-live="polite"></div>
 </body>
 </html>
