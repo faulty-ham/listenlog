@@ -132,8 +132,6 @@ button{font-family:'Inter',sans-serif;font-size:14px;border:none;cursor:pointer;
 /* ── BOOKMARKS ── */
 .bookmark-row:hover{border-color:var(--accent)}
 
-/* ── IMPORT PANEL ── */
-#import-status.ok{color:var(--good)}
 /* ── PROGRESS BAR ── */
 
 /* ── GLOBAL PROGRESS BAR ── */
@@ -545,7 +543,7 @@ input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:po
     <!-- MATCH RESULT — shown after MB match -->
     <div id="match-card" style="display:none;margin-bottom:10px">
       <div style="display:flex;gap:12px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
-        <div id="match-art-slot" style="width:92px;height:92px;border-radius:4px;background:var(--surface);border:1px solid var(--border);flex-shrink:0;overflow:hidden">
+        <div style="width:92px;height:92px;border-radius:4px;background:var(--surface);border:1px solid var(--border);flex-shrink:0;overflow:hidden">
           <img id="match-art" style="width:92px;height:92px;object-fit:cover;display:none" alt="">
         </div>
         <div style="min-width:0;flex:1">
@@ -1018,7 +1016,6 @@ function buildDropdown(field, wrap) {
         });
       } else {
         // "No date" first
-        const noDateVal = 'no-date';
         ['no-date', ...allYears].forEach(val => {
           const label = val === 'no-date' ? 'No date' : val;
           const state = map.get(val) || null;
@@ -2606,6 +2603,7 @@ on('search-clear','click',()=>{
 
 // Track whether a mousedown started on the overlay itself (not inside modal content)
 // This prevents drag-to-select inside inputs from closing the modal
+let _modalMousedownOnOverlay = false;
 on('add-modal','mousedown',e=>{_modalMousedownOnOverlay = e.target.id==='add-modal';});
 // Enter key submits the active modal's primary action
 document.addEventListener('keydown', e => {
