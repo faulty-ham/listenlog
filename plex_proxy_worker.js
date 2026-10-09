@@ -33,8 +33,8 @@
  * Usage from the app:
  *   GET /?artist=X&album=Y&rating=N&year=YYYY
  *     -> exact match:    { matched: true, plexRating: 8 }
- *     -> partial match:  { matched: false, partial: { key, artist, album } }
- *     -> no match at all: { matched: false, suggestions: [{key,artist,album}, ...] }
+ *     -> partial match:  { matched: false, partial: { key, artist, album, year } }
+ *     -> no match at all: { matched: false, suggestions: [{key,artist,album,year}, ...] }
  *
  *   GET /?confirmKey=RATINGKEY&rating=N
  *     -> rates that specific album directly, used after the person confirms
@@ -46,8 +46,8 @@
  *   GET /?artist=X&album=Y&year=YYYY&checkOnly=1
  *     -> pure library-presence lookup, no rating ever touched:
  *        { inLibrary: true, matchType: 'exact' | 'partial' }
- *        { inLibrary: false, partial: { key, artist, album } }   (year-mismatch candidate)
- *        { inLibrary: false, suggestions: [{key,artist,album}, ...] }  (nothing matched)
+ *        { inLibrary: false, partial: { key, artist, album, year } }   (year-mismatch candidate)
+ *        { inLibrary: false, suggestions: [{key,artist,album,year}, ...] }  (nothing matched)
  *        { inLibrary: false }   (no music library found)
  */
 
@@ -261,14 +261,14 @@ export default {
         if (match && match.tier === 'partial') {
           return new Response(JSON.stringify({
             inLibrary: false,
-            partial: { key: match.album.ratingKey, artist: match.album.artist, album: match.album.title },
+            partial: { key: match.album.ratingKey, artist: match.album.artist, album: match.album.title, year: match.album.year },
           }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
         // Nothing matched at all — offer the closest candidates here too,
         // same as the rating flow does.
         const suggestions = findClosestSuggestions(plexAlbums, artist, album)
-          .map(p => ({ key: p.ratingKey, artist: p.artist, album: p.title }));
+          .map(p => ({ key: p.ratingKey, artist: p.artist, album: p.title, year: p.year }));
         return new Response(JSON.stringify({ inLibrary: false, suggestions }), {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -311,14 +311,14 @@ export default {
       if (match && match.tier === 'partial') {
         return new Response(JSON.stringify({
           matched: false,
-          partial: { key: match.album.ratingKey, artist: match.album.artist, album: match.album.title },
+          partial: { key: match.album.ratingKey, artist: match.album.artist, album: match.album.title, year: match.album.year },
         }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // Nothing matched at all — offer the closest candidates to pick from
       // manually rather than just giving up.
       const suggestions = findClosestSuggestions(plexAlbums, artist, album)
-        .map(p => ({ key: p.ratingKey, artist: p.artist, album: p.title }));
+        .map(p => ({ key: p.ratingKey, artist: p.artist, album: p.title, year: p.year }));
       return new Response(JSON.stringify({ matched: false, suggestions }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

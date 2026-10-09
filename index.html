@@ -1936,7 +1936,7 @@ function showPlexConfirm(partial, rating) {
   hidePlexSuggestions();
   const box  = document.getElementById('qr-plex-confirm');
   const text = document.getElementById('qr-plex-confirm-text');
-  text.textContent = `Found "${partial.artist} — ${partial.album}" in Plex — is this the right album?`;
+  text.textContent = `Found "${partial.artist} — ${partial.album}"${partial.year ? ` (${partial.year})` : ''} in Plex — is this the right album?`;
   box.classList.remove('hidden');
   box.dataset.key = partial.key;
   // null/undefined means "just confirm the match, don't push a rating" —
@@ -1961,7 +1961,7 @@ function showPlexSuggestions(suggestions, rating) {
     const btn = document.createElement('button');
     btn.className = 'btn-ghost';
     btn.style.cssText = 'text-align:left;font-size:12px;padding:5px 8px';
-    btn.textContent = `${s.artist} — ${s.album}`;
+    btn.textContent = `${s.artist} — ${s.album}${s.year ? ` (${s.year})` : ''}`;
     btn.addEventListener('click', () => confirmPlexSuggestion(s.key, rating));
     list.appendChild(btn);
   });
