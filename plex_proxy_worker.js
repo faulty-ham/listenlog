@@ -185,7 +185,8 @@ async function fetchAllPlexAlbums(plexUrl, token, sectionKey) {
     ratingKey: i.ratingKey,
     title: i.title || '',
     artist: i.parentTitle || '',
-    year: i.year || null,
+    // Some albums only carry originallyAvailableAt ("YYYY-MM-DD"), not a bare year
+    year: i.year || (i.originallyAvailableAt ? parseInt(String(i.originallyAvailableAt).slice(0, 4), 10) || null : null),
   }));
 }
 
