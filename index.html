@@ -593,6 +593,18 @@ tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rg
 .plex-verdict.no{color:var(--danger);border-color:rgba(201,122,122,.45);background:rgba(201,122,122,.12)}
 .plex-verdict.no:hover{background:rgba(201,122,122,.24);border-color:var(--danger);color:#e08a8a}
 
+/* Bookmarks: always half the row — label plus green + / red − */
+.qr-bm{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:var(--radius);padding:3px 4px 3px 10px}
+.qr-bm-label{flex:1;min-width:0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qr-bm-count{color:var(--text-hi)}
+.qr-bm-btn{width:30px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;line-height:1;border-radius:var(--radius);border:1px solid transparent;flex-shrink:0}
+.qr-bm-btn.add{color:#00c030;background:rgba(0,192,48,.12);border-color:rgba(0,192,48,.45)}
+.qr-bm-btn.add:hover{background:rgba(0,192,48,.24);border-color:#00c030;color:#00e03a}
+.qr-bm-btn.remove{color:var(--danger);background:rgba(201,122,122,.12);border-color:rgba(201,122,122,.45)}
+.qr-bm-btn.remove:hover:not(:disabled){background:rgba(201,122,122,.24);border-color:var(--danger);color:#e08a8a}
+.qr-bm-btn:disabled{opacity:.3;cursor:default}
+@media(max-width:700px){.qr-bm-btn{height:30px}.qr-bm{padding-left:8px;gap:4px}.qr-bm-ico{display:none}}
+
 /* Respect reduced motion */
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
@@ -872,8 +884,11 @@ tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rg
       <button class="tag-toggle inplex" id="qr-inplex-toggle"><img src="data:image/png;base64,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" alt="" width="10" height="15" style="vertical-align:-2px;display:inline-block"> In Plex</button>
     </div>
     <div class="qr-secondary-row">
-      <button class="btn-ghost" id="qr-add-bookmark">📑 Add to Bookmark</button>
-      <button class="btn-ghost hidden" id="qr-remove-bookmark" style="color:var(--danger)">📑 Remove from Bookmark</button>
+      <div class="qr-bm" role="group" aria-label="Bookmarks">
+        <span class="qr-bm-label"><span class="qr-bm-ico">📑 </span>Bookmarks<span class="qr-bm-count" id="qr-bm-count"></span></span>
+        <button class="qr-bm-btn add" id="qr-add-bookmark" title="Add to a bookmark list" aria-label="Add to a bookmark list">+</button>
+        <button class="qr-bm-btn remove" id="qr-remove-bookmark" title="Remove from bookmark list" aria-label="Remove from bookmark list" disabled>−</button>
+      </div>
       <button class="btn-ghost" id="qr-notes-btn"><span class="qr-note-label">📝 Notes</span></button>
     </div>
     <div class="qr-actions">
@@ -2202,7 +2217,8 @@ function renderBookmarksList() {
 function syncQrBookmarkButtons() {
   if (!qrId) return;
   const containing = getBookmarksContaining(qrId);
-  document.getElementById('qr-remove-bookmark').classList.toggle('hidden', containing.length === 0);
+  document.getElementById('qr-remove-bookmark').disabled = containing.length === 0;
+  document.getElementById('qr-bm-count').textContent = containing.length ? ` (${containing.length})` : '';
 }
 
 function openQuickRate(id) {
