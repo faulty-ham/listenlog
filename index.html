@@ -563,12 +563,20 @@ tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rg
 .qr-secondary-row>button.hidden{display:none}
 .qr-note-label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #qr-notes-btn.has-note{color:var(--text)}
-/* In Plex: the chevron is the same orange as the "on" fill, so use a tinted fill instead */
+/* Tag toggles: tinted fill + colored outline when on, so icons/text stay legible
+   (a solid fill swallowed same-colored icons like the Plex chevron) */
+.tag-toggle.want.on{background:rgba(122,176,201,.18);color:var(--text-hi);border-color:var(--want)}
+.tag-toggle.hard.on{background:rgba(201,168,90,.18);color:var(--text-hi);border-color:var(--hard)}
+.tag-toggle.unmatch.on{background:rgba(201,122,122,.18);color:var(--text-hi);border-color:var(--danger)}
 .tag-toggle.inplex.on{background:rgba(229,160,13,.16);color:var(--text-hi);border-color:#e5a00d}
 /* Sync button spinner */
 .sync-ico{display:inline-block}
+#qr-plex-sync-btn{font-size:13px;padding:7px 16px;min-width:176px;min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1.2}
+#qr-plex-sync-btn .sync-ico{font-size:15px;line-height:1}
 #qr-plex-sync-btn.busy .sync-ico{animation:spin .8s linear infinite}
-#qr-plex-sync-btn:disabled{opacity:.7;cursor:default}
+#qr-plex-sync-btn.busy{color:var(--text-hi);border-color:#4a515b}
+#qr-plex-sync-btn:disabled{opacity:1;cursor:default}
+#qr-plex-sync-btn:disabled:not(.busy){opacity:.35}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:700px){
   .qr-stars .star-btn{font-size:48px;width:54px;height:54px}
@@ -836,7 +844,7 @@ tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rg
       <button class="btn-ghost qr-clear" id="qr-clear-rating" title="Clear rating" aria-label="Clear rating">✕</button>
     </div>
     <div style="display:flex;justify-content:center;margin-bottom:6px">
-      <button class="btn-ghost" id="qr-plex-sync-btn" title="Push the current rating to Plex" style="font-size:11px;padding:2px 9px;line-height:1.5"><span class="sync-ico" aria-hidden="true">↻</span> Sync to Plex</button>
+      <button class="btn-ghost" id="qr-plex-sync-btn" title="Push the current rating to Plex"><span class="sync-ico" aria-hidden="true">↻</span> <span class="sync-label">Sync to Plex</span></button>
     </div>
     <div id="qr-plex-status" style="text-align:center;font-size:12px;min-height:16px;margin-bottom:8px"></div>
     <div id="qr-plex-confirm" class="hidden" style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px">
@@ -1849,16 +1857,25 @@ async function markInPlexLibrary(albumId) {
 }
 
 // Wraps the sync so the button shows a spinner (and can't be double-clicked) while it runs
-async function syncRatingToPlex(a, opts) {
+function setPlexBusy(on) {
   const btn = document.getElementById('qr-plex-sync-btn');
-  if (btn) { btn.classList.add('busy'); btn.disabled = true; }
-  try { return await _syncRatingToPlex(a, opts); }
-  finally { if (btn) { btn.classList.remove('busy'); btn.disabled = false; } }
+  if (!btn) return;
+  btn.classList.toggle('busy', on);
+  btn.disabled = on;
+  const lbl = btn.querySelector('.sync-label');
+  if (lbl) lbl.textContent = on ? 'Syncing to Plex…' : 'Sync to Plex';
+}
+async function withPlexBusy(fn) {
+  setPlexBusy(true);
+  try { return await fn(); } finally { setPlexBusy(false); }
+}
+async function syncRatingToPlex(a, opts) {
+  return withPlexBusy(() => _syncRatingToPlex(a, opts));
 }
 async function _syncRatingToPlex(a, { writeRating = true } = {}) {
   const status = document.getElementById('qr-plex-status');
   if (!status) return false;
-  status.textContent = '⟳ Syncing to Plex…';
+  status.textContent = '';
   status.style.color = 'var(--muted)';
   hidePlexConfirm();
   hidePlexSuggestions();
@@ -1947,10 +1964,11 @@ function hidePlexSuggestions() {
   document.getElementById('qr-plex-suggestions').classList.add('hidden');
 }
 
-async function confirmPlexSuggestion(key, rating) {
+function confirmPlexSuggestion(key, rating) { return withPlexBusy(() => _confirmPlexSuggestion(key, rating)); }
+async function _confirmPlexSuggestion(key, rating) {
   hidePlexSuggestions();
   const status = document.getElementById('qr-plex-status');
-  status.textContent = '⟳ Syncing to Plex…';
+  status.textContent = '';
   status.style.color = 'var(--muted)';
   const hasRating = rating !== null && rating !== undefined;
   try {
@@ -2423,14 +2441,14 @@ on('qr-want-toggle','click',()=>{qrWant=!qrWant;if(!qrWant)qrHard=false;syncQrTo
 on('qr-hard-toggle','click',()=>{qrHard=!qrHard;syncQrToggles();});
 on('qr-clear-rating','click',()=>{ setQrRating(0); });
 
-on('qr-plex-confirm-yes','click', async () => {
+on('qr-plex-confirm-yes','click', () => withPlexBusy(async () => {
   const box = document.getElementById('qr-plex-confirm');
   const key = box.dataset.key;
   const hasRating = 'rating' in box.dataset;
   if (!key) return;
   const status = document.getElementById('qr-plex-status');
   hidePlexConfirm();
-  status.textContent = '⟳ Syncing to Plex…';
+  status.textContent = '';
   status.style.color = 'var(--muted)';
   try {
     const ratingParam = hasRating ? `&rating=${box.dataset.rating}` : '';
@@ -2455,7 +2473,7 @@ on('qr-plex-confirm-yes','click', async () => {
   }
   status.textContent = 'Sync failed, please rate manually';
   status.style.color = 'var(--danger)';
-});
+}));
 on('qr-plex-confirm-no','click', () => {
   hidePlexConfirm();
   const status = document.getElementById('qr-plex-status');
