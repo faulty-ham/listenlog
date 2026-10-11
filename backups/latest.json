@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-10-10T16:01:12.439874Z",
+  "exported_at": "2026-10-11T16:27:33.352709Z",
   "album_count": 2646,
   "albums": [
     {
@@ -22,12 +22,12 @@
       "artist": "Freak Slug",
       "album": "Loose Tooth And A Short Skirt",
       "date": "2025-11-07",
-      "rating": null,
+      "rating": 4,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mv1j9rlgz42jzxekuzk.jpg?v=1791584697681",
       "artFallback": null,
       "mbid": "57db316a-4017-41f1-8e1e-d1ec257a1182",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "added": 1791584697076
@@ -157,12 +157,12 @@
       "artist": "Freak Slug",
       "album": "Amulet",
       "date": "2026-09-18",
-      "rating": null,
+      "rating": 4,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mv1j58afgvgj8ea8elu.jpg?v=1791584486637",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/83/99/ac/8399ac99-afa3-baac-ebfa-f617d3ae28c3/823375203810_Cover.jpg/600x600bb.jpg",
       "mbid": "672291b2-4db1-4e93-94ee-52ab6c4ae43c",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "added": 1791584485431
