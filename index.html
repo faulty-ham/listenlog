@@ -534,6 +534,11 @@ tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rg
 .toast.out{opacity:0;transform:translateY(6px)}
 @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
+/* Undo toast */
+.toast.has-action{pointer-events:auto;display:flex;align-items:center;gap:14px}
+.toast-action{background:none;border:none;color:var(--accent);font-weight:600;font-size:14px;padding:2px 6px;margin:-2px -6px -2px 0;border-radius:4px;cursor:pointer}
+.toast-action:hover{background:var(--accent-dim)}
+
 /* Phones: comfortable touch targets */
 @media(max-width:700px){
   button,.ms-btn,.tag-toggle,select,input[type="text"]{min-height:36px}
@@ -629,12 +634,17 @@ tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rg
   </div>
 </div>
 
+<input type="file" id="restore-file" accept=".json,application/json" hidden>
 <!-- SYNC INDICATOR -->
 <div id="sync-indicator" class="hidden">
   <div class="sync-dot" id="sync-dot"></div>
   <span id="sync-label">synced</span>
   <span style="color:#3a4048">·</span>
   <a href="#" id="resync-link" style="color:#738a9a;text-decoration:none;font-size:12px">resync</a>
+  <span style="color:#3a4048">·</span>
+  <a href="#" id="export-link" style="color:#738a9a;text-decoration:none;font-size:12px" title="Download your library as a CSV file">export</a>
+  <span style="color:#3a4048">·</span>
+  <a href="#" id="restore-link" style="color:#738a9a;text-decoration:none;font-size:12px" title="Restore from a backup .json file">restore</a>
   <span style="color:#3a4048">·</span>
   <a href="#" id="sign-out-link" style="color:#738a9a;text-decoration:none;font-size:12px">sign out</a>
 </div>
@@ -652,8 +662,12 @@ tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rg
   </div>
   <div id="header-sync-links" style="margin-left:auto;gap:8px;align-items:center;flex-direction:column;align-items:flex-end">
     <span id="header-sync-label" style="color:#738a9a;font-size:12px"></span>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
       <a href="#" id="header-resync-link" style="color:#738a9a;text-decoration:none;font-size:14px">resync</a>
+      <span style="color:#3a4048">·</span>
+      <a href="#" id="header-export-link" style="color:#738a9a;text-decoration:none;font-size:14px">export</a>
+      <span style="color:#3a4048">·</span>
+      <a href="#" id="header-restore-link" style="color:#738a9a;text-decoration:none;font-size:14px">restore</a>
       <span style="color:#3a4048">·</span>
       <a href="#" id="header-sign-out-link" style="color:#738a9a;text-decoration:none;font-size:14px">sign out</a>
     </div>
@@ -800,7 +814,7 @@ tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rg
   <div id="empty-state" class="empty-state" style="display:none">
     <div class="ei">🎵</div>
     <p class="es-title" id="es-title">No albums logged yet</p>
-    <p class="es-sub" id="es-sub">Add your first album, or import a CSV.</p>
+    <p class="es-sub" id="es-sub">Add your first album, or restore from a backup.</p>
     <div class="es-action"><button class="btn-ghost" id="es-action" onclick="clearFilters()" style="display:none">Clear filters</button></div>
   </div>
 </div>
@@ -1527,14 +1541,52 @@ function getSorted(list) {
 // RENDER
 // ════════════════════════════════════════════════════════════
 // ── Toasts ────────────────────────────────────────────────────
-function showToast(msg, kind) {
+function showToast(msg, kind, action) {
   const host = document.getElementById('toast-host');
   if (!host || !msg) return;
+  // Only one actionable (Undo) toast at a time — a newer one replaces the older
+  if (action) host.querySelectorAll('.toast.has-action').forEach(el => el.remove());
   const t = document.createElement('div');
-  t.className = 'toast' + (kind === 'err' ? ' err' : '');
-  t.textContent = msg;
+  t.className = 'toast' + (kind === 'err' ? ' err' : '') + (action ? ' has-action' : '');
+  const label = document.createElement('span');
+  label.textContent = msg;
+  t.appendChild(label);
+  const dismiss = () => { t.classList.add('out'); setTimeout(() => t.remove(), 220); };
+  if (action) {
+    const b = document.createElement('button');
+    b.className = 'toast-action';
+    b.textContent = action.label || 'Undo';
+    b.addEventListener('click', () => { if (t.dataset.done) return; t.dataset.done = '1'; dismiss(); action.fn(); });
+    t.appendChild(b);
+  }
   host.appendChild(t);
-  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 220); }, kind === 'err' ? 4500 : 2200);
+  setTimeout(() => { dismiss(); if (action && action.onExpire) action.onExpire(); },
+             action ? 7000 : (kind === 'err' ? 4500 : 2200));
+}
+
+// ── Undo ──────────────────────────────────────────────────────
+// offerUndo shows a toast with an Undo button (also Ctrl/Cmd+Z while the toast
+// is up). The callback receives no arguments; it should put things back.
+let _lastUndo = null;
+function offerUndo(msg, fn) {
+  const wrapped = () => { if (_lastUndo === wrapped) _lastUndo = null; fn(); };
+  _lastUndo = wrapped;
+  showToast(msg, null, { label: 'Undo', fn: wrapped, onExpire: () => { if (_lastUndo === wrapped) _lastUndo = null; } });
+}
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z' || !_lastUndo) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+  e.preventDefault();
+  const fn = _lastUndo;
+  document.querySelectorAll('#toast-host .toast.has-action').forEach(el => el.remove());
+  fn();
+});
+// Put an album back exactly as it was (also resurrects a soft-deleted one)
+function restoreAlbum(snap, { wasDeleted = false } = {}) {
+  if (wasDeleted) _undeleteIds.add(snap.id);
+  save({ ...snap });
+  render();
 }
 // Fade album art in once it has actually loaded (images start transparent)
 document.addEventListener('load', e => {
@@ -1582,7 +1634,7 @@ function render() {
   if (showEmpty) {
     const filtered = albums.length > 0;
     document.getElementById('es-title').textContent = filtered ? 'No albums match these filters' : 'No albums logged yet';
-    document.getElementById('es-sub').textContent   = filtered ? 'Try removing a filter or changing your search.' : 'Add your first album, or import a CSV.';
+    document.getElementById('es-sub').textContent   = filtered ? 'Try removing a filter or changing your search.' : 'Add your first album, or restore from a backup.';
     document.getElementById('es-action').style.display = filtered ? '' : 'none';
   }
 
@@ -1727,6 +1779,7 @@ async function addOrUpdateAlbum() {
   if(!artist||!album){ferr.textContent='Artist and Album are required.';return;}
   ferr.textContent='';
   const existing = editingId ? (albums.find(a=>a.id===editingId)||{}) : {};
+  const beforeEdit = existing.id ? {...existing} : null;
   const artUrl = pendingArtUrl||existing.artUrl||'';
   const dateVal = document.getElementById('f-date').value.trim();
   const entry={
@@ -1757,6 +1810,7 @@ async function addOrUpdateAlbum() {
   const hadPendingArt = !!pendingArtUrl; // capture before closePanel() clears it
   const isNewEntry = !editingId;
   save(entry); closePanel(); render();
+  if (beforeEdit && JSON.stringify(beforeEdit) !== JSON.stringify(entry)) offerUndo('Changes saved', () => restoreAlbum(beforeEdit));
 
   // Check whether this new entry is already in the Plex library — fires in
   // the background so it never slows down adding an album. Exact match OR an
@@ -2568,10 +2622,12 @@ on('qr-save','click', async ()=>{
   if(!qrId)return;
   const a=albums.find(x=>x.id===qrId); if(!a)return;
   const ratingChanged=qrRating!==(a.rating||0);
+  const before={...a};
   if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
   if(qrInPlex)qrHard=false; // in Plex means it's not hard to find anymore
   a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;a.inPlexLibrary=qrInPlex;
   save(a);render();
+  if(JSON.stringify(before)!==JSON.stringify(a)) offerUndo(ratingChanged?'Rating saved':'Changes saved',()=>restoreAlbum(before));
 
   if (ratingChanged) {
     // Push both new ratings AND clears to Plex — a rating of 0 there is how
@@ -2656,17 +2712,21 @@ on('notes-save','click',()=>{
   if (!_notesId) return;
   const a = albums.find(x=>x.id===_notesId); if (!a) return;
   const raw = document.getElementById('notes-textarea').value.replace(/\s+$/,'');
+  const before = {...a};
   a.notes = raw.trim() ? raw : null;
   save(a); render();
   closeNotesModal();
+  if ((before.notes||null) !== a.notes) offerUndo(a.notes ? 'Notes saved' : 'Notes removed', ()=>restoreAlbum(before));
 });
 on('notes-cancel','click', closeNotesModal);
 on('notes-discard','click',()=>{
   if (!_notesId) return;
   const a = albums.find(x=>x.id===_notesId); if (!a) return;
+  const before = {...a};
   a.notes = null;
   save(a); render();
   closeNotesModal();
+  if (before.notes) offerUndo('Notes removed', ()=>restoreAlbum(before));
 });
 on('notes-modal','mousedown',e=>{_notesMousedownOnOverlay = e.target.id==='notes-modal';});
 on('notes-modal','click',e=>{
@@ -2691,10 +2751,12 @@ on('btn-delete-entry','click', async ()=>{
   const ok = await showConfirmModal('Remove album?', `Delete "${a.artist} – ${a.album}"?`);
   if(ok){
     const id=editingId;
+    const snap={...a};
     albums=albums.filter(x=>x.id!==id);
     safeSetItem('listenLog', JSON.stringify(albums));
     queueDelete(id);
     closePanel();render();
+    offerUndo(`Deleted "${snap.album}"`, ()=>restoreAlbum(snap,{wasDeleted:true}));
   }
 });
 
@@ -3334,6 +3396,7 @@ function setSyncStatus(state, label) {
 
 // Pending write queue — no edit is lost even if network is slow
 const _writeQueue = new Map(); // id → album (or null = delete)
+const _undeleteIds = new Set(); // ids whose soft-delete must be cleared on their next upsert
 let _flushTimeout = null;
 let _flushing = false;
 let _pulling = false;
@@ -3357,6 +3420,7 @@ function albumToRow(a) {
     unmatched:      a.unmatched   || false,
     added:          a.added       || Date.now(),
     updated_at:     new Date().toISOString(),
+    ...(_undeleteIds.has(a.id) ? { deleted_at: null } : {}),
   };
 }
 
@@ -3435,6 +3499,7 @@ async function flushQueue(retrying=false) {
     if (upserts.length) {
       const { error } = await _sb.from('albums').upsert(upserts, { onConflict: 'id' });
       if (error) throw error;
+      upserts.forEach(r => _undeleteIds.delete(r.id));
     }
     if (deletes.length) {
       // Soft delete — set deleted_at so the deletion syncs to other devices
@@ -3460,6 +3525,107 @@ async function flushQueue(retrying=false) {
   } finally {
     _flushing = false;
   }
+}
+
+// ── Export (CSV) ──────────────────────────────────────────────
+function csvCell(v) {
+  let t = v == null ? '' : String(v);
+  // Stop spreadsheets from treating text as a formula
+  if (typeof v === 'string' && /^[=+@\t\r]/.test(t)) t = "'" + t;
+  return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
+function exportCsv() {
+  const typeLabel = { compilation: 'Compilation', live: 'Live', single_ep: 'Single/EP' };
+  const yn = b => (b ? 'Yes' : 'No');
+  const header = ['Artist','Album','Release Date','Type','Rating','Want to Listen','Hard to Find','In Plex','Missing Info','Notes','MusicBrainz ID','Art URL','Date Added','ID'];
+  const rows = albums.map(a => [
+    a.artist, a.album, a.date || '', typeLabel[a.releaseType] || '', a.rating == null ? '' : a.rating,
+    yn(a.wantToListen), yn(a.hardToFind), yn(a.inPlexLibrary), yn(a.unmatched),
+    a.notes || '', a.mbid || '', a.artUrl || '',
+    a.added ? new Date(a.added).toISOString() : '', a.id,
+  ]);
+  const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  // BOM so Excel opens it as UTF-8 (accented artist names, etc.)
+  const url = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `listenlog-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  showToast(`Exported ${albums.length} albums`);
+}
+
+// ── Restore from a backup file (backups/latest.json or a dated one) ───
+// Merge-only: adds back albums that are missing and resets ones that differ
+// from the backup. It never removes anything that isn't in the backup.
+const BACKUP_FIELDS = ['artist','album','date','rating','notes','artUrl','artFallback','mbid','wantToListen','hardToFind','unmatched','added'];
+function normBackupAlbum(x) {
+  return {
+    id: x.id,
+    artist: String(x.artist || ''), album: String(x.album || ''), date: x.date || '',
+    rating: x.rating || null, notes: x.notes || null,
+    artUrl: x.artUrl || '', artFallback: x.artFallback || '', mbid: x.mbid || '',
+    wantToListen: !!x.wantToListen, hardToFind: !!x.hardToFind, unmatched: !!x.unmatched,
+    added: Number(x.added) || 0,
+  };
+}
+function sameBackupFields(a, b) {
+  return BACKUP_FIELDS.every(f => (a[f] ?? '') === (b[f] ?? ''));
+}
+function bulkApply(upserts, removeIds) {
+  const removed = new Set(removeIds);
+  const byId = new Map(upserts.map(a => [a.id, a]));
+  albums = albums.filter(a => !removed.has(a.id) && !byId.has(a.id));
+  albums.unshift(...upserts);
+  for (const a of upserts) _writeQueue.set(a.id, a);
+  for (const id of removed) _writeQueue.set(id, null);
+  safeSetItem('listenLog', JSON.stringify(albums));
+  persistQueue();
+  setSyncStatus('busy', 'saving\u2026');
+  clearTimeout(_flushTimeout);
+  _flushTimeout = setTimeout(flushQueue, 300);
+  render();
+}
+async function restoreFromBackupFile(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); }
+  catch (e) { showToast("That file isn't valid JSON", 'err'); return; }
+  const list = Array.isArray(data) ? data : data && data.albums;
+  if (!Array.isArray(list)) { showToast("That doesn't look like a ListenLog backup", 'err'); return; }
+  const valid = list.filter(x => x && typeof x.id === 'string' && x.id && typeof x.artist === 'string' && typeof x.album === 'string').map(normBackupAlbum);
+  if (!valid.length) { showToast('No albums found in that file', 'err'); return; }
+
+  const current = new Map(albums.map(a => [a.id, a]));
+  const toAdd = [], toReset = [];
+  for (const b of valid) {
+    const cur = current.get(b.id);
+    if (!cur) toAdd.push(b);
+    else if (!sameBackupFields(cur, b)) toReset.push({ cur, b });
+  }
+  if (!toAdd.length && !toReset.length) { showToast('Nothing to restore — your library already matches this backup'); return; }
+
+  const when = data && data.exported_at ? new Date(data.exported_at).toLocaleString() : 'unknown date';
+  const parts = [];
+  if (toAdd.length) parts.push(`add back ${toAdd.length} missing album${toAdd.length === 1 ? '' : 's'}`);
+  if (toReset.length) parts.push(`reset ${toReset.length} changed album${toReset.length === 1 ? '' : 's'} to their backed-up version`);
+  const ok = await showConfirmModal('Restore from backup?',
+    `Backup from ${when} (${valid.length} albums). This will ${parts.join(' and ')}. Albums that aren't in the backup are left alone.`,
+    { confirmLabel: 'Restore', danger: false });
+  if (!ok) return;
+
+  const prev = toReset.map(x => ({ ...x.cur }));
+  const addedIds = toAdd.map(b => b.id);
+  toAdd.forEach(b => _undeleteIds.add(b.id));
+  const next = [
+    ...toAdd.map(b => ({ ...b, releaseType: '', inPlexLibrary: false })),
+    ...toReset.map(({ cur, b }) => ({ ...cur, ...b })),
+  ];
+  bulkApply(next, []);
+  offerUndo(`Restored ${next.length} album${next.length === 1 ? '' : 's'}`, () => {
+    bulkApply(prev, addedIds);
+  });
 }
 
 const SYNC_TS_KEY = 'listenLogLastSync';
@@ -3681,6 +3847,13 @@ document.getElementById('header-resync-link').addEventListener('click', async e 
   localStorage.removeItem('listenLog');
   albums = [];
   await pullFromCloud();
+});
+['export-link','header-export-link'].forEach(id => document.getElementById(id).addEventListener('click', e => { e.preventDefault(); exportCsv(); }));
+['restore-link','header-restore-link'].forEach(id => document.getElementById(id).addEventListener('click', e => { e.preventDefault(); document.getElementById('restore-file').click(); }));
+document.getElementById('restore-file').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (f) await restoreFromBackupFile(f);
 });
 document.getElementById('header-sign-out-link').addEventListener('click', async e => {
   e.preventDefault();
