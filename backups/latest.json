@@ -1,7 +1,22 @@
 {
-  "exported_at": "2026-10-11T16:27:33.352709Z",
-  "album_count": 2646,
+  "exported_at": "2026-10-12T20:03:06.692660Z",
+  "album_count": 2647,
   "albums": [
+    {
+      "id": "mv4hi8bc0hivxt358945",
+      "artist": "Dagmar Krause",
+      "album": "Tank Battles: The Songs of Hanns Eisler",
+      "date": "1988",
+      "rating": 3,
+      "notes": null,
+      "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mv4hi8bc0hivxt358945.jpg?v=1791763132534",
+      "artFallback": null,
+      "mbid": "f8523b34-a40f-43a0-a2b3-be093287fd7b",
+      "wantToListen": false,
+      "hardToFind": false,
+      "unmatched": false,
+      "added": 1791763131288
+    },
     {
       "id": "mv1ja7nopnbppia54kp",
       "artist": "Freak Slug",
