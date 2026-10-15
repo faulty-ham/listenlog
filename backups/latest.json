@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-10-14T15:37:48.575521Z",
+  "exported_at": "2026-10-15T15:24:16.434638Z",
   "album_count": 2652,
   "albums": [
     {
@@ -187,12 +187,12 @@
       "artist": "Freak Slug",
       "album": "Brain (lo-fi album)",
       "date": "2017-05-08",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mv1j6c1hndso25a86qi.jpg?v=1791584537520",
       "artFallback": null,
       "mbid": "669926a0-ecfe-48bd-b626-a0514e0fb0e3",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "added": 1791584536949
@@ -202,12 +202,12 @@
       "artist": "Freak Slug",
       "album": "Girlfriend",
       "date": "2018-01-01",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mv1j64zwd27es27oh0n.jpg?v=1791584529372",
       "artFallback": null,
       "mbid": "cac83a81-01bf-4f4f-9f79-8b822f1dfdf8",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "added": 1791584527820
