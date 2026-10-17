@@ -1,7 +1,22 @@
 {
-  "exported_at": "2026-10-16T15:04:19.255754Z",
-  "album_count": 2654,
+  "exported_at": "2026-10-17T13:59:34.952284Z",
+  "album_count": 2655,
   "albums": [
+    {
+      "id": "mvbzzxob8seb8h41tv",
+      "artist": "Dinosaur Jr.",
+      "album": "Give a Glimpse of What Yer Not",
+      "date": "2016-08-05",
+      "rating": null,
+      "notes": null,
+      "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mvbzzxob8seb8h41tv.jpg?v=1792217454889",
+      "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music20/v4/c9/1e/d9/c91ed923-7667-6a0a-0659-4259c8c3a06f/656605228563.jpg/600x600bb.jpg",
+      "mbid": "030acdbf-0031-4ddb-8252-19d2e6741aa2",
+      "wantToListen": true,
+      "hardToFind": false,
+      "unmatched": false,
+      "added": 1792217453627
+    },
     {
       "id": "mvana0uy95zuq640o2b",
       "artist": "Tyler Childers",
