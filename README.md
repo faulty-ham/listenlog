@@ -14,24 +14,10 @@ Personal music album tracker. Hosted on GitHub Pages, data stored in Supabase.
 
 ### 2. Create the database table
 
-In your Supabase project, go to **SQL Editor** and run:
-
-```sql
--- Table to store each user's full library
-create table listenlog_data (
-  user_id   uuid primary key references auth.users(id) on delete cascade,
-  albums    jsonb not null default '[]',
-  originals jsonb not null default '{}',
-  updated_at timestamptz not null default now()
-);
-
--- Users can only read/write their own row
-alter table listenlog_data enable row level security;
-
-create policy "Users manage own data" on listenlog_data
-  for all using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-```
+In your Supabase project, go to **SQL Editor** and run the contents of
+[`supabase_setup.sql`](supabase_setup.sql) (albums table, row-level security,
+server-side `updated_at` trigger and indexes), then
+[`bookmarks_setup.sql`](bookmarks_setup.sql). Both are safe to re-run.
 
 ### 3. Get your API credentials
 

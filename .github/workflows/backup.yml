@@ -27,6 +27,8 @@ jobs:
           # the whole backup. Retry the export a few times before giving up.
           attempt=1
           max_attempts=3
+          # Exit code 2 = sanity check failed — don't retry that, just fail
+          set +e
           until python3 << 'PYEOF'
           import json, datetime, urllib.request, urllib.error, os, sys
 
@@ -70,23 +72,47 @@ jobs:
                   'wantToListen': row.get('want_to_listen', False) or False,
                   'hardToFind':   row.get('hard_to_find', False) or False,
                   'unmatched':    row.get('unmatched', False) or False,
+                  'releaseType':  row.get('release_type') or '',
+                  'inPlexLibrary': row.get('in_plex_library', False) or False,
                   'added':        row.get('added', 0),
+                  'updatedAt':    row.get('updated_at'),
               }
 
           albums = [to_camel(r) for r in seen.values()]
           # Sort by added desc to match app order
           albums.sort(key=lambda a: a['added'] or 0, reverse=True)
 
+          # Bookmark lists too (small table, one request)
+          req = urllib.request.Request(f"{url}/rest/v1/bookmarks?select=*&order=created_at.asc", headers=headers)
+          with urllib.request.urlopen(req, timeout=30) as r:
+              bookmarks = json.loads(r.read())
+
+          # Sanity check: refuse to overwrite a good backup with a suspiciously
+          # small one (e.g. the wrong key was configured and RLS returned [])
+          try:
+              with open('backups/latest.json') as f:
+                  prev_count = json.load(f).get('album_count', 0)
+          except Exception:
+              prev_count = 0
+          if prev_count >= 20 and len(albums) < prev_count * 0.5:
+              print(f"Refusing to back up: {len(albums)} albums vs {prev_count} in the last backup. "
+                    "Check SUPABASE_SERVICE_KEY. If the drop is real, delete backups/latest.json and re-run.")
+              sys.exit(2)
+
           out = {
-              'exported_at': datetime.datetime.utcnow().isoformat() + 'Z',
-              'album_count': len(albums),
-              'albums':      albums,
+              'exported_at':    datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'album_count':    len(albums),
+              'albums':         albums,
+              'bookmark_count': len(bookmarks),
+              'bookmarks':      bookmarks,
           }
           with open('backups/latest.json', 'w') as f:
               json.dump(out, f, indent=2)
           print(f"Backed up {len(albums)} albums (no duplicates)")
           PYEOF
           do
+            status=$?
+            if [ "$status" -eq 2 ]; then exit 1; fi
             if [ "$attempt" -ge "$max_attempts" ]; then
               echo "Export failed after $max_attempts attempts, giving up."
               exit 1
@@ -96,9 +122,17 @@ jobs:
             sleep 15
           done
 
+          set -e
           DATE=$(date +%Y-%m-%d)
           cp backups/latest.json "backups/$DATE.json"
-          find backups -name "????-??-??.json" -mtime +30 -delete
+          # Keep 30 days of dailies. Prune by the date in the filename — a fresh
+          # checkout gives every file today's mtime, so -mtime never matched.
+          CUTOFF=$(date -d '30 days ago' +%Y-%m-%d)
+          for f in backups/????-??-??.json; do
+            [ -e "$f" ] || continue
+            d=$(basename "$f" .json)
+            if [[ "$d" < "$CUTOFF" ]]; then git rm -q --cached "$f" 2>/dev/null || true; rm -f "$f"; fi
+          done
 
       - name: Commit backup
         run: |

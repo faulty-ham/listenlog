@@ -6,6 +6,10 @@
  *   PLEX_URL       (secret) — e.g. https://your-plex.direct:32400 or http://192.168.1.50:32400
  *   PLEX_TOKEN     (secret) — your Plex token
  *   ALLOWED_ORIGIN (text)   — https://faulty-ham.github.io
+ *   PROXY_KEY      (secret, optional) — if set, every request must send the
+ *                  same value in an "X-ListenLog-Key" header, so only your
+ *                  own browsers can change Plex ratings. Enter the same key in
+ *                  ListenLog (menu → Plex sync key) on each device.
  *
  * Matching, in priority order:
  *   1. Exact artist + title (space-insensitive — "40 oz." and "40oz." count
@@ -51,13 +55,19 @@
  *        { inLibrary: false }   (no music library found)
  */
 
+// Unicode-aware: "Beyoncé" == "Beyonce", and names in any script keep their
+// letters. If stripping punctuation leaves nothing (a title that is only
+// symbols, e.g. "÷"), fall back to the plain lowercased text so it can't
+// "match" every other empty-normalized title.
 function normalize(s) {
-  return (s || '')
-    .toLowerCase()
+  const raw = String(s || '').toLowerCase().trim();
+  const out = raw
+    .normalize('NFKD').replace(/\p{M}/gu, '')
     .replace(/^(the|a|an)\s+/, '')
-    .replace(/[^\w\s]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
+  return out || raw;
 }
 
 // Also collapses all whitespace, so "40 oz to freedom" and "40oz to
@@ -134,13 +144,19 @@ function findMatch(plexAlbums, artist, album, year) {
   );
 
   if (titleCandidates.length) {
+    // The year is only compared when BOTH sides have one
+    const undated = titleCandidates.filter(p => !p.year);
     if (y) {
       const yearMatches = titleCandidates.filter(p => p.year && parseInt(p.year, 10) === y);
       if (yearMatches.length) return { tier: 'exact', reason: 'year-confirmed', album: yearMatches[0] };
+      // Plex has no year for the only candidate — nothing contradicts it
+      if (titleCandidates.length === 1 && undated.length === 1) return { tier: 'exact', reason: 'no-year-data', album: undated[0] };
+      // Several same-titled albums, some undated — can't tell which; ask
+      if (undated.length) return { tier: 'partial', reason: 'ambiguous', album: undated[0] };
       return { tier: 'partial', reason: 'year-mismatch', album: titleCandidates[0] };
     }
     if (titleCandidates.length === 1) return { tier: 'exact', reason: 'no-year-data', album: titleCandidates[0] };
-    return { tier: 'partial', reason: 'year-mismatch', album: titleCandidates[0] };
+    return { tier: 'partial', reason: 'ambiguous', album: titleCandidates[0] };
   }
 
   const normAlbum = normalize(album);
@@ -165,8 +181,22 @@ function countsAsPresent(match) {
   return match.reason !== 'year-mismatch';
 }
 
+// Every Plex call: 10s timeout, and a clear error instead of a JSON parse
+// failure when Plex answers with an HTML error page (e.g. expired token)
+async function plexFetch(url, opts = {}) {
+  let res;
+  try {
+    res = await fetch(url, { ...opts, signal: AbortSignal.timeout(10000) });
+  } catch (e) {
+    throw new Error(e.name === 'TimeoutError' ? 'Plex did not respond within 10s' : `Could not reach Plex: ${e.message}`);
+  }
+  if (res.status === 401) throw new Error('Plex rejected the token (401) — update PLEX_TOKEN');
+  if (!res.ok) throw new Error(`Plex returned HTTP ${res.status}`);
+  return res;
+}
+
 async function getMusicSectionKey(plexUrl, token) {
-  const res = await fetch(`${plexUrl}/library/sections`, {
+  const res = await plexFetch(`${plexUrl}/library/sections`, {
     headers: { 'X-Plex-Token': token, 'Accept': 'application/json' }
   });
   const data = await res.json();
@@ -175,28 +205,41 @@ async function getMusicSectionKey(plexUrl, token) {
   return music ? music.key : null;
 }
 
+// The whole album list is fetched per request; keep it for 2 minutes per
+// Worker instance so a burst of syncs doesn't re-download the library each time
+let _albumCache = { at: 0, key: '', albums: null };
 async function fetchAllPlexAlbums(plexUrl, token, sectionKey) {
-  const res = await fetch(`${plexUrl}/library/sections/${sectionKey}/all?type=9`, {
+  const cacheKey = `${plexUrl}|${sectionKey}`;
+  if (_albumCache.albums && _albumCache.key === cacheKey && Date.now() - _albumCache.at < 120000) {
+    return _albumCache.albums;
+  }
+  const res = await plexFetch(`${plexUrl}/library/sections/${encodeURIComponent(sectionKey)}/all?type=9`, {
     headers: { 'X-Plex-Token': token, 'Accept': 'application/json' }
   });
   const data = await res.json();
   const items = data?.MediaContainer?.Metadata || [];
-  return items.map(i => ({
+  const albums = items.map(i => ({
     ratingKey: i.ratingKey,
     title: i.title || '',
     artist: i.parentTitle || '',
     // Some albums only carry originallyAvailableAt ("YYYY-MM-DD"), not a bare year
     year: i.year || (i.originallyAvailableAt ? parseInt(String(i.originallyAvailableAt).slice(0, 4), 10) || null : null),
   }));
+  _albumCache = { at: Date.now(), key: cacheKey, albums };
+  return albums;
 }
 
 async function rateAlbum(plexUrl, token, ratingKey, rating) {
   const plexRating = Math.min(10, Math.max(0, Math.round(rating * 2)));
-  const res = await fetch(
-    `${plexUrl}/:/rate?key=${ratingKey}&identifier=com.plexapp.plugins.library&rating=${plexRating}`,
-    { method: 'PUT', headers: { 'X-Plex-Token': token } }
-  );
-  return { ok: res.ok, plexRating };
+  try {
+    await plexFetch(
+      `${plexUrl}/:/rate?key=${encodeURIComponent(ratingKey)}&identifier=com.plexapp.plugins.library&rating=${plexRating}`,
+      { method: 'PUT', headers: { 'X-Plex-Token': token } }
+    );
+    return { ok: true, plexRating };
+  } catch (e) {
+    return { ok: false, plexRating, error: e.message };
+  }
 }
 
 export default {
@@ -206,12 +249,24 @@ export default {
     const corsHeaders = {
       'Access-Control-Allow-Origin': origin === allowed ? origin : '',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, X-ListenLog-Key',
+      'Vary': 'Origin',
     };
+    const json = (body, status = 200) => new Response(JSON.stringify(body), {
+      status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
+    if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405);
+
+    // Optional shared key — without it anyone who finds this URL could change
+    // or clear your Plex ratings
+    if (env.PROXY_KEY && request.headers.get('X-ListenLog-Key') !== env.PROXY_KEY) {
+      return json({ error: 'Missing or wrong Plex sync key', needsKey: true }, 401);
+    }
+    if (!env.PLEX_URL || !env.PLEX_TOKEN) return json({ error: 'Worker is missing PLEX_URL or PLEX_TOKEN' }, 500);
 
     const url = new URL(request.url);
     const artist       = url.searchParams.get('artist') || '';
@@ -221,6 +276,10 @@ export default {
     const rating       = ratingParam !== null ? parseFloat(ratingParam) : NaN;
     const confirmKey   = url.searchParams.get('confirmKey') || '';
     const checkOnly    = url.searchParams.get('checkOnly') === '1';
+
+    // Plex rating keys are numeric — reject anything else rather than splice it into a Plex URL
+    if (confirmKey && !/^\d+$/.test(confirmKey)) return json({ error: 'Invalid confirmKey' }, 400);
+    if (ratingParam !== null && (isNaN(rating) || rating < 0 || rating > 5)) return json({ error: 'Invalid rating' }, 400);
 
     if (checkOnly) {
       if (!artist || !album) {
@@ -286,8 +345,8 @@ export default {
             status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        const { ok, plexRating } = await rateAlbum(env.PLEX_URL, env.PLEX_TOKEN, confirmKey, rating);
-        return new Response(JSON.stringify(ok ? { matched: true, plexRating } : { matched: false, error: 'Rate call failed' }), {
+        const { ok, plexRating, error } = await rateAlbum(env.PLEX_URL, env.PLEX_TOKEN, confirmKey, rating);
+        return new Response(JSON.stringify(ok ? { matched: true, plexRating } : { matched: false, error: error || 'Rate call failed' }), {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -303,8 +362,9 @@ export default {
       const match = findMatch(plexAlbums, artist, album, year);
 
       if (match && match.tier === 'exact') {
-        const { ok, plexRating } = await rateAlbum(env.PLEX_URL, env.PLEX_TOKEN, match.album.ratingKey, rating);
-        return new Response(JSON.stringify(ok ? { matched: true, plexRating } : { matched: true, error: 'Rate call failed' }), {
+        const { ok, plexRating, error } = await rateAlbum(env.PLEX_URL, env.PLEX_TOKEN, match.album.ratingKey, rating);
+        // matched:false on failure — the app treats matched:true as "rating saved"
+        return new Response(JSON.stringify(ok ? { matched: true, plexRating } : { matched: false, error: error || 'Rate call failed' }), {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }

@@ -676,6 +676,8 @@ tr.album-row:active{background:var(--surface2)}
   <span style="color:#3a4048">·</span>
   <a href="#" id="restore-link" style="color:#738a9a;text-decoration:none;font-size:12px" title="Restore from a backup .json file">restore</a>
   <span style="color:#3a4048">·</span>
+  <a href="#" id="plexkey-link" style="color:#738a9a;text-decoration:none;font-size:12px" title="Key for the Plex sync Worker">plex key</a>
+  <span style="color:#3a4048">·</span>
   <a href="#" id="sign-out-link" style="color:#738a9a;text-decoration:none;font-size:12px">sign out</a>
 </div>
 
@@ -700,6 +702,7 @@ tr.album-row:active{background:var(--surface2)}
       <a href="#" id="header-resync-link" role="menuitem">Resync</a>
       <a href="#" id="header-export-link" role="menuitem">Export CSV</a>
       <a href="#" id="header-restore-link" role="menuitem">Restore from backup</a>
+      <a href="#" id="header-plexkey-link" role="menuitem">Plex sync key</a>
       <a href="#" id="header-sign-out-link" role="menuitem" class="danger">Sign out</a>
     </div>
   </div>
@@ -1971,7 +1974,7 @@ async function addOrUpdateAlbum() {
     (async () => {
       try {
         const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(entry.artist)}&album=${encodeURIComponent(entry.album)}&year=${encodeURIComponent(extractYear(entry.date))}&checkOnly=1`;
-        const res = await fetch(url);
+        const res = await plexProxyFetch(url);
         if (!res.ok) { console.error(`Plex library check: HTTP ${res.status}`); return; }
         const result = await res.json();
         if (result.error) { console.error('Plex library check reported an error:', result.error); return; }
@@ -2057,6 +2060,23 @@ function closeQuickRate() {
 const qrStillOn = (albumId, session) => qrId === albumId && _qrSession === session;
 
 const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
+// Optional per-device key for the Plex Worker (see PROXY_KEY in plex_proxy_worker.js)
+const PLEX_KEY_STORAGE = 'listenLogPlexKey';
+function getPlexKey() { try { return localStorage.getItem(PLEX_KEY_STORAGE) || ''; } catch (e) { return ''; } }
+async function plexProxyFetch(url) {
+  const key = getPlexKey();
+  const res = await fetch(url, key ? { headers: { 'X-ListenLog-Key': key } } : undefined);
+  if (res.status === 401) {
+    showToast('Plex sync needs your key — open the menu and choose "Plex sync key"', 'err');
+  }
+  return res;
+}
+async function setPlexKey() {
+  const v = await showPromptModal('Plex sync key', { placeholder: 'Same value as PROXY_KEY in the Worker', defaultValue: getPlexKey() });
+  if (v === null) return;
+  try { v ? localStorage.setItem(PLEX_KEY_STORAGE, v) : localStorage.removeItem(PLEX_KEY_STORAGE); } catch (e) {}
+  showToast(v ? 'Plex sync key saved on this device' : 'Plex sync key removed');
+}
 
 // Returns true if the rating was successfully pushed to Plex, false otherwise.
 // A successful Plex match (rating pushed, or confirmed via thumbs up) proves
@@ -2115,7 +2135,7 @@ async function _syncRatingToPlex(a, { writeRating = true } = {}) {
     // which would tell Plex to *clear* an existing rating.
     const ratingParam = writeRating ? `&rating=${a.rating || 0}` : '&checkOnly=1';
     const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}${ratingParam}`;
-    const res = await fetch(url);
+    const res = await plexProxyFetch(url);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       console.error(`Plex sync: Worker returned HTTP ${res.status}`, body);
@@ -2215,7 +2235,7 @@ async function _confirmPlexSuggestion(key, rating, albumId) {
   const hasRating = rating !== null && rating !== undefined;
   try {
     const ratingParam = hasRating ? `&rating=${rating}` : '';
-    const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}${ratingParam}`);
+    const res = await plexProxyFetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}${ratingParam}`);
     if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
     const result = await res.json();
     if (result.matched) {
@@ -2698,7 +2718,7 @@ on('qr-plex-confirm-yes','click', () => withPlexBusy(async () => {
   status.style.color = 'var(--muted)';
   try {
     const ratingParam = hasRating ? `&rating=${encodeURIComponent(rating)}` : '';
-    const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}${ratingParam}`);
+    const res = await plexProxyFetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}${ratingParam}`);
     if (!res.ok) {
       console.error(`Plex confirm: Worker returned HTTP ${res.status}`, await res.text().catch(()=>''));
       throw new Error(`Worker HTTP ${res.status}`);
@@ -2825,7 +2845,7 @@ on('qr-save','click', async ()=>{
 async function pushPlexRatingQuietly(a) {
   try {
     const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}&rating=${a.rating || 0}`;
-    const res = await fetch(url);
+    const res = await plexProxyFetch(url);
     const result = res.ok ? await res.json() : null;
     if (result && result.matched) return;
   } catch(e) { console.error('Plex rating restore failed:', e); }
@@ -4190,6 +4210,7 @@ document.getElementById('header-resync-link').addEventListener('click', e => { e
   document.addEventListener('click', e => { if (!menu.contains(e.target) && e.target !== btn) setOpen(false); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && menu.classList.contains('open')) { setOpen(false); btn.focus(); } });
 })();
+['plexkey-link','header-plexkey-link'].forEach(id => document.getElementById(id).addEventListener('click', e => { e.preventDefault(); setPlexKey(); }));
 ['export-link','header-export-link'].forEach(id => document.getElementById(id).addEventListener('click', e => { e.preventDefault(); exportCsv(); }));
 ['restore-link','header-restore-link'].forEach(id => document.getElementById(id).addEventListener('click', e => { e.preventDefault(); document.getElementById('restore-file').click(); }));
 document.getElementById('restore-file').addEventListener('change', async e => {

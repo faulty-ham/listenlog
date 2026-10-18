@@ -23,8 +23,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v4
+      # Publish only the app itself — not backups/, the Worker source or SQL
+      - name: Build site folder
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
       - uses: actions/deploy-pages@v4
         id: deployment
