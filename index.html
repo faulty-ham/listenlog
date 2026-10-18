@@ -989,6 +989,10 @@ let activeBookmarkId = null;    // set while viewing a bookmarked list
 let _bmPickerMode = null;       // null | 'add' | 'remove' — bookmarks-modal reused as a picker
 let _bmPickerAlbumId = null;
 let _mbLookupInProgress = false; // block Enter-to-save while MB lookup is running
+let _artUploading = false;       // Save is disabled while an art upload is running
+// Bumped whenever the Add/Edit modal opens or closes; async lookups/uploads
+// check it so a late result can't land in a different album's form
+let _editSession = 0;
 let _storageWarned = false;
 
 // Safe localStorage write — handles quota exhaustion gracefully
@@ -1026,7 +1030,7 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 // ════════════════════════════════════════════════════════════
 function starsHTML(n) {
   if (!n) return '';
-  const full  = Math.round(n);
+  const full  = Math.max(0, Math.min(5, Math.round(Number(n) || 0)));
   const empty = 5 - full;
   return `<span class="stars-display" title="${n}/5" style="font-size:17px;letter-spacing:1px">`
     + `<span style="color:var(--star)">${'★'.repeat(full)}</span>`
@@ -1077,12 +1081,14 @@ function extractYear(d) { const m = String(d||'').match(/\d{4}/); return m ? m[0
 // Handles partial dates (YYYY, YYYY-MM) as well as full YYYY-MM-DD, since
 // MusicBrainz release dates aren't always full precision.
 function isFutureDate(d) {
-  if (!d) return false;
-  const parsed = new Date(d);
-  if (isNaN(parsed)) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return parsed > today;
+  const m = String(d || '').trim().match(/^(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?$/);
+  if (!m) return false;
+  const pad = v => String(v).padStart(2, '0');
+  const t = new Date();
+  // Compare at the precision the date was given in, using LOCAL today
+  const today = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+  const norm = [m[1], m[2] && pad(m[2]), m[3] && pad(m[3])].filter(Boolean).join('-');
+  return norm > today.slice(0, norm.length);
 }
 
 function getFiltered() {
@@ -1245,7 +1251,8 @@ function buildDropdown(field, wrap) {
           item.tabIndex = 0;
           item.innerHTML = `<span class="tri-check ${allInclude?'tri-include':allExclude?'tri-exclude':someActive?'tri-mixed':''}"></span><span>${esc(decade)}</span><span style="font-size:12px;color:var(--muted);margin-left:4px">${albumCount} albums</span>`;
           const toggleDecade = () => {
-            const cur = allInclude ? 'include' : allExclude ? 'exclude' : someActive ? 'include' : null;
+            // A partly-selected decade steps to 'include all' first (not straight to exclude)
+            const cur = allInclude ? 'include' : allExclude ? 'exclude' : null;
             const next = cur === null ? 'include' : cur === 'include' ? 'exclude' : null;
             if (next) years.forEach(y => map.set(y, next));
             else years.forEach(y => map.delete(y));
@@ -1620,8 +1627,16 @@ function restoreAlbum(snap, { wasDeleted = false } = {}) {
   render();
 }
 // Fade album art in once it has actually loaded (images start transparent)
+// Page-wide memory of how each row's art resolved ("id|artUrl" → working src,
+// or null when every fallback failed), so re-renders reuse it instead of
+// re-downloading and re-running the iTunes fallback chain for broken covers.
+const _artCache = new Map();
 document.addEventListener('load', e => {
-  if (e.target.classList && e.target.classList.contains('art-thumb')) e.target.classList.add('in');
+  const img = e.target;
+  if (!img.classList || !img.classList.contains('art-thumb')) return;
+  img.classList.add('in');
+  img.classList.remove('lazy');
+  if (img.dataset.key) _artCache.set(img.dataset.key, img.currentSrc || img.src);
 }, true);
 let _dataReady = false; // false until the first load from cache/cloud finishes
 
@@ -1633,7 +1648,7 @@ const ROW_CHUNK = 60;
 let _renderList = [], _renderedCount = 0, _renderSig = '', _rowCtx = null, _rowAlbums = new Map(), _rowObserver = null;
 
 function buildAlbumRow(a, ctx) {
-  const { bookmarkedIds, loadedArt } = ctx;
+  const { bookmarkedIds } = ctx;
   const tr = document.createElement('tr');
   tr.className = 'album-row';
   tr.dataset.id = a.id;
@@ -1648,9 +1663,11 @@ function buildAlbumRow(a, ctx) {
       a.releaseType === 'single_ep'   ? '<span class="badge badge-single">EP</span>' : '',
     ].filter(Boolean).join(' ');
 
-    const loaded = loadedArt[a.id];
-    const artCell = a.artUrl
-      ? `<img decoding="async" class="art-thumb${loaded ? '' : ' lazy'}" ${loaded ? `src="${esc(loaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" data-artist="${esc(a.artist)}" data-album="${esc(a.album)}" data-caa="${esc(a.artUrl)}"${a.artFallback?` data-fb="${esc(a.artFallback)}"`:``} onerror="artError(this)"><div class="art-placeholder" style="display:none">${ART_PLACEHOLDER}</div>`
+    const artKey = a.id + '|' + (a.artUrl || '');
+    const known = _artCache.get(artKey); // resolved src, or null = every fallback failed
+    const loaded = typeof known === 'string' ? known : '';
+    const artCell = a.artUrl && known !== null
+      ? `<img decoding="async" class="art-thumb${loaded ? ' in' : ' lazy'}" ${loaded ? `src="${esc(loaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox(this.currentSrc||this.src)" data-key="${esc(artKey)}" data-artist="${esc(a.artist)}" data-album="${esc(a.album)}" data-caa="${esc(a.artUrl)}"${a.artFallback?` data-fb="${esc(a.artFallback)}"`:``} onerror="artError(this)"><div class="art-placeholder" style="display:none">${ART_PLACEHOLDER}</div>`
       : `<div class="art-placeholder">${ART_PLACEHOLDER}</div>`;
 
     tr.innerHTML = `
@@ -1729,12 +1746,6 @@ function render() {
   if (!tbody) return; // DOM not ready yet
   const list = getSorted(getFiltered());
   const bookmarkedIds = bookmarkedAlbumIdSet();
-  // Snapshot already-loaded artwork so we can reuse src after re-render
-  const loadedArt = {};
-  tbody.querySelectorAll('tr[data-id]').forEach(row => {
-    const img = row.querySelector('img.art-thumb:not(.lazy)');
-    if (img?.src) loadedArt[row.dataset.id] = img.src;
-  });
 
   // Single pass over albums for all header stats, instead of two separate .filter() passes
   let wantCount = 0, relistenCount = 0, hardCount = 0;
@@ -1780,15 +1791,16 @@ function render() {
   // more as the user nears the bottom. A render that doesn't change the sort,
   // filters or result count keeps however many rows were already showing, so
   // scroll position survives edits.
-  const sig = [sortKey, sortDir, list.length, document.getElementById('filter-search')?.value || '', activeBookmarkId || '',
+  const sig = [sortKey, sortDir, tagsMatchMode, document.getElementById('filter-search')?.value || '', activeBookmarkId || '',
     ...Object.values(activeFilters).map(m => [...m].join(','))].join('|');
   const keep = sig === _renderSig ? Math.max(_renderedCount, ROW_CHUNK) : ROW_CHUNK;
   if (sig !== _renderSig) { const w = document.querySelector('.table-wrap'); if (w) w.scrollTop = 0; }
   _renderSig = sig;
   _renderList = list;
-  _rowCtx = { bookmarkedIds, loadedArt };
+  _rowCtx = { bookmarkedIds };
   _rowAlbums = new Map(list.map(a => [a.id, a]));
   _renderedCount = 0;
+  _imgObserver.disconnect();
   tbody.innerHTML = '';
   appendRows(keep);
   ensureRowSentinel();
@@ -1805,7 +1817,7 @@ const _imgObserver = new IntersectionObserver(entries => {
     if (img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
     _imgObserver.unobserve(img);
   });
-}, { rootMargin: '600px' }); // load images 600px before they enter viewport
+}, { root: document.querySelector('.table-wrap'), rootMargin: '600px' }); // rows scroll inside .table-wrap, so observe relative to it
 
 function observeLazyImages() {
   document.querySelectorAll('img.lazy[data-src]').forEach(img => {
@@ -1836,6 +1848,7 @@ function openPanel(mode) {
   document.getElementById('btn-save').textContent = 'Save';
   document.getElementById('btn-delete-entry').style.display = mode==='edit' ? '' : 'none';
   document.getElementById('add-modal').classList.add('open');
+  _editSession++;
   _formBaseline = formState();
   updateSaveEnabled();
   clearInterval(_formWatch);
@@ -1847,6 +1860,8 @@ function openPanel(mode) {
 }
 function closePanel() {
   document.getElementById('add-modal').classList.remove('open');
+  _editSession++;
+  _mbLookupInProgress = false; // a lookup still in flight will be discarded by the session check
   clearInterval(_formWatch); _formWatch = null;
   resetForm(); editingId=null;
 }
@@ -1865,7 +1880,7 @@ function formState() {
 function isFormDirty() { return formState() !== _formBaseline; }
 function updateSaveEnabled() {
   const btn = document.getElementById('btn-save');
-  if (btn) btn.disabled = !isFormDirty();
+  if (btn) btn.disabled = _artUploading || !isFormDirty();
 }
 // Cancel / Esc / click-outside all come through here
 async function requestClosePanel() {
@@ -1913,6 +1928,9 @@ async function addOrUpdateAlbum() {
   const existing = editingId ? (albums.find(a=>a.id===editingId)||{}) : {};
   const beforeEdit = existing.id ? {...existing} : null;
   const artUrl = pendingArtUrl||existing.artUrl||'';
+  // editAlbum() pre-fills pendingArtUrl with the album's CURRENT art, so "has
+  // pending art" alone is true on every edit. Only a different URL is new art.
+  const artChanged = !!pendingArtUrl && pendingArtUrl !== (existing.artUrl || '');
   const dateVal = document.getElementById('f-date').value.trim();
   const entry={
     id:editingId||uid(), artist, album,
@@ -1930,7 +1948,7 @@ async function addOrUpdateAlbum() {
     // starts false and gets patched in once the lookup resolves, same pattern
     // as the background art upload just below.
     inPlexLibrary: existing.inPlexLibrary || false,
-    unmatched: Boolean(existing.unmatched && !pendingArtUrl),
+    unmatched: Boolean(existing.unmatched && !artChanged),
     artUrl,
     artFallback:pendingArtFallback||existing.artFallback||'',
     mbid:pendingMbid||existing.mbid||'',
@@ -1939,7 +1957,6 @@ async function addOrUpdateAlbum() {
   };
   if(editingId){const i=albums.findIndex(a=>a.id===editingId);if(i!==-1)albums[i]=entry;}
   else albums.unshift(entry);
-  const hadPendingArt = !!pendingArtUrl; // capture before closePanel() clears it
   const isNewEntry = !editingId;
   save(entry); closePanel(); render();
   if (beforeEdit && JSON.stringify(beforeEdit) !== JSON.stringify(entry)) offerUndo('Changes saved', () => restoreAlbum(beforeEdit));
@@ -1969,33 +1986,32 @@ async function addOrUpdateAlbum() {
   // Auto-upload art to R2 in the background — but ONLY if the primary art URL
   // isn't already hosted. Without this guard, editing any album whose art is
   // already on R2 would re-fetch the iTunes fallback and overwrite better art.
-  if (hadPendingArt && artUrl && !isHostedArt(artUrl)) {
+  if (artChanged && artUrl && !isHostedArt(artUrl)) {
     const targetId    = entry.id;
     const fallbackUrl = pendingArtFallback || entry.artFallback || '';
     try {
-      // Try primary art URL first; fall back to iTunes/artFallback if it 404s
+      // Try primary art URL first; fall back to iTunes/artFallback if it fails.
+      // Each URL gets its own try — a network/CORS error on the first one
+      // shouldn't skip the fallback.
       let blob = null;
       for (const url of [artUrl, fallbackUrl]) {
         if (!url || isHostedArt(url)) continue;
-        const resp = await fetch(url);
-        if (resp.ok) {
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) continue;
           const b = await resp.blob();
           if (b.type.startsWith('image/')) { blob = b; break; }
-        }
+        } catch (e) { console.warn('Art fetch failed, trying next:', url, e); }
       }
       if (blob) {
         const publicUrl = await uploadArtToR2(blob, targetId);
-        // Update Supabase directly — bypass the write queue entirely to avoid
-        // race with pullFromCloud() overwriting the new art_url
-        await _sb.from('albums')
-          .update({ art_url: publicUrl, updated_at: new Date().toISOString() })
-          .eq('id', targetId)
-          .eq('user_id', _userId);
-        // Also update local state
+        // Only apply if the album still has the art we started with — if it was
+        // edited again meanwhile, the newer choice wins. Goes through the write
+        // queue (retried if offline; pulls overlay pending writes).
         const current = albums.find(a => a.id === targetId);
-        if (current) {
+        if (current && current.artUrl === artUrl) {
           current.artUrl = publicUrl;
-          safeSetItem('listenLog', JSON.stringify(albums));
+          save(current);
           render();
         }
       }
@@ -2010,7 +2026,7 @@ function editAlbum(id) {
   document.getElementById('f-artist').value=a.artist;
   document.getElementById('f-album').value=a.album;
   document.getElementById('f-date').value=a.date||'';
-  pendingArtUrl=a.artUrl||''; pendingMbid=a.mbid||'';
+  pendingArtUrl=a.artUrl||''; pendingArtFallback=a.artFallback||''; pendingMbid=a.mbid||'';
   document.getElementById('f-type').value = a.releaseType||'';
   // Show existing art if available
   if (a.artUrl) {
@@ -2029,6 +2045,16 @@ function editAlbum(id) {
 
 // ── Quick-Rate modal ──────────────────────────────────────────
 let qrId=null, qrRating=0, qrWant=false, qrHard=false, qrUnmatched=false, qrInPlex=false;
+// Bumped every time Quick Rate opens or closes. Async Plex work captures it at
+// the start and checks it afterwards, so a slow response for album A can never
+// change (or close) the modal after it has moved on to album B.
+let _qrSession = 0, _qrSaving = false;
+function closeQuickRate() {
+  document.getElementById('quick-rate-modal').classList.remove('open');
+  qrId = null;
+  _qrSession++;
+}
+const qrStillOn = (albumId, session) => qrId === albumId && _qrSession === session;
 
 const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
 
@@ -2041,28 +2067,18 @@ const PLEX_PROXY_URL = 'https://listenlog-plex-proxy.kellbeckerle.workers.dev';
 async function markInPlexLibrary(albumId) {
   if (!albumId) return;
   const current = albums.find(x => x.id === albumId);
-  if (!current || current.inPlexLibrary) return; // already tagged, nothing to do
-  const clearingHard = !!current.hardToFind;
-  try {
-    const patch = { in_plex_library: true, updated_at: new Date().toISOString() };
-    if (clearingHard) patch.hard_to_find = false;
-    await _sb.from('albums')
-      .update(patch)
-      .eq('id', albumId)
-      .eq('user_id', _userId);
+  if (current && !current.inPlexLibrary) {
     current.inPlexLibrary = true;
-    if (clearingHard) current.hardToFind = false;
-    safeSetItem('listenLog', JSON.stringify(albums));
+    current.hardToFind = false;
+    save(current); // goes through the write queue, so it's retried if offline
     render();
-    // Keep the Quick Rate modal's own toggle state in sync if it's open
-    // for this same album — otherwise "In Plex" would show on but "Hard
-    // to Find" would still show on too, until the modal is reopened.
-    if (clearingHard && qrId === albumId && qrHard) {
-      qrHard = false;
-      syncQrToggles();
-    }
-  } catch(e) {
-    console.error('Failed to tag album as In Plex:', e);
+  }
+  // Keep the Quick Rate modal's toggles in sync if it's open for this album —
+  // otherwise saving the modal would write its stale "not in Plex" state back
+  if (qrId === albumId) {
+    qrInPlex = true;
+    qrHard = false;
+    syncQrToggles();
   }
 }
 
@@ -2085,6 +2101,8 @@ async function syncRatingToPlex(a, opts) {
 async function _syncRatingToPlex(a, { writeRating = true } = {}) {
   const status = document.getElementById('qr-plex-status');
   if (!status) return false;
+  const session = _qrSession;
+  const here = () => qrStillOn(a.id, session); // is the modal still showing this album?
   status.textContent = '';
   status.style.color = 'var(--muted)';
   hidePlexConfirm();
@@ -2105,21 +2123,27 @@ async function _syncRatingToPlex(a, { writeRating = true } = {}) {
     }
     const result = await res.json();
     if (result.matched || result.inLibrary) {
-      status.textContent = writeRating ? 'Plex rating updated' : 'Found in Plex library';
-      showToast(status.textContent); status.textContent = '';
+      const msg = writeRating ? 'Plex rating updated' : 'Found in Plex library';
+      showToast(here() ? msg : `${msg}: ${a.album}`);
+      if (here()) status.textContent = '';
       markInPlexLibrary(a.id);
       return true;
+    }
+    if ((result.partial || (result.suggestions && result.suggestions.length)) && !here()) {
+      // The person has moved on — don't pop a prompt into another album's modal
+      showToast(`Plex needs you to confirm the match for "${a.album}" — open it and tap Sync to Plex`, 'err');
+      return false;
     }
     if (result.partial) {
       // Album title matched but the artist credit didn't (e.g. "Rufus" vs
       // "Rufus feat. Chaka Khan") — don't guess, let the person confirm.
       status.textContent = '';
-      showPlexConfirm(result.partial, writeRating ? (a.rating || 0) : null);
+      showPlexConfirm(result.partial, writeRating ? (a.rating || 0) : null, a.id);
       return false;
     }
     if (result.suggestions && result.suggestions.length) {
       status.textContent = '';
-      showPlexSuggestions(result.suggestions, writeRating ? (a.rating || 0) : null);
+      showPlexSuggestions(result.suggestions, writeRating ? (a.rating || 0) : null, a.id);
       return false;
     }
     // Worker responded but couldn't match or reach Plex — it may have put a
@@ -2130,14 +2154,19 @@ async function _syncRatingToPlex(a, { writeRating = true } = {}) {
   } catch(e) {
     console.error('Plex sync: request to Worker failed:', e);
   }
-  status.textContent = 'Sync failed, please rate manually';
-  status.style.color = 'var(--danger)';
+  if (here()) {
+    status.textContent = 'Sync failed, please rate manually';
+    status.style.color = 'var(--danger)';
+  } else {
+    showToast(`Couldn't sync "${a.album}" to Plex`, 'err');
+  }
   return false;
 }
 
-function showPlexConfirm(partial, rating) {
+function showPlexConfirm(partial, rating, albumId) {
   hidePlexSuggestions();
   const box  = document.getElementById('qr-plex-confirm');
+  box.dataset.albumId = albumId || qrId || '';
   const text = document.getElementById('qr-plex-confirm-text');
   text.textContent = `Found "${partial.artist} — ${partial.album}"${partial.year ? ` (${partial.year})` : ''} in Plex — is this the right album?`;
   box.classList.remove('hidden');
@@ -2153,9 +2182,11 @@ function hidePlexConfirm() {
   box.classList.add('hidden');
   delete box.dataset.key;
   delete box.dataset.rating;
+  delete box.dataset.albumId;
 }
 
-function showPlexSuggestions(suggestions, rating) {
+function showPlexSuggestions(suggestions, rating, albumId) {
+  albumId = albumId || qrId;
   hidePlexConfirm();
   const box  = document.getElementById('qr-plex-suggestions');
   const list = document.getElementById('qr-plex-suggestions-list');
@@ -2165,7 +2196,7 @@ function showPlexSuggestions(suggestions, rating) {
     btn.className = 'btn-ghost';
     btn.style.cssText = 'text-align:left;font-size:12px;padding:5px 8px';
     btn.textContent = `${s.artist} — ${s.album}${s.year ? ` (${s.year})` : ''}`;
-    btn.addEventListener('click', () => confirmPlexSuggestion(s.key, rating));
+    btn.addEventListener('click', () => confirmPlexSuggestion(s.key, rating, albumId));
     list.appendChild(btn);
   });
   box.classList.remove('hidden');
@@ -2174,8 +2205,9 @@ function hidePlexSuggestions() {
   document.getElementById('qr-plex-suggestions').classList.add('hidden');
 }
 
-function confirmPlexSuggestion(key, rating) { return withPlexBusy(() => _confirmPlexSuggestion(key, rating)); }
-async function _confirmPlexSuggestion(key, rating) {
+function confirmPlexSuggestion(key, rating, albumId) { return withPlexBusy(() => _confirmPlexSuggestion(key, rating, albumId)); }
+async function _confirmPlexSuggestion(key, rating, albumId) {
+  const session = _qrSession;
   hidePlexSuggestions();
   const status = document.getElementById('qr-plex-status');
   status.textContent = '';
@@ -2187,22 +2219,19 @@ async function _confirmPlexSuggestion(key, rating) {
     if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
     const result = await res.json();
     if (result.matched) {
-      status.textContent = hasRating ? 'Plex rating updated' : 'Found in Plex library';
-      showToast(status.textContent); status.textContent = '';
-      if (qrId) {
-        markInPlexLibrary(qrId);
-        qrInPlex = true;
-        qrHard = false;
-        syncQrToggles();
-      }
+      showToast(hasRating ? 'Plex rating updated' : 'Found in Plex library');
+      status.textContent = '';
+      markInPlexLibrary(albumId); // the album the suggestion was for, not whatever is open now
       return;
     }
     if (result.error) console.error('Plex confirm: Worker reported an error:', result.error);
   } catch(e) {
     console.error('Plex confirm: request to Worker failed:', e);
   }
-  status.textContent = 'Sync failed, please rate manually';
-  status.style.color = 'var(--danger)';
+  if (qrStillOn(albumId, session)) {
+    status.textContent = 'Sync failed, please rate manually';
+    status.style.color = 'var(--danger)';
+  } else showToast("Couldn't confirm the Plex match", 'err');
 }
 
 // ════════════════════════════════════════════════════════════
@@ -2253,6 +2282,7 @@ async function createBookmark(name, albumIds) {
     if (error) throw error;
   } catch(e) {
     console.error('Failed to save bookmark to cloud:', e);
+    showToast(`Couldn't save bookmark list "${name}" to the cloud — it may disappear on reload`, 'err');
   }
   return bm;
 }
@@ -2266,6 +2296,7 @@ async function deleteBookmark(id) {
     if (error) throw error;
   } catch(e) {
     console.error('Failed to delete bookmark from cloud:', e);
+    showToast("Couldn't delete the bookmark list in the cloud — it may come back on reload", 'err');
   }
 }
 
@@ -2280,6 +2311,7 @@ async function saveBookmarkAlbumIds(bookmarkId) {
     if (error) throw error;
   } catch(e) {
     console.error('Failed to update bookmark in cloud:', e);
+    showToast("Couldn't update the bookmark list in the cloud — the change may be lost on reload", 'err');
   }
   if (activeBookmarkId === bookmarkId) render();
 }
@@ -2411,6 +2443,7 @@ function syncQrBookmarkButtons() {
 
 function openQuickRate(id) {
   const a=albums.find(x=>x.id===id); if(!a) return;
+  _qrSession++;
   qrId=id; qrRating=a.rating||0; qrWant=!!a.wantToListen; qrHard=!!a.hardToFind; qrUnmatched=!!a.unmatched; qrInPlex=!!a.inPlexLibrary;
   document.getElementById('qr-artist').textContent=a.artist;
   document.getElementById('qr-date').textContent=a.date||'';
@@ -2508,8 +2541,7 @@ async function openNotesModal(id) {
   const a = albums.find(x=>x.id===id); if (!a) return;
   _notesId = id;
   // Notes takes over from Quick Rate — close it so we land back on the main view, not Quick Rate
-  document.getElementById('quick-rate-modal').classList.remove('open');
-  qrId = null;
+  closeQuickRate();
   document.getElementById('notes-modal-subtitle').textContent = `${a.artist} — ${a.album}`;
   const ta   = document.getElementById('notes-textarea');
   const hint = document.getElementById('notes-loading-hint');
@@ -2604,9 +2636,6 @@ function closePromptModal(result) {
 }
 
 // ════════════════════════════════════════════════════════════
-// RATE-LIMITED REQUEST QUEUE
-// — iTunes 429s silently (returns 0 results). We serialize all
-
 // SORT & EVENTS
 // ════════════════════════════════════════════════════════════
 document.querySelectorAll('th[data-sort]').forEach(th=>{
@@ -2655,15 +2684,20 @@ on('qr-clear-rating','click',()=>{ setQrRating(0); });
 
 on('qr-plex-confirm-yes','click', () => withPlexBusy(async () => {
   const box = document.getElementById('qr-plex-confirm');
+  // Read everything off the prompt BEFORE hiding it — hidePlexConfirm() clears
+  // these, and reading the rating afterwards sent "rating=undefined" to Plex
   const key = box.dataset.key;
   const hasRating = 'rating' in box.dataset;
+  const rating = box.dataset.rating;
+  const albumId = box.dataset.albumId || qrId;
+  const session = _qrSession;
   if (!key) return;
   const status = document.getElementById('qr-plex-status');
   hidePlexConfirm();
   status.textContent = '';
   status.style.color = 'var(--muted)';
   try {
-    const ratingParam = hasRating ? `&rating=${box.dataset.rating}` : '';
+    const ratingParam = hasRating ? `&rating=${encodeURIComponent(rating)}` : '';
     const res = await fetch(`${PLEX_PROXY_URL}?confirmKey=${encodeURIComponent(key)}${ratingParam}`);
     if (!res.ok) {
       console.error(`Plex confirm: Worker returned HTTP ${res.status}`, await res.text().catch(()=>''));
@@ -2671,20 +2705,18 @@ on('qr-plex-confirm-yes','click', () => withPlexBusy(async () => {
     }
     const result = await res.json();
     if (result.matched) {
-      status.textContent = hasRating ? 'Plex rating updated' : 'Found in Plex library';
-      showToast(status.textContent); status.textContent = '';
-      markInPlexLibrary(qrId);
-      qrInPlex = true;
-      qrHard = false;
-      syncQrToggles();
+      showToast(hasRating ? 'Plex rating updated' : 'Found in Plex library');
+      markInPlexLibrary(albumId);
       return;
     }
     if (result.error) console.error('Plex confirm: Worker reported an error:', result.error);
   } catch(e) {
     console.error('Plex confirm: request to Worker failed:', e);
   }
-  status.textContent = 'Sync failed, please rate manually';
-  status.style.color = 'var(--danger)';
+  if (qrStillOn(albumId, session)) {
+    status.textContent = 'Sync failed, please rate manually';
+    status.style.color = 'var(--danger)';
+  } else showToast("Couldn't confirm the Plex match", 'err');
 }));
 on('qr-plex-confirm-no','click', () => {
   hidePlexConfirm();
@@ -2751,30 +2783,55 @@ on('qr-plex-sync-btn','click', async ()=>{
   }
 });
 on('qr-save','click', async ()=>{
-  if(!qrId)return;
+  if(!qrId || _qrSaving) return; // ignore double-clicks / Enter while a save is running
   const a=albums.find(x=>x.id===qrId); if(!a)return;
-  const ratingChanged=qrRating!==(a.rating||0);
-  const before={...a};
-  if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
-  if(qrInPlex)qrHard=false; // in Plex means it's not hard to find anymore
-  a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;a.inPlexLibrary=qrInPlex;
-  save(a);render();
-  if(JSON.stringify(before)!==JSON.stringify(a)) offerUndo(ratingChanged?'Rating saved':'Changes saved',()=>restoreAlbum(before));
+  _qrSaving = true;
+  try {
+    const session=_qrSession;
+    const ratingChanged=qrRating!==(a.rating||0);
+    const before={...a};
+    if(ratingChanged&&qrRating>0){qrWant=false;qrHard=false;}
+    if(qrInPlex)qrHard=false; // in Plex means it's not hard to find anymore
+    a.rating=qrRating||null;a.wantToListen=qrWant;a.hardToFind=qrWant&&qrHard;a.unmatched=qrUnmatched;a.inPlexLibrary=qrInPlex;
+    save(a);render();
+    if(JSON.stringify(before)!==JSON.stringify(a)) offerUndo(ratingChanged?'Rating saved':'Changes saved',()=>{
+      // Keep "In Plex" if it's been confirmed since (undo shouldn't un-learn that)
+      const now = albums.find(x=>x.id===before.id) || {};
+      const inPlex = before.inPlexLibrary || !!now.inPlexLibrary;
+      restoreAlbum({ ...before, inPlexLibrary: inPlex, hardToFind: inPlex ? false : before.hardToFind });
+      // The new rating already went to Plex — put the old one back there too
+      if (ratingChanged) pushPlexRatingQuietly(before);
+    });
 
-  if (ratingChanged) {
-    // Push both new ratings AND clears to Plex — a rating of 0 there is how
-    // you unset a star rating, so this correctly clears it on that side too.
-    const ok = await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, date: a.date, rating: a.rating || 0 });
-    if (!ok) return;
-    setTimeout(()=>{
-      document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
-      document.getElementById('qr-plex-status').textContent='';
-    }, 900);
-  } else {
-    document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;
+    if (ratingChanged) {
+      // Push both new ratings AND clears to Plex — a rating of 0 there is how
+      // you unset a star rating, so this correctly clears it on that side too.
+      const ok = await syncRatingToPlex({ id: a.id, artist: a.artist, album: a.album, date: a.date, rating: a.rating || 0 });
+      if (!ok) return;
+      setTimeout(()=>{
+        if (_qrSession !== session) return; // modal moved on — don't close someone else's
+        closeQuickRate();
+        document.getElementById('qr-plex-status').textContent='';
+      }, 900);
+    } else {
+      closeQuickRate();
+    }
+  } finally {
+    _qrSaving = false;
   }
 });
-on('qr-cancel','click',()=>{document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;});
+// Background rating push with no modal UI (used by Undo). Only an exact match
+// is written — anything that needs a human decision is reported instead.
+async function pushPlexRatingQuietly(a) {
+  try {
+    const url = `${PLEX_PROXY_URL}?artist=${encodeURIComponent(a.artist)}&album=${encodeURIComponent(a.album)}&year=${encodeURIComponent(extractYear(a.date||''))}&rating=${a.rating || 0}`;
+    const res = await fetch(url);
+    const result = res.ok ? await res.json() : null;
+    if (result && result.matched) return;
+  } catch(e) { console.error('Plex rating restore failed:', e); }
+  showToast(`Couldn't put the old rating back in Plex for "${a.album}" — open it and tap Sync to Plex`, 'err');
+}
+on('qr-cancel','click',()=>{closeQuickRate();});
 
 on('qr-notes-btn','click',()=>{ if(qrId) openNotesModal(qrId); });
 
@@ -2819,8 +2876,7 @@ on('qr-jump-artist','click',()=>{
   sortKey = 'date'; sortDir = -1;   // newest first
   syncMobileSort();
 
-  document.getElementById('quick-rate-modal').classList.remove('open');
-  qrId = null;
+  closeQuickRate();
 
   updateFilterPills();
   render();
@@ -2869,7 +2925,7 @@ on('notes-modal','click',e=>{
 let _qrMousedownOnOverlay = false;
 on('quick-rate-modal','mousedown',e=>{_qrMousedownOnOverlay = e.target.id==='quick-rate-modal';});
 on('quick-rate-modal','click',e=>{
-  if(e.target.id==='quick-rate-modal' && _qrMousedownOnOverlay){document.getElementById('quick-rate-modal').classList.remove('open');qrId=null;}
+  if(e.target.id==='quick-rate-modal' && _qrMousedownOnOverlay){closeQuickRate();}
   else e.stopPropagation();
 });
 
@@ -2967,16 +3023,23 @@ on('mb-clipboard-btn','click', async () => {
   document.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }, true);
 
   document.addEventListener('drop', async e => {
+    _dragCounter = 0;
+    overlay.style.display = 'none';
+    // Skip if dropped onto a form field outside the modal (filter/search fields)
+    // — let the browser insert the text normally. Fields INSIDE the open
+    // edit/add modal should still trigger a match — people naturally drop near
+    // the album/artist text, not just the MB link field.
+    const closestField = e.target.closest && e.target.closest('input,textarea');
+    if (closestField && !closestField.closest('#add-modal')) return;
     e.preventDefault();
     e.stopPropagation();
+    // Another dialog (Quick Rate, notes, bookmarks, confirm…) is open on top —
+    // opening the edit form underneath it would be invisible
+    if (document.querySelector('.modal-overlay.open:not(#add-modal)')) {
+      showToast('Close the open dialog first, then drop the link again', 'err');
+      return;
+    }
     try {
-      _dragCounter = 0;
-      overlay.style.display = 'none';
-      // Skip if dropped onto a form field outside the modal (filter/search fields).
-      // Fields INSIDE the open edit/add modal should still trigger a match —
-      // people naturally drop near the album/artist text, not just the MB link field.
-      const closestField = e.target.closest('input,textarea');
-      if (closestField && !closestField.closest('#add-modal')) return;
       // If a lookup is already running, ignore this drop
       if (_mbLookupInProgress) {
         const fe = document.getElementById('form-error');
@@ -3001,6 +3064,7 @@ on('mb-clipboard-btn','click', async () => {
       // If edit modal is open, re-match the current entry instead of adding new
       const modalOpen = document.getElementById('add-modal').classList.contains('open');
       if (!modalOpen) { editingId = null; resetForm(); openPanel('add'); }
+      const session = _editSession;
       const fe = document.getElementById('form-error');
       if (fe) fe.textContent = '⟳ Looking up MusicBrainz…';
       _mbLookupInProgress = true;
@@ -3011,8 +3075,9 @@ on('mb-clipboard-btn','click', async () => {
         console.error('Lookup threw:', err);
         result = { error: 'Lookup failed unexpectedly. Try again.' };
       } finally {
-        _mbLookupInProgress = false;
+        if (session === _editSession) _mbLookupInProgress = false;
       }
+      if (session !== _editSession) return; // modal was closed/reopened — discard
       if (!result || result.error) {
         if (fe) fe.textContent = result?.error || 'MB lookup failed — try again or fill manually.';
         return;
@@ -3050,60 +3115,44 @@ on('search-clear','click',()=>{
 // This prevents drag-to-select inside inputs from closing the modal
 let _modalMousedownOnOverlay = false;
 on('add-modal','mousedown',e=>{_modalMousedownOnOverlay = e.target.id==='add-modal';});
-// Enter key submits the active modal's primary action
+// Esc closes the topmost dialog; Enter triggers the topmost dialog's primary action
 document.addEventListener('keydown', e => {
-  // Escape closes topmost overlay: lightbox → notes → add/quick-rate/delete modals
+  if (e.isComposing || e.keyCode === 229) return; // IME (e.g. Japanese) is still composing text
+  const isOpen = id => document.getElementById(id)?.classList.contains('open');
   if (e.key === 'Escape') {
-    // Confirm / prompt dialogs sit on top of everything else, so they get Esc first
-    const dm0 = document.getElementById('delete-modal');
-    if (dm0 && dm0.classList.contains('open')) { closeConfirmModal(false); return; }
-    const pm0 = document.getElementById('prompt-modal');
-    if (pm0 && pm0.classList.contains('open')) { closePromptModal(null); return; }
+    // Topmost first: confirm/prompt (z 200) → lightbox → notes/bookmarks (150) → base modals (100)
+    if (isOpen('delete-modal')) { closeConfirmModal(false); return; }
+    if (isOpen('prompt-modal')) { closePromptModal(null); return; }
     const lb = document.getElementById('art-lightbox');
     if (lb && lb.style.display !== 'none') { lb.style.display='none'; document.getElementById('art-lightbox-img').src=''; return; }
-    const nm = document.getElementById('notes-modal');
-    if (nm && nm.classList.contains('open')) { closeNotesModal(); return; }
-    const bm = document.getElementById('bookmarks-modal');
-    if (bm && bm.classList.contains('open')) { closeBookmarksModal(); return; }
-    const am = document.getElementById('add-modal');
-    if (am && am.classList.contains('open')) {
-      if (_mbLookupInProgress) return; // don't close mid-lookup
-      requestClosePanel(); return;
-    }
-    const qm = document.getElementById('quick-rate-modal');
-    if (qm && qm.classList.contains('open')) { qm.classList.remove('open'); qrId = null; return; }
-    const pm = document.getElementById('prompt-modal');
-    if (pm && pm.classList.contains('open')) { closePromptModal(null); return; }
-    const dm = document.getElementById('delete-modal');
-    if (dm && dm.classList.contains('open')) { closeConfirmModal(false); return; }
+    if (isOpen('notes-modal')) { closeNotesModal(); return; }
+    if (isOpen('bookmarks-modal')) { closeBookmarksModal(); return; }
+    if (isOpen('add-modal')) { requestClosePanel(); return; } // a running lookup is discarded safely
+    if (isOpen('quick-rate-modal')) { closeQuickRate(); return; }
+    return;
   }
   if (e.key !== 'Enter') return;
-  if (e.target.tagName === 'TEXTAREA') return;
-  if (e.metaKey || e.ctrlKey) return;
+  if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+  const t = e.target;
+  if (t.tagName === 'TEXTAREA') return;
+  // A focused button/link/select handles Enter itself — e.g. tabbing to "Cancel"
+  // and pressing Enter must cancel, not trigger the dialog's primary action
+  // (Stars and tag toggles are just state pickers — Enter after tapping one still saves.)
+  const ctl = t.closest && t.closest('button, a, select, [role="menuitem"]');
+  if (ctl && !ctl.matches('.star-btn, .tag-toggle')) return;
   // Don't intercept inside search/filter inputs
-  if (e.target.id === 'filter-search' || e.target.id === 'autofill-search-input') return;
+  if (t.id === 'filter-search') return;
   // Don't intercept if a filter dropdown is open (item keydown handles it)
   if (document.querySelector('.ms-dropdown.open')) return;
-  // Find the open modal and click its primary button (confirm/prompt dialogs are on top, so first)
-  if (document.getElementById('delete-modal').classList.contains('open')) {
-    e.preventDefault(); document.getElementById('delete-confirm').click(); return;
-  }
-  if (document.getElementById('prompt-modal').classList.contains('open')) {
-    e.preventDefault(); document.getElementById('prompt-save').click(); return;
-  }
-  if (document.getElementById('add-modal').classList.contains('open')) {
+  // Topmost dialog only
+  if (isOpen('delete-modal')) { e.preventDefault(); document.getElementById('delete-confirm').click(); return; }
+  if (isOpen('prompt-modal')) { e.preventDefault(); document.getElementById('prompt-save').click(); return; }
+  if (isOpen('notes-modal') || isOpen('bookmarks-modal')) return; // they handle their own keys
+  if (isOpen('add-modal')) {
     if (_mbLookupInProgress) return; // don't save while lookup is running
     e.preventDefault(); document.getElementById('btn-save').click(); return;
   }
-  if (document.getElementById('quick-rate-modal').classList.contains('open')) {
-    e.preventDefault(); document.getElementById('qr-save').click(); return;
-  }
-  if (document.getElementById('prompt-modal').classList.contains('open')) {
-    e.preventDefault(); document.getElementById('prompt-save').click(); return;
-  }
-  if (document.getElementById('delete-modal').classList.contains('open')) {
-    e.preventDefault(); document.getElementById('delete-confirm').click(); return;
-  }
+  if (isOpen('quick-rate-modal')) { e.preventDefault(); document.getElementById('qr-save').click(); return; }
 });
 on('add-modal','click',e=>{
   if(e.target.id==='add-modal' && _modalMousedownOnOverlay) requestClosePanel();
@@ -3173,17 +3222,29 @@ function applyMbResult(result) {
   if (ferr) ferr.textContent='';
 }
 
-async function fetchItunesArt(artist, album) {
+// One iTunes lookup per artist+album per page load (results, including "nothing
+// found", are remembered) — iTunes silently rate-limits bursts of searches.
+const _itunesCache = new Map();
+function fetchItunesArt(artist, album) {
+  const key = `${artist}\u0000${album}`;
+  if (!_itunesCache.has(key)) _itunesCache.set(key, _fetchItunesArt(artist, album));
+  return _itunesCache.get(key);
+}
+async function _fetchItunesArt(artist, album) {
   try {
-    const norm = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    // Unicode-aware: keep letters/digits in any script, drop accents/punctuation
+    const norm = s => String(s || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
     const normAlbum  = norm(album);
     const normArtist = norm(artist);
+    // An empty name would "match" every result — refuse rather than pick wrong art
+    if (!normAlbum || !normArtist) return null;
 
     // Only search artist+album together — never album alone (too many false matches)
-    const searches = [
+    const searches = [...new Set([
       `${artist} ${album}`,
       `${normArtist} ${normAlbum}`,
-    ];
+    ])];
 
     for (const q of searches) {
       const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=20`);
@@ -3195,11 +3256,11 @@ async function fetchItunesArt(artist, album) {
         const cn = norm(x.collectionName || '');
         const an = norm(x.artistName || '');
         // Artist must match
-        const artistMatch = an.includes(normArtist) || normArtist.includes(an);
+        const artistMatch = !!an && (an.includes(normArtist) || normArtist.includes(an));
         if (!artistMatch) return { ...x, score: 0 };
         let score = 0;
         if (cn === normAlbum) score = 100;
-        else if (cn.includes(normAlbum) || normAlbum.includes(cn)) score = 60;
+        else if (cn && (cn.includes(normAlbum) || normAlbum.includes(cn))) score = 60;
         else {
           const aWords = normAlbum.split(' ').filter(w => w.length > 2);
           const bWords = cn.split(' ').filter(w => w.length > 2);
@@ -3311,9 +3372,11 @@ async function mbidLookup(mbid, attempt=1) {
 async function runMbForce(raw, onOpen) {
   if (!raw) return;
   const mbid = raw.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1];
-  if (!mbid) { alert('No valid MusicBrainz ID found in that link.'); return; }
-  if (onOpen) onOpen();
+  if (!mbid) { showToast('No MusicBrainz release ID found in that link', 'err'); return; }
   const ferr = document.getElementById('form-error');
+  if (_mbLookupInProgress) { if (ferr) ferr.textContent = 'Still looking up the previous link — one moment…'; return; }
+  if (onOpen) onOpen();
+  const session = _editSession;
   if (ferr) ferr.textContent = '⟳ Looking up MusicBrainz…';
   _mbLookupInProgress = true;
   let result;
@@ -3323,8 +3386,9 @@ async function runMbForce(raw, onOpen) {
     console.error('Lookup threw:', err);
     result = { error: 'Lookup failed unexpectedly. Try again.' };
   } finally {
-    _mbLookupInProgress = false;
+    if (session === _editSession) _mbLookupInProgress = false;
   }
+  if (session !== _editSession) return; // modal was closed/reopened — discard
   if (!result || result.error) {
     if (ferr) ferr.textContent = result?.error || 'MB lookup failed — check the link and try again.';
     return;
@@ -3396,6 +3460,7 @@ async function artError(img) {
       continue;
     }
     console.warn(`Art failed to load for "${artist} - ${album}" after all fallbacks (fb, iTunes, CAA retry).`);
+    if (img.dataset.key) _artCache.set(img.dataset.key, null);
     img.style.display = 'none';
     if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
     return;
@@ -3456,9 +3521,12 @@ async function handleArtFile(file) {
   }
   status.textContent = '⟳ Uploading…';
   status.style.color = 'var(--muted)';
+  const session = _editSession;
+  _artUploading = true; updateSaveEnabled();
   try {
     const id = editingId || '_new_' + Date.now();
     const publicUrl = await uploadArtToR2(file, id);
+    if (session !== _editSession) return; // form was closed/reopened — don't put this art on another album
     pendingArtUrl = publicUrl;
     const artEl = document.getElementById('match-art');
     if (artEl) { artEl.src = publicUrl; artEl.style.display = 'block'; }
@@ -3467,8 +3535,12 @@ async function handleArtFile(file) {
     status.style.color = 'var(--accent)';
   } catch(e) {
     console.error('Art file upload error:', e);
-    status.textContent = '✗ Upload failed — ' + e.message;
-    status.style.color = 'var(--danger)';
+    if (session === _editSession) {
+      status.textContent = '✗ Upload failed — ' + e.message;
+      status.style.color = 'var(--danger)';
+    }
+  } finally {
+    _artUploading = false; updateSaveEnabled();
   }
 }
 
@@ -3542,11 +3614,12 @@ function setSyncStatus(state, label) {
 }
 
 // Pending write queue — no edit is lost even if network is slow
-const _writeQueue = new Map(); // id → album (or null = delete)
+const _writeQueue = new Map(); // id → album (or null = delete), not yet sent
+const _inFlight   = new Map(); // id → album (or null) currently being sent; kept until the server confirms
 const _undeleteIds = new Set(); // ids whose soft-delete must be cleared on their next upsert
 let _flushTimeout = null;
-let _flushing = false;
-let _pulling = false;
+let _flushPromise = null, _flushAgain = false, _flushRetryTimer = null, _flushFailures = 0;
+let _pullPromise = null;
 
 function albumToRow(a) {
   return {
@@ -3593,11 +3666,16 @@ function rowToAlbum(r) {
 
 const WRITE_QUEUE_KEY = 'listenLogWriteQueue';
 
-// Persist the write queue so unflushed edits survive a reload/crash
+// Persist the write queue so unflushed edits survive a reload/crash. In-flight
+// entries are included until the server confirms them — otherwise closing the
+// tab mid-request would lose them (the local cache already shows the edit).
+const UNDELETE_KEY = 'listenLogUndelete';
 function persistQueue() {
   try {
-    const arr = [..._writeQueue.entries()]; // [[id, album|null], ...]
-    localStorage.setItem(WRITE_QUEUE_KEY, JSON.stringify(arr));
+    const merged = new Map(_inFlight);
+    for (const [id, album] of _writeQueue) merged.set(id, album);
+    localStorage.setItem(WRITE_QUEUE_KEY, JSON.stringify([...merged.entries()]));
+    localStorage.setItem(UNDELETE_KEY, JSON.stringify([..._undeleteIds]));
   } catch(e) { console.error('Queue persist error:', e); }
 }
 
@@ -3607,7 +3685,9 @@ function restoreQueue() {
     const raw = localStorage.getItem(WRITE_QUEUE_KEY);
     if (!raw) return;
     const arr = JSON.parse(raw);
-    for (const [id, album] of arr) _writeQueue.set(id, album);
+    for (const [id, album] of arr) if (!_writeQueue.has(id)) _writeQueue.set(id, album);
+    const und = JSON.parse(localStorage.getItem(UNDELETE_KEY) || '[]');
+    und.forEach(id => _undeleteIds.add(id));
   } catch(e) { console.error('Queue restore error:', e); }
 }
 
@@ -3630,47 +3710,89 @@ function queueDelete(id) {
   _flushTimeout = setTimeout(flushQueue, 0);
 }
 
-async function flushQueue(retrying=false) {
+// Single-flight: only one flush runs at a time. A flush requested while one is
+// running sets _flushAgain and runs as soon as the current one finishes — so two
+// requests can never race and land out of order on the server.
+function flushQueue() {
+  if (_flushPromise) { _flushAgain = true; return _flushPromise; }
+  _flushPromise = (async () => {
+    try {
+      do { _flushAgain = false; await _flushOnce(); }
+      while (_flushAgain && _writeQueue.size && _userId);
+    } finally { _flushPromise = null; }
+  })();
+  return _flushPromise;
+}
+
+// A Postgres/PostgREST error code means the server rejected the data itself
+// (RLS, constraint…) — retrying the same row won't help. No code = network.
+function isDataError(err) {
+  return !!(err && typeof err.code === 'string' && /^(\d{5}|PGRST\w+|\d{2}[A-Z0-9]{3})$/.test(err.code));
+}
+const _chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+
+async function _flushOnce() {
   if (!_userId || _writeQueue.size === 0) return;
-  // Don't flush while a pull is in progress — let it finish to avoid racing the watermark
-  if (_pulling) { setTimeout(() => flushQueue(retrying), 500); return; }
-  _flushing = true;
-  const batch = new Map(_writeQueue);
+  clearTimeout(_flushRetryTimer);
+  for (const [id, album] of _writeQueue) _inFlight.set(id, album);
   _writeQueue.clear();
+  persistQueue();
   const upserts = [], deletes = [];
-  for (const [id, album] of batch) {
+  for (const [id, album] of _inFlight) {
     if (album === null) deletes.push(id);
     else upserts.push(albumToRow(album));
   }
+  const rejected = [];
   try {
-    if (upserts.length) {
-      const { error } = await _sb.from('albums').upsert(upserts, { onConflict: 'id' });
-      if (error) throw error;
-      upserts.forEach(r => _undeleteIds.delete(r.id));
+    for (const chunk of _chunk(upserts, 500)) {
+      const { error } = await _sb.from('albums').upsert(chunk, { onConflict: 'id' });
+      if (!error) continue;
+      if (!isDataError(error)) throw error;
+      // One bad row shouldn't block every other edit: retry row by row and set
+      // aside only the rows the server keeps rejecting.
+      for (const row of chunk) {
+        const { error: e1 } = await _sb.from('albums').upsert([row], { onConflict: 'id' });
+        if (!e1) continue;
+        if (!isDataError(e1)) throw e1;
+        console.error('Server rejected album row', row.id, e1);
+        rejected.push(row);
+      }
     }
     if (deletes.length) {
-      // Soft delete — set deleted_at so the deletion syncs to other devices
-      const { error } = await _sb.from('albums')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('user_id', _userId).in('id', deletes);
-      if (error) throw error;
+      // Soft delete — set deleted_at (and bump updated_at so incremental pulls
+      // on other devices actually see the deletion)
+      const now = new Date().toISOString();
+      for (const ids of _chunk(deletes, 200)) {
+        const { error } = await _sb.from('albums')
+          .update({ deleted_at: now, updated_at: now })
+          .eq('user_id', _userId).in('id', ids);
+        if (error) throw error;
+      }
     }
-    // Only clear the persisted queue after confirmed success
+    // Confirmed — drop the in-flight entries (but not ones edited again meanwhile,
+    // which are sitting in _writeQueue and will go in the next flush)
+    upserts.forEach(r => _undeleteIds.delete(r.id));
+    _inFlight.clear();
     persistQueue();
-    setSyncStatus('ok', 'synced');
+    _flushFailures = 0;
+    if (rejected.length) {
+      setSyncStatus('err', `${rejected.length} not synced`);
+      showToast(`${rejected.length} album${rejected.length === 1 ? " couldn't" : "s couldn't"} be saved to the cloud — details in the console`, 'err');
+    } else {
+      setSyncStatus('ok', 'synced');
+    }
     safeSetItem('listenLog', JSON.stringify(albums));
     verifyCount();
   } catch(e) {
     console.error('Flush error:', e);
-    // Re-queue failed writes (skip ones that got newer edits while in flight)
-    for (const [id, album] of batch) {
-      if (!_writeQueue.has(id)) _writeQueue.set(id, album);
-    }
+    // Put everything back, except entries that got a newer edit while in flight
+    for (const [id, album] of _inFlight) if (!_writeQueue.has(id)) _writeQueue.set(id, album);
+    _inFlight.clear();
     persistQueue();
-    if (!retrying) { setTimeout(() => flushQueue(true), 3000); setSyncStatus('busy', 'retrying\u2026'); }
-    else setSyncStatus('err', 'sync error \u2014 check connection');
-  } finally {
-    _flushing = false;
+    _flushFailures++;
+    const delay = Math.min(60000, 3000 * 2 ** (_flushFailures - 1)); // 3s, 6s, 12s … 60s
+    setSyncStatus(_flushFailures >= 3 ? 'err' : 'busy', _flushFailures >= 3 ? 'offline — will retry' : 'retrying\u2026');
+    _flushRetryTimer = setTimeout(() => flushQueue(), delay);
   }
 }
 
@@ -3678,11 +3800,11 @@ async function flushQueue(retrying=false) {
 function csvCell(v) {
   let t = v == null ? '' : String(v);
   // Stop spreadsheets from treating text as a formula
-  if (typeof v === 'string' && /^[=+@\t\r]/.test(t)) t = "'" + t;
+  if (typeof v === 'string' && (/^[=+@\t\r]/.test(t) || (/^-/.test(t) && !/^-?\d+(\.\d+)?$/.test(t)))) t = "'" + t;
   return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
 }
 function exportCsv() {
-  const typeLabel = { compilation: 'Compilation', live: 'Live', single_ep: 'Single/EP' };
+  const typeLabel = { album: 'Album', compilation: 'Compilation', live: 'Live', single_ep: 'Single/EP' };
   const yn = b => (b ? 'Yes' : 'No');
   const header = ['Artist','Album','Release Date','Type','Rating','Want to Listen','Hard to Find','In Plex','Missing Info','Notes','MusicBrainz ID','Art URL','Date Added','ID'];
   const rows = albums.map(a => [
@@ -3708,18 +3830,24 @@ function exportCsv() {
 // Merge-only: adds back albums that are missing and resets ones that differ
 // from the backup. It never removes anything that isn't in the backup.
 const BACKUP_FIELDS = ['artist','album','date','rating','notes','artUrl','artFallback','mbid','wantToListen','hardToFind','unmatched','added'];
+const safeUrl = u => (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : '';
 function normBackupAlbum(x) {
+  const r = Number(x.rating);
   return {
     id: x.id,
-    artist: String(x.artist || ''), album: String(x.album || ''), date: x.date || '',
-    rating: x.rating || null, notes: x.notes || null,
-    artUrl: x.artUrl || '', artFallback: x.artFallback || '', mbid: x.mbid || '',
+    artist: String(x.artist || ''), album: String(x.album || ''), date: typeof x.date === 'string' ? x.date : '',
+    rating: r > 0 ? Math.min(5, Math.round(r * 2) / 2) : null,
+    notes: typeof x.notes === 'string' && x.notes ? x.notes : null,
+    artUrl: safeUrl(x.artUrl), artFallback: safeUrl(x.artFallback), mbid: typeof x.mbid === 'string' ? x.mbid : '',
     wantToListen: !!x.wantToListen, hardToFind: !!x.hardToFind, unmatched: !!x.unmatched,
     added: Number(x.added) || 0,
+    ...(typeof x.releaseType === 'string' ? { releaseType: x.releaseType } : {}),
+    ...(typeof x.inPlexLibrary === 'boolean' ? { inPlexLibrary: x.inPlexLibrary } : {}),
   };
 }
 function sameBackupFields(a, b) {
-  return BACKUP_FIELDS.every(f => (a[f] ?? '') === (b[f] ?? ''));
+  const fields = BACKUP_FIELDS.concat(['releaseType', 'inPlexLibrary'].filter(f => f in b));
+  return fields.every(f => (a[f] ?? '') === (b[f] ?? ''));
 }
 function bulkApply(upserts, removeIds) {
   const removed = new Set(removeIds);
@@ -3736,12 +3864,17 @@ function bulkApply(upserts, removeIds) {
   render();
 }
 async function restoreFromBackupFile(file) {
+  if (file.size > 50 * 1024 * 1024) { showToast('That file is too large to be a ListenLog backup', 'err'); return; }
   let data;
   try { data = JSON.parse(await file.text()); }
   catch (e) { showToast("That file isn't valid JSON", 'err'); return; }
   const list = Array.isArray(data) ? data : data && data.albums;
   if (!Array.isArray(list)) { showToast("That doesn't look like a ListenLog backup", 'err'); return; }
-  const valid = list.filter(x => x && typeof x.id === 'string' && x.id && typeof x.artist === 'string' && typeof x.album === 'string').map(normBackupAlbum);
+  const seen = new Set();
+  const valid = list
+    .filter(x => x && typeof x.id === 'string' && x.id && typeof x.artist === 'string' && typeof x.album === 'string')
+    .filter(x => !seen.has(x.id) && seen.add(x.id)) // a duplicated id would show the album twice
+    .map(normBackupAlbum);
   if (!valid.length) { showToast('No albums found in that file', 'err'); return; }
 
   const current = new Map(albums.map(a => [a.id, a]));
@@ -3766,7 +3899,7 @@ async function restoreFromBackupFile(file) {
   const addedIds = toAdd.map(b => b.id);
   toAdd.forEach(b => _undeleteIds.add(b.id));
   const next = [
-    ...toAdd.map(b => ({ ...b, releaseType: '', inPlexLibrary: false })),
+    ...toAdd.map(b => ({ releaseType: '', inPlexLibrary: false, ...b })),
     ...toReset.map(({ cur, b }) => ({ ...cur, ...b })),
   ];
   bulkApply(next, []);
@@ -3776,6 +3909,25 @@ async function restoreFromBackupFile(file) {
 }
 
 const SYNC_TS_KEY = 'listenLogLastSync';
+
+// Full library fetch, paged by id (keyset) so rows can't be skipped or
+// duplicated if something changes order while the pages are being fetched.
+async function fetchAllLiveAlbums() {
+  let all = [], lastId = null;
+  const PAGE = 1000;
+  while (true) {
+    let q = _sb.from('albums').select('*')
+      .eq('user_id', _userId).is('deleted_at', null)
+      .order('id', { ascending: true }).limit(PAGE);
+    if (lastId !== null) q = q.gt('id', lastId);
+    const { data, error } = await q;
+    if (error) throw error;
+    all = all.concat(data || []);
+    if (!data || data.length < PAGE) break;
+    lastId = data[data.length - 1].id;
+  }
+  return all;
+}
 
 async function fetchAlbumPages(query) {
   // Paginate past Supabase's 1000-row cap
@@ -3791,26 +3943,43 @@ async function fetchAlbumPages(query) {
   return all;
 }
 
-async function pullFromCloud(retrying=false) {
-  if (!_userId) return;
-  // Don't pull while a flush is in progress — avoid racing the watermark
-  if (_flushing) { setTimeout(() => pullFromCloud(retrying), 500); return; }
-  _pulling = true;
-  try {
-    await _pullFromCloudInner(retrying);
-  } finally {
-    _pulling = false;
-    if (!_dataReady) { _dataReady = true; render(); }
+// Single-flight: a pull requested while one is running just waits for it.
+function pullFromCloud(retrying=false) {
+  if (!_userId) return Promise.resolve();
+  if (_pullPromise) return _pullPromise;
+  _pullPromise = (async () => {
+    try {
+      // Let an in-progress flush land first so the pull sees it
+      if (_flushPromise) await _flushPromise.catch(() => {});
+      await _pullFromCloudInner(retrying);
+    } finally {
+      _pullPromise = null;
+      if (!_dataReady) { _dataReady = true; render(); }
+    }
+  })();
+  return _pullPromise;
+}
+
+// Writes the cache and advances the watermark only if the cache write worked —
+// otherwise a stale cache plus a newer watermark would hide edits forever.
+function commitCache(newest) {
+  if (safeSetItem('listenLog', JSON.stringify(albums))) {
+    if (newest) localStorage.setItem(SYNC_TS_KEY, newest);
+  } else {
+    try { localStorage.removeItem('listenLog'); localStorage.removeItem(SYNC_TS_KEY); } catch(e) {}
   }
 }
 
 async function _pullFromCloudInner(retrying=false) {
   const lastSync = localStorage.getItem(SYNC_TS_KEY);
-  const cached   = JSON.parse(localStorage.getItem('listenLog') || '[]');
+  let cached = [];
+  try { cached = JSON.parse(localStorage.getItem('listenLog') || '[]'); } catch(e) { console.error('Corrupt cache, doing a full pull'); }
+  if (!Array.isArray(cached)) cached = [];
 
   // Incremental path: we have a cache and a last-sync timestamp
   if (lastSync && cached.length) {
-    albums = cached;
+    // Only adopt the cache on first load — afterwards memory is the source of truth
+    if (!_dataReady || !albums.length) { albums = cached; applyPendingWrites(); }
     _dataReady = true;
     render(); // show cached data instantly
     setSyncStatus('busy', 'syncing…');
@@ -3821,11 +3990,15 @@ async function _pullFromCloudInner(retrying=false) {
       // ever becomes the watermark, a strict > would permanently exclude any
       // other row sharing it. Re-fetching the boundary row(s) is harmless
       // since they're merged into the album map by id (idempotent).
+      // Look back 5 minutes past the watermark: client clocks differ and a write
+      // can commit after a later-stamped one. Re-fetching is harmless (merged by id).
+      const since = new Date(Date.parse(lastSync) - 5 * 60 * 1000).toISOString();
       const changed = await fetchAlbumPages(
         _sb.from('albums').select('*')
           .eq('user_id', _userId)
-          .gte('updated_at', lastSync)
+          .gte('updated_at', since)
           .order('updated_at', { ascending: true })
+          .order('id', { ascending: true })
       );
       if (changed.length) {
         const byId = new Map(albums.map(a => [a.id, a]));
@@ -3838,8 +4011,7 @@ async function _pullFromCloudInner(retrying=false) {
         albums = [...byId.values()].sort((a,b) => (b.added||0) - (a.added||0));
         migrateArtUrls(albums);
         applyPendingWrites();
-        safeSetItem('listenLog', JSON.stringify(albums));
-        localStorage.setItem(SYNC_TS_KEY, newest);
+        commitCache(newest);
         render();
       }
       setSyncStatus('ok', 'synced');
@@ -3855,21 +4027,14 @@ async function _pullFromCloudInner(retrying=false) {
   // Full pull (first load or no cache)
   setSyncStatus('busy', 'loading…');
   try {
-    const all = await fetchAlbumPages(
-      _sb.from('albums').select('*')
-        .eq('user_id', _userId)
-        .is('deleted_at', null)
-        .order('added', { ascending: false, nullsLast: true })
-        .order('id', { ascending: true })
-    );
-    const remote = all.map(rowToAlbum);
+    const all = await fetchAllLiveAlbums();
+    const remote = all.map(rowToAlbum).sort((a,b) => (b.added||0) - (a.added||0));
     migrateArtUrls(remote);
     albums = remote;
     applyPendingWrites();
-    safeSetItem('listenLog', JSON.stringify(albums));
     // Record the newest updated_at as our sync watermark
     const newest = all.reduce((mx,r) => r.updated_at > mx ? r.updated_at : mx, '1970-01-01');
-    localStorage.setItem(SYNC_TS_KEY, newest);
+    commitCache(newest);
     setSyncStatus('ok', 'synced');
     render();
     verifyCount(true);
@@ -3882,9 +4047,9 @@ async function _pullFromCloudInner(retrying=false) {
 
 // Overlay any pending un-flushed local writes onto the albums array
 function applyPendingWrites() {
-  if (_writeQueue.size === 0) return;
+  if (_writeQueue.size === 0 && _inFlight.size === 0) return;
   const byId = new Map(albums.map(a => [a.id, a]));
-  for (const [id, album] of _writeQueue) {
+  for (const [id, album] of [..._inFlight, ..._writeQueue]) {
     if (album === null) byId.delete(id);
     else byId.set(id, album);
   }
@@ -3899,7 +4064,7 @@ async function verifyCount(force=false) {
   if (!force && Date.now() - _lastVerify < 60000) return;
   _lastVerify = Date.now();
   // Don't verify while writes are pending (counts would legitimately differ)
-  if (_writeQueue.size > 0) return;
+  if (_writeQueue.size > 0 || _inFlight.size > 0) return;
   try {
     const { count, error } = await _sb.from('albums')
       .select('id', { count: 'exact', head: true })
@@ -3931,11 +4096,15 @@ document.addEventListener('visibilitychange', () => {
       clearTimeout(_flushTimeout);
       flushQueue();
     }
+    persistQueue();
   } else if (document.visibilityState === 'visible' && _userId) {
     // Pull any changes when returning to the app
     pullFromCloud();
   }
 });
+
+window.addEventListener('online', () => { if (_userId) { flushQueue(); pullFromCloud(); } });
+window.addEventListener('pagehide', () => { persistQueue(); if (_writeQueue.size) flushQueue(); });
 
 // ── Auth UI ───────────────────────────────────────────────────
 let _authMode = 'signin'; // 'signin' | 'signup'
@@ -3972,29 +4141,44 @@ document.getElementById('auth-password').addEventListener('keydown', e => {
   if (e.key==='Enter') document.getElementById('auth-signin-btn').click();
 });
 
-document.getElementById('sign-out-link').addEventListener('click', async e => {
-  e.preventDefault();
-  await _sb.auth.signOut();
-});
-document.getElementById('resync-link').addEventListener('click', async e => {
-  e.preventDefault();
-  // Flush any pending writes first so we don't lose them
-  if (_writeQueue.size > 0) await flushQueue();
-  // Clear the cache and watermark to force a full pull
+// Resync: send pending edits, then do a full pull. The current list and cache
+// stay in place until the pull succeeds (so going offline mid-resync is harmless).
+async function resync() {
+  await flushQueue();
   localStorage.removeItem(SYNC_TS_KEY);
-  localStorage.removeItem('listenLog');
-  albums = [];
   await pullFromCloud();
-});
+}
+async function signOut() {
+  const pending = _writeQueue.size + _inFlight.size;
+  if (pending) {
+    await flushQueue().catch(() => {});
+    const still = _writeQueue.size + _inFlight.size;
+    if (still) {
+      const ok = await showConfirmModal('Sign out anyway?',
+        `${still} change${still === 1 ? " hasn't" : "s haven't"} been saved to the cloud yet (are you offline?). Signing out will discard ${still === 1 ? 'it' : 'them'}.`,
+        { confirmLabel: 'Sign out' });
+      if (!ok) return;
+    }
+  }
+  const { error } = await _sb.auth.signOut();
+  if (error) { showToast(`Couldn't sign out: ${error.message}`, 'err'); return; }
+  clearLocalData();
+}
+// Wipe everything cached for the signed-in account, so the next account that
+// signs in on this device never sees (or uploads) the previous one's data
+function clearLocalData() {
+  ['listenLog', WRITE_QUEUE_KEY, SYNC_TS_KEY, UNDELETE_KEY, 'listenLogBookmarks', OWNER_KEY]
+    .forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
+  clearTimeout(_flushTimeout); clearTimeout(_flushRetryTimer);
+  _writeQueue.clear(); _inFlight.clear(); _undeleteIds.clear();
+  albums = [];
+  _dataReady = false;
+  render();
+}
+document.getElementById('sign-out-link').addEventListener('click', e => { e.preventDefault(); signOut(); });
+document.getElementById('resync-link').addEventListener('click', e => { e.preventDefault(); resync(); });
 // Mirror links in mobile header
-document.getElementById('header-resync-link').addEventListener('click', async e => {
-  e.preventDefault();
-  if (_writeQueue.size > 0) await flushQueue();
-  localStorage.removeItem(SYNC_TS_KEY);
-  localStorage.removeItem('listenLog');
-  albums = [];
-  await pullFromCloud();
-});
+document.getElementById('header-resync-link').addEventListener('click', e => { e.preventDefault(); resync(); });
 // Mobile header menu (sync status doubles as the menu button)
 (function () {
   const btn = document.getElementById('header-menu-btn');
@@ -4013,13 +4197,18 @@ document.getElementById('restore-file').addEventListener('change', async e => {
   e.target.value = '';
   if (f) await restoreFromBackupFile(f);
 });
-document.getElementById('header-sign-out-link').addEventListener('click', async e => {
-  e.preventDefault();
-  await _sb.auth.signOut();
-});
+document.getElementById('header-sign-out-link').addEventListener('click', e => { e.preventDefault(); signOut(); });
 
 // ── Session management ────────────────────────────────────────
+const OWNER_KEY = 'listenLogOwner';
 function showApp(user) {
+  // Auth fires for token refreshes too — don't re-run startup for the same user
+  if (_userId === user.id) return;
+  // Cache belongs to a different account → wipe it before anything reads it
+  let owner = null;
+  try { owner = localStorage.getItem(OWNER_KEY); } catch(e) {}
+  if (owner && owner !== user.id) clearLocalData();
+  try { localStorage.setItem(OWNER_KEY, user.id); } catch(e) {}
   _userId = user.id;
   document.getElementById('auth-screen').classList.remove('visible');
   document.getElementById('app-wrap').classList.add('visible');
