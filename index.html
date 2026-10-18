@@ -475,10 +475,11 @@ tr.album-row:active{background:var(--surface2)}
 
 /* Album art: consistent radius, soft depth, fade-in on load, no layout shift */
 .art-thumb,.art-placeholder{border-radius:6px;flex-shrink:0;aspect-ratio:1/1}
-.art-thumb{background:var(--surface2);box-shadow:0 1px 3px rgba(0,0,0,.45),0 4px 10px rgba(0,0,0,.18);
-  transition:opacity var(--t-slow) var(--ease),transform var(--t-med) var(--ease),box-shadow var(--t-med)}
+.art-thumb{background:var(--surface2);box-shadow:0 1px 3px rgba(0,0,0,.5);
+  transition:opacity var(--t-slow) var(--ease)}
 .art-thumb.lazy:not(.in){opacity:0}
-tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.5),0 8px 18px rgba(0,0,0,.28)}
+@media(hover:hover){tr.album-row:hover .art-thumb{transform:translateY(-1px)}}
+.art-thumb{will-change:auto}
 .art-placeholder{background:linear-gradient(135deg,var(--surface2) 0%,var(--surface) 100%);border-color:var(--border)}
 .art-placeholder svg{opacity:.7}
 
@@ -582,7 +583,6 @@ tr.album-row:hover .art-thumb{transform:translateY(-1px);box-shadow:0 2px 6px rg
 }
 @media(hover:none){
   tr.album-row:hover{box-shadow:none}
-  tr.album-row:hover .art-thumb{transform:none}
   .star-btn:hover{transform:none}
 }
 
@@ -1628,6 +1628,102 @@ let _dataReady = false; // false until the first load from cache/cloud finishes
 const ART_PLACEHOLDER = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" stroke="#2e4060" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="3" stroke="#2e4060" stroke-width="1"/><circle cx="16" cy="16" r="1.5" fill="#2e4060"/></svg><span>no art</span>`;
 const DASH = '<span style="color:var(--border);font-size:13px">—</span>';
 
+// ── Row building (windowed) ────────────────────────────────
+const ROW_CHUNK = 60;
+let _renderList = [], _renderedCount = 0, _renderSig = '', _rowCtx = null, _rowAlbums = new Map(), _rowObserver = null;
+
+function buildAlbumRow(a, ctx) {
+  const { bookmarkedIds, loadedArt } = ctx;
+  const tr = document.createElement('tr');
+  tr.className = 'album-row';
+  tr.dataset.id = a.id;
+    const tags = [
+      a.wantToListen ? '<span class="badge badge-want">🎧</span>' : '',
+      a.hardToFind   ? '<span class="badge badge-hard">🔎</span>' : '',
+      a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
+      a.inPlexLibrary ? `<span class="badge badge-inplex" title="In your Plex library">${PLEX_ICON_HTML}</span>` : '',
+      bookmarkedIds.has(a.id) ? '<span class="badge badge-bookmark" title="Saved in a bookmark list">📑</span>' : '',
+      a.releaseType === 'compilation' ? '<span class="badge badge-comp">Comp</span>' : '',
+      a.releaseType === 'live'        ? '<span class="badge badge-live">Live</span>' : '',
+      a.releaseType === 'single_ep'   ? '<span class="badge badge-single">EP</span>' : '',
+    ].filter(Boolean).join(' ');
+
+    const loaded = loadedArt[a.id];
+    const artCell = a.artUrl
+      ? `<img decoding="async" class="art-thumb${loaded ? '' : ' lazy'}" ${loaded ? `src="${esc(loaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" data-artist="${esc(a.artist)}" data-album="${esc(a.album)}" data-caa="${esc(a.artUrl)}"${a.artFallback?` data-fb="${esc(a.artFallback)}"`:``} onerror="artError(this)"><div class="art-placeholder" style="display:none">${ART_PLACEHOLDER}</div>`
+      : `<div class="art-placeholder">${ART_PLACEHOLDER}</div>`;
+
+    tr.innerHTML = `
+      <td class="td-art" onclick="event.stopPropagation()">${artCell}</td>
+      <td class="td-artist">${esc(a.artist)}</td>
+      <td class="td-album">${esc(a.album)}</td>
+      <td class="td-date">${esc(a.date||'—')}${a.date && isFutureDate(a.date) ? ' <span class="unreleased-tag">(Unreleased)</span>' : ''}</td>
+      <td>${a.rating ? starsHTML(a.rating) : DASH}</td>
+      <td><div class="row-tags">${tags||DASH}</div></td>
+      <td class="td-notes" title="${a.notes?'Has notes':''}">${a.notes ? '📝' : DASH}</td>`;
+  return tr;
+}
+
+function appendRows(count) {
+  const tbody = document.getElementById('album-tbody');
+  if (!tbody || !_rowCtx) return;
+  const end = Math.min(_renderList.length, _renderedCount + count);
+  if (end <= _renderedCount) return;
+  const frag = document.createDocumentFragment();
+  for (let i = _renderedCount; i < end; i++) frag.appendChild(buildAlbumRow(_renderList[i], _rowCtx));
+  _renderedCount = end;
+  tbody.appendChild(frag);
+  observeLazyImages();
+}
+
+// One click handler for every row (instead of a closure per row)
+function onRowClick(e) {
+  const tr = e.target.closest('tr.album-row');
+  if (!tr) return;
+  if (e.target.closest('button,input')) return;
+  const a = _rowAlbums.get(tr.dataset.id);
+  if (!a) return;
+  if (window.innerWidth <= 700) {
+    const rect = tr.getBoundingClientRect();
+    if (e.clientX >= rect.left + rect.width / 2) openQuickRate(a.id);
+    else editAlbum(a.id);
+    return;
+  }
+  const td = e.target.closest('td');
+  const tdIdx = [...tr.children].indexOf(td);
+  if (tdIdx >= 3) openQuickRate(a.id);
+  else editAlbum(a.id);
+}
+
+// Sentinel below the table: when it nears the viewport, append the next chunk
+function ensureRowSentinel() {
+  const wrap = document.querySelector('.table-wrap');
+  const tbody = document.getElementById('album-tbody');
+  if (!wrap || !tbody) return;
+  if (!tbody._rowClick) { tbody.addEventListener('click', onRowClick); tbody._rowClick = true; }
+  let sentinel = document.getElementById('rows-sentinel');
+  if (!sentinel) {
+    sentinel = document.createElement('div');
+    sentinel.id = 'rows-sentinel';
+    sentinel.style.cssText = 'height:1px;width:1px;pointer-events:none';
+    document.getElementById('album-table').after(sentinel);
+    _rowObserver = new IntersectionObserver(() => fillRows(), { root: wrap, rootMargin: '1500px 0px' });
+    _rowObserver.observe(sentinel);
+  }
+  fillRows();
+}
+function fillRows() {
+  const wrap = document.querySelector('.table-wrap');
+  const sentinel = document.getElementById('rows-sentinel');
+  if (!wrap || !sentinel) return;
+  let guard = 0;
+  while (_renderedCount < _renderList.length && guard++ < 50) {
+    const limit = wrap.getBoundingClientRect().bottom + 1500;
+    if (sentinel.getBoundingClientRect().top > limit) break;
+    appendRows(ROW_CHUNK);
+  }
+}
+
 function render() {
   const tbody = document.getElementById('album-tbody');
   if (!tbody) return; // DOM not ready yet
@@ -1678,52 +1774,24 @@ function render() {
     if (arr) arr.textContent = isSorted ? (sortDir===1?'▲':'▼') : '▼';
   });
 
-  const frag = document.createDocumentFragment();
-  list.forEach(a => {
-    const tr = document.createElement('tr');
-    tr.className = 'album-row';
-    tr.dataset.id = a.id;
-    tr.addEventListener('click', e => {
-      if (e.target.closest('button,input')) return;
-      if (window.innerWidth <= 700) {
-        const rect = tr.getBoundingClientRect();
-        if (e.clientX >= rect.left + rect.width / 2) openQuickRate(a.id);
-        else editAlbum(a.id);
-        return;
-      }
-      const td = e.target.closest('td');
-      const tdIdx = [...tr.children].indexOf(td);
-      if (tdIdx >= 3) openQuickRate(a.id);
-      else editAlbum(a.id);
-    });
-    const tags = [
-      a.wantToListen ? '<span class="badge badge-want">🎧</span>' : '',
-      a.hardToFind   ? '<span class="badge badge-hard">🔎</span>' : '',
-      a.unmatched    ? '<span class="badge badge-unmatch">⚠ missing info</span>' : '',
-      a.inPlexLibrary ? `<span class="badge badge-inplex" title="In your Plex library">${PLEX_ICON_HTML}</span>` : '',
-      bookmarkedIds.has(a.id) ? '<span class="badge badge-bookmark" title="Saved in a bookmark list">📑</span>' : '',
-      a.releaseType === 'compilation' ? '<span class="badge badge-comp">Comp</span>' : '',
-      a.releaseType === 'live'        ? '<span class="badge badge-live">Live</span>' : '',
-      a.releaseType === 'single_ep'   ? '<span class="badge badge-single">EP</span>' : '',
-    ].filter(Boolean).join(' ');
-
-    const loaded = loadedArt[a.id];
-    const artCell = a.artUrl
-      ? `<img class="art-thumb${loaded ? '' : ' lazy'}" ${loaded ? `src="${esc(loaded)}"` : `data-src="${esc(a.artUrl)}"`} alt="" style="cursor:zoom-in" onclick="openLightbox('${esc(a.artUrl)}')" data-artist="${esc(a.artist)}" data-album="${esc(a.album)}" data-caa="${esc(a.artUrl)}"${a.artFallback?` data-fb="${esc(a.artFallback)}"`:``} onerror="artError(this)"><div class="art-placeholder" style="display:none">${ART_PLACEHOLDER}</div>`
-      : `<div class="art-placeholder">${ART_PLACEHOLDER}</div>`;
-
-    tr.innerHTML = `
-      <td class="td-art" onclick="event.stopPropagation()">${artCell}</td>
-      <td class="td-artist">${esc(a.artist)}</td>
-      <td class="td-album">${esc(a.album)}</td>
-      <td class="td-date">${esc(a.date||'—')}${a.date && isFutureDate(a.date) ? ' <span class="unreleased-tag">(Unreleased)</span>' : ''}</td>
-      <td>${a.rating ? starsHTML(a.rating) : DASH}</td>
-      <td><div class="row-tags">${tags||DASH}</div></td>
-      <td class="td-notes" title="${a.notes?'Has notes':''}">${a.notes ? '📝' : DASH}</td>`;
-    frag.appendChild(tr);
-  });
+  // ── Windowed rendering ──────────────────────────────────────
+  // Building ~2,400 rows (each with art, stars, badges) at once is what made
+  // load slow and scrolling choppy on phones. Render a first chunk, then append
+  // more as the user nears the bottom. A render that doesn't change the sort,
+  // filters or result count keeps however many rows were already showing, so
+  // scroll position survives edits.
+  const sig = [sortKey, sortDir, list.length, document.getElementById('filter-search')?.value || '', activeBookmarkId || '',
+    ...Object.values(activeFilters).map(m => [...m].join(','))].join('|');
+  const keep = sig === _renderSig ? Math.max(_renderedCount, ROW_CHUNK) : ROW_CHUNK;
+  if (sig !== _renderSig) { const w = document.querySelector('.table-wrap'); if (w) w.scrollTop = 0; }
+  _renderSig = sig;
+  _renderList = list;
+  _rowCtx = { bookmarkedIds, loadedArt };
+  _rowAlbums = new Map(list.map(a => [a.id, a]));
+  _renderedCount = 0;
   tbody.innerHTML = '';
-  tbody.appendChild(frag);
+  appendRows(keep);
+  ensureRowSentinel();
 
   updateDropdowns();
   observeLazyImages();
