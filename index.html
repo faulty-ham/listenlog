@@ -2792,6 +2792,15 @@ on('qr-plex-sync-btn','click', async ()=>{
   const a = albums.find(x=>x.id===qrId);
   if (!a) return;
 
+  // A rating changed in this modal is saved here too — pushing it to Plex
+  // without keeping it in ListenLog would leave the two out of step until
+  // Save was also pressed. (Save then sees no rating change and won't re-push.)
+  if ((qrRating || 0) !== (a.rating || 0)) {
+    a.rating = qrRating || null;
+    if (qrRating > 0) { a.wantToListen = false; a.hardToFind = false; qrWant = false; qrHard = false; syncQrToggles(); }
+    save(a); render();
+  }
+
   const ok = await syncRatingToPlex(
     { id: a.id, artist: a.artist, album: a.album, date: a.date, rating: qrRating || 0 },
     { writeRating: !!qrRating }
