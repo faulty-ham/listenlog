@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-10-19T17:15:28.408088Z",
+  "exported_at": "2026-10-20T15:28:46.375792Z",
   "album_count": 2663,
   "albums": [
     {
@@ -13,12 +13,12 @@
       "artFallback": null,
       "mbid": "bc490192-04ad-48e2-bcbe-f956a0476251",
       "wantToListen": true,
-      "hardToFind": false,
+      "hardToFind": true,
       "unmatched": false,
       "releaseType": "single_ep",
       "inPlexLibrary": false,
       "added": 1792310707762,
-      "updatedAt": "2026-10-18T08:05:08.707+00:00"
+      "updatedAt": "2026-10-20T06:52:41.892403+00:00"
     },
     {
       "id": "mvdjigvg6s5w8nyvuw3",
@@ -31,12 +31,12 @@
       "artFallback": null,
       "mbid": "31866c07-1248-4699-a5f4-3db1d91401aa",
       "wantToListen": true,
-      "hardToFind": false,
+      "hardToFind": true,
       "unmatched": false,
       "releaseType": "single_ep",
       "inPlexLibrary": false,
       "added": 1792310697196,
-      "updatedAt": "2026-10-18T08:04:58.189+00:00"
+      "updatedAt": "2026-10-20T06:52:49.63559+00:00"
     },
     {
       "id": "mvdji94rb2pr17y7y3e",
@@ -32965,8 +32965,8 @@
       "artist": "Dinosaur Jr.",
       "album": "Green Mind",
       "date": "1991-02-19",
-      "rating": 3,
-      "notes": "",
+      "rating": 4,
+      "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mqe1stf28rzqbgyqj4o.jpg",
       "artFallback": null,
       "mbid": "8ff8e5c5-29a7-4a1e-ac78-cfccc2ab3a54",
@@ -32976,7 +32976,7 @@
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1781457501422,
-      "updatedAt": "2026-09-21T07:21:21+00:00"
+      "updatedAt": "2026-10-20T00:54:56.95456+00:00"
     },
     {
       "id": "mqe1stf28sdxx9ojcnr",
@@ -37519,8 +37519,8 @@
       "artist": "Dinosaur Jr.",
       "album": "Where You Been",
       "date": "1993-02-09",
-      "rating": 3,
-      "notes": "",
+      "rating": 4,
+      "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mqe1stf2ls5v4p190mh.jpg",
       "artFallback": null,
       "mbid": "3b7f7d5c-a058-3bfc-ac43-6fa84b1ed7e9",
@@ -37530,7 +37530,7 @@
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1781457501422,
-      "updatedAt": "2026-09-21T07:21:22+00:00"
+      "updatedAt": "2026-10-20T05:35:04.750558+00:00"
     },
     {
       "id": "mqe1stf2lsuct5fkuk",
