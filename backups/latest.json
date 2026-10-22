@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-10-21T15:44:45.955514Z",
+  "exported_at": "2026-10-22T15:44:08.128148Z",
   "album_count": 2667,
   "albums": [
     {
@@ -31219,8 +31219,8 @@
       "artist": "Dinosaur Jr.",
       "album": "Without a Sound",
       "date": "1994-08-30",
-      "rating": 3,
-      "notes": "",
+      "rating": 4,
+      "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mqe1stf22ybc731324b.jpg",
       "artFallback": null,
       "mbid": "e327da6d-717b-4eb3-b396-bbce6b9466bc",
@@ -31230,7 +31230,7 @@
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1781457501422,
-      "updatedAt": "2026-09-21T07:21:21+00:00"
+      "updatedAt": "2026-10-22T00:57:22.278765+00:00"
     },
     {
       "id": "mqe1stf230h0677znl6",
