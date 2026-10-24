@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-10-23T15:32:23.023789Z",
+  "exported_at": "2026-10-24T14:09:52.757923Z",
   "album_count": 2675,
   "albums": [
     {
@@ -151,18 +151,18 @@
       "artist": "Tom T. Hall",
       "album": "The Storyteller",
       "date": "1972",
-      "rating": null,
+      "rating": 4,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mvkda51f4vesvygkqwe.jpg?v=1792723494723",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/c8/54/bc/c854bc82-0bbd-031a-ce62-de64b02af9fc/886445806083.jpg/600x600bb.jpg",
       "mbid": "ffe694d9-cbf7-4ad8-93f9-cfc5dfd1ecac",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1792723494147,
-      "updatedAt": "2026-10-23T02:44:54.632273+00:00"
+      "updatedAt": "2026-10-24T07:04:06.70711+00:00"
     },
     {
       "id": "mvkd9xabpohi98wpde",
@@ -223,36 +223,36 @@
       "artist": "Mamalarky",
       "album": "Pocket Fantasy",
       "date": "2022-09-30",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mvhv0gt7e94c9iyjoz.jpg?v=1792571880400",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/09/3e/58/093e5803-68bd-47ca-e4b8-aeab6976a401/634457103757.png/600x600bb.jpg",
       "mbid": "984cc156-b7ad-4f20-8239-49cf65a6ab85",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1792571877403,
-      "updatedAt": "2026-10-23T06:39:39.847262+00:00"
+      "updatedAt": "2026-10-23T23:22:40.099915+00:00"
     },
     {
       "id": "mvhuzus6g869tpymoa4",
       "artist": "Mamalarky",
       "album": "Hex Key",
       "date": "2025-04-11",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mvhuzus6g869tpymoa4.jpg?v=1792571851731",
       "artFallback": null,
       "mbid": "ba8a14c5-1856-4f57-a297-fb08e8439bfa",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1792571848854,
-      "updatedAt": "2026-10-23T06:39:46.133426+00:00"
+      "updatedAt": "2026-10-24T07:04:33.926937+00:00"
     },
     {
       "id": "mvdji94rb2pr17y7y3e",
