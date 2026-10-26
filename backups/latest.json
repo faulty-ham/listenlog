@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-10-25T14:41:20.836162Z",
+  "exported_at": "2026-10-26T17:03:43.180303Z",
   "album_count": 2675,
   "albums": [
     {
@@ -61,18 +61,18 @@
       "artist": "Tom T. Hall",
       "album": "The Magnificent Music Machine",
       "date": "1976",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mvkdby8b2pojoh4ksds.jpg?v=1792723579204",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/75/7a/97/757a97f0-2bc2-6c4a-06b4-71ab04a82389/00602527535715.rgb.jpg/600x600bb.jpg",
       "mbid": "8e22f1ee-e2ae-4c91-995b-825ddc4b93a9",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1792723578635,
-      "updatedAt": "2026-10-23T02:46:26.876195+00:00"
+      "updatedAt": "2026-10-25T21:33:21.067218+00:00"
     },
     {
       "id": "mvkdbmtfgqu2pbpy1d9",
