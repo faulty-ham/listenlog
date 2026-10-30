@@ -2045,7 +2045,7 @@ let qrId=null, qrRating=0, qrWant=false, qrHard=false, qrUnmatched=false, qrInPl
 // Bumped every time Quick Rate opens or closes. Async Plex work captures it at
 // the start and checks it afterwards, so a slow response for album A can never
 // change (or close) the modal after it has moved on to album B.
-let _qrSession = 0, _qrSaving = false;
+let _qrSession = 0, _qrSaving = null; // _qrSaving: session number of a save still waiting on Plex
 function closeQuickRate() {
   document.getElementById('quick-rate-modal').classList.remove('open');
   qrId = null;
@@ -2806,9 +2806,14 @@ on('qr-plex-sync-btn','click', async ()=>{
   }
 });
 on('qr-save','click', async ()=>{
-  if(!qrId || _qrSaving) return; // ignore double-clicks / Enter while a save is running
+  if(!qrId) return;
+  // Save already went through and the Plex search is still running: pressing
+  // Save again closes the modal without waiting for it (the rating itself is
+  // already saved and its push to Plex carries on in the background)
+  if(_qrSaving === _qrSession){ closeQuickRate(); document.getElementById('qr-plex-status').textContent=''; return; }
   const a=albums.find(x=>x.id===qrId); if(!a)return;
-  _qrSaving = true;
+  const session0 = _qrSession;
+  _qrSaving = session0;
   try {
     const session=_qrSession;
     const ratingChanged=qrRating!==(a.rating||0);
@@ -2840,7 +2845,7 @@ on('qr-save','click', async ()=>{
       closeQuickRate();
     }
   } finally {
-    _qrSaving = false;
+    if (_qrSaving === session0) _qrSaving = null;
   }
 });
 // Background rating push with no modal UI (used by Undo). Only an exact match
