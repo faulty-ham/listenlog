@@ -1,7 +1,25 @@
 {
-  "exported_at": "2026-10-30T16:52:49.521414Z",
-  "album_count": 2692,
+  "exported_at": "2026-10-31T15:54:51.440682Z",
+  "album_count": 2693,
   "albums": [
+    {
+      "id": "mvvnr0ikmus8xkbopnc",
+      "artist": "Julianna Barwick",
+      "album": "The Magic Place",
+      "date": "2011-02-22",
+      "rating": 3,
+      "notes": null,
+      "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mvvnr0ikmus8xkbopnc.jpg?v=1793406207570",
+      "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/9d/9c/58/9d9c5841-9491-bea1-2ce1-d88772a4ec71/881626523162_cover.jpg/600x600bb.jpg",
+      "mbid": "05fe8137-9c10-3486-933e-4c6abf32ae96",
+      "wantToListen": false,
+      "hardToFind": false,
+      "unmatched": false,
+      "releaseType": "album",
+      "inPlexLibrary": false,
+      "added": 1793406205532,
+      "updatedAt": "2026-10-31T00:23:30.501929+00:00"
+    },
     {
       "id": "mvsrbfbaq5utwtn7bms",
       "artist": "Mitski",
