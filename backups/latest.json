@@ -1,7 +1,25 @@
 {
-  "exported_at": "2026-10-31T15:54:51.440682Z",
-  "album_count": 2693,
+  "exported_at": "2026-11-01T16:57:20.263132Z",
+  "album_count": 2694,
   "albums": [
+    {
+      "id": "mvx25uhxiqb6b5iwlsd",
+      "artist": "Natalie Jane Hill",
+      "album": "Hopeful Woman",
+      "date": "2026-03-06",
+      "rating": 3,
+      "notes": null,
+      "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mvx25uhxiqb6b5iwlsd.jpg?v=1793490883541",
+      "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/db/2d/e7/db2de76a-7fd4-34f8-454b-7f41e2fc69fe/59865.jpg/600x600bb.jpg",
+      "mbid": "7a153233-674b-4b08-9bb6-03c7a9332fb5",
+      "wantToListen": false,
+      "hardToFind": false,
+      "unmatched": false,
+      "releaseType": "album",
+      "inPlexLibrary": false,
+      "added": 1793490878373,
+      "updatedAt": "2026-11-01T07:52:03.845066+00:00"
+    },
     {
       "id": "mvvnr0ikmus8xkbopnc",
       "artist": "Julianna Barwick",
