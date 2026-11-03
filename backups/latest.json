@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-11-02T20:34:39.835546Z",
+  "exported_at": "2026-11-03T18:10:04.173305Z",
   "album_count": 2702,
   "albums": [
     {
@@ -115,18 +115,18 @@
       "artist": "Humble Pie",
       "album": "As Safe as Yesterday Is",
       "date": "1969",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mvystusdzs25rnnyko.jpg?v=1793596135934",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/76/4e/14/764e1400-f1a9-73a2-4b03-0794ec0247c6/LM00196037.jpg/600x600bb.jpg",
       "mbid": "a94e59fe-4db5-4073-bd20-a6d168c03851",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1793596134685,
-      "updatedAt": "2026-11-02T05:08:55.948864+00:00"
+      "updatedAt": "2026-11-03T04:59:26.561159+00:00"
     },
     {
       "id": "mvyst520skbb31nnwd",
