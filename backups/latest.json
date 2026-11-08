@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-11-07T16:41:00.116337Z",
+  "exported_at": "2026-11-08T16:51:27.897213Z",
   "album_count": 2726,
   "albums": [
     {
@@ -7,18 +7,18 @@
       "artist": "Rush",
       "album": "Feedback",
       "date": "2004-06",
-      "rating": null,
+      "rating": 4,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw5vcqkmwc0zphbee4j.jpg?v=1794023640257",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/1c/63/4d/1c634df7-e5be-6b85-a391-1b04b0801dd2/dj.zuxqzoxd.jpg/600x600bb.jpg",
       "mbid": "86c2b508-1cad-4253-9288-f885b9a02939",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "single_ep",
       "inPlexLibrary": true,
       "added": 1794023638150,
-      "updatedAt": "2026-11-07T03:54:07.935369+00:00"
+      "updatedAt": "2026-11-08T00:41:36.02854+00:00"
     },
     {
       "id": "mw5v6i72srtkifcszhe",
@@ -133,36 +133,36 @@
       "artist": "Rush",
       "album": "Presto",
       "date": "1989-11-21",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw5v48cncyels8mv9q.jpg?v=1794023242463",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/37/db/94/37db94da-7033-2e43-b08e-cc6d4a07e4ef/075678204029.jpg/600x600bb.jpg",
       "mbid": "39a29945-fd96-4d27-81d2-be83bf421c74",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794023241287,
-      "updatedAt": "2026-11-07T03:47:22.997046+00:00"
+      "updatedAt": "2026-11-08T01:28:59.829988+00:00"
     },
     {
       "id": "mw5v3z4o5ab4ks2adh9",
       "artist": "Rush",
       "album": "Hold Your Fire",
       "date": "1987-09-08",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw5v3z4o5ab4ks2adh9.jpg?v=1794023232041",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/a0/73/26/a07326c9-725e-6966-6299-d883f4932881/00602527893556.rgb.jpg/600x600bb.jpg",
       "mbid": "b8dc8945-8b08-457e-ba7b-1f5e1453b601",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794023229336,
-      "updatedAt": "2026-11-07T03:47:18.903502+00:00"
+      "updatedAt": "2026-11-07T23:44:36.332434+00:00"
     },
     {
       "id": "mw435lk1g7n9o4uyrk9",
@@ -18468,7 +18468,7 @@
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1781457501423,
-      "updatedAt": "2026-09-21T07:23:29+00:00"
+      "updatedAt": "2026-11-07T23:23:56.67735+00:00"
     },
     {
       "id": "mqe1stf362djgq8f3jc",
@@ -24768,7 +24768,7 @@
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1781457501423,
-      "updatedAt": "2026-09-21T07:23:29+00:00"
+      "updatedAt": "2026-11-07T23:24:05.326841+00:00"
     },
     {
       "id": "mqe1stf3kty2q5tglo",
