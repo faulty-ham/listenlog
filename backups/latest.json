@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-11-09T21:11:41.669660Z",
+  "exported_at": "2026-11-10T18:22:24.478276Z",
   "album_count": 2736,
   "albums": [
     {
@@ -151,18 +151,18 @@
       "artist": "The Smashing Pumpkins",
       "album": "MACHINA/the machines of God",
       "date": "2000-02-29",
-      "rating": null,
+      "rating": 4,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw929aswhz0ei3qyfhe.jpg?v=1794216634788",
       "artFallback": null,
       "mbid": "a5cdbfc0-50b8-456b-ad20-d757e87db5c9",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
-      "inPlexLibrary": false,
+      "inPlexLibrary": true,
       "added": 1794216633584,
-      "updatedAt": "2026-11-09T09:30:34.879774+00:00"
+      "updatedAt": "2026-11-10T17:33:04.425442+00:00"
     },
     {
       "id": "mw8i58qvfjrb75q70m",
