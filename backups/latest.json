@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-11-11T18:12:50.324989Z",
+  "exported_at": "2026-11-12T18:38:43.069106Z",
   "album_count": 2747,
   "albums": [
     {
@@ -72,7 +72,7 @@
       "releaseType": "album",
       "inPlexLibrary": false,
       "added": 1794362913410,
-      "updatedAt": "2026-11-11T02:08:34.881314+00:00"
+      "updatedAt": "2026-11-12T03:26:44.463363+00:00"
     },
     {
       "id": "mwbhbdkrug4i6xebscd",
@@ -439,36 +439,36 @@
       "artist": "Rush",
       "album": "Vapor Trails",
       "date": "2002-05-14",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw5v5hsus7kv345yfqe.jpg?v=1794023302585",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Features/v4/2e/ca/5a/2eca5aa0-63f9-b764-536d-9836243c977d/dj.kmxozvad.jpg/600x600bb.jpg",
       "mbid": "df8582e3-8bad-4618-bb06-d506114c544f",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794023300190,
-      "updatedAt": "2026-11-07T03:48:23.04359+00:00"
+      "updatedAt": "2026-11-11T23:24:13.647929+00:00"
     },
     {
       "id": "mw5v57qe86tb4ip9cza",
       "artist": "Rush",
       "album": "Test for Echo",
       "date": "1996-09-10",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw5v57qe86tb4ip9cza.jpg?v=1794023288943",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/8e/b2/6d/8eb26d0c-56a7-779e-7660-6b0fb1b0d161/075678292521.jpg/600x600bb.jpg",
       "mbid": "fe457ed1-fa5b-443d-9318-4093eea05f81",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794023287142,
-      "updatedAt": "2026-11-07T03:48:09.40047+00:00"
+      "updatedAt": "2026-11-11T21:11:30.128699+00:00"
     },
     {
       "id": "mw5v4wq7pwsl4cj83zm",
@@ -1555,18 +1555,18 @@
       "artist": "Chastity Belt",
       "album": "All My Friends",
       "date": "2026-11-06",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mvdji94rb2pr17y7y3e.jpg?v=1792310689002",
       "artFallback": null,
       "mbid": "c46d3284-d882-4aa5-bc6a-77f20ac28ef2",
-      "wantToListen": true,
-      "hardToFind": true,
+      "wantToListen": false,
+      "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
-      "inPlexLibrary": false,
+      "inPlexLibrary": true,
       "added": 1792310687163,
-      "updatedAt": "2026-10-18T08:04:49.002+00:00"
+      "updatedAt": "2026-11-12T03:26:30.667533+00:00"
     },
     {
       "id": "mvdjhzpk5c5b26ljvee",
@@ -49467,10 +49467,11 @@
         "mrnxhio7i7hdh546yv9",
         "mqe1stf3j8b8th4ctk",
         "mqe1stf3b0vo8aqaj87",
-        "mvrtet3thjdl8tnr53u"
+        "mvrtet3thjdl8tnr53u",
+        "mwbhcl1eq2blcp4zww"
       ],
       "created_at": "2026-10-09T21:38:55.214409+00:00",
-      "updated_at": "2026-10-29T17:17:06.542418+00:00"
+      "updated_at": "2026-11-12T03:26:42.243411+00:00"
     }
   ]
 }
