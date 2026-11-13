@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-11-12T18:38:43.069106Z",
+  "exported_at": "2026-11-13T18:17:22.644072Z",
   "album_count": 2747,
   "albums": [
     {
@@ -241,90 +241,90 @@
       "artist": "The Smashing Pumpkins",
       "album": "CYR",
       "date": "2020-11-27",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw92kfwq8iqcj1er4gh.jpg?v=1794217154709",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/01/43/ef/0143ef9d-9d03-ef6d-a19f-6423e1cb2d5e/00810016763413_Cover.jpg/600x600bb.jpg",
       "mbid": "28b4cea8-f316-4bc9-95f5-df6fbcffda1a",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794217153418,
-      "updatedAt": "2026-11-09T09:39:22.732942+00:00"
+      "updatedAt": "2026-11-13T04:22:39.522626+00:00"
     },
     {
       "id": "mw92hgi7kz1dtwaaqp",
       "artist": "The Smashing Pumpkins",
       "album": "SHINY AND OH SO BRIGHT \u2013 VOL.1 / LP \u2013 NO PAST. NO FUTURE. NO SUN.",
       "date": "2018-11-16",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw92hgi7kz1dtwaaqp.jpg?v=1794217015305",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/7a/4a/07/7a4a0738-37f4-912b-7af5-b0a1f2386697/840588119721.png/600x600bb.jpg",
       "mbid": "b1337457-3fc8-4215-b12a-bda234d146c4",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794217014223,
-      "updatedAt": "2026-11-09T09:37:03.294674+00:00"
+      "updatedAt": "2026-11-13T00:13:42.946349+00:00"
     },
     {
       "id": "mw92f13s26la49v2a6ki",
       "artist": "The Smashing Pumpkins",
       "album": "Monuments to an Elegy",
       "date": "2014-12-09",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw92f13s26la49v2a6ki.jpg?v=1794216901959",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/3d/8b/aa/3d8baa61-66d9-02d8-6f86-692561cc15cd/4050538421835.png/600x600bb.jpg",
       "mbid": "0888da4d-eb06-46dd-b7db-ec5270acfcb6",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794216900952,
-      "updatedAt": "2026-11-09T09:35:02.054072+00:00"
+      "updatedAt": "2026-11-12T23:38:11.043245+00:00"
     },
     {
       "id": "mw92d2qa91ckm4f80yo",
       "artist": "The Smashing Pumpkins",
       "album": "Oceania",
       "date": "2012-06-18",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw92d2qa91ckm4f80yo.jpg?v=1794216810762",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music4/v4/34/d3/53/34d353ef-e76a-b4ae-e0a5-e988790e9101/00818610010094.jpg/600x600bb.jpg",
       "mbid": "83675dbd-ec66-4d0a-93a8-cd386c8236c1",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794216809746,
-      "updatedAt": "2026-11-09T09:33:38.592235+00:00"
+      "updatedAt": "2026-11-12T22:52:47.453641+00:00"
     },
     {
       "id": "mw92amm725jpha86los",
       "artist": "The Smashing Pumpkins",
       "album": "Zeitgeist",
       "date": "2007-07-06",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw92amm725jpha86los.jpg?v=1794216696184",
       "artFallback": null,
       "mbid": "f0e4f513-82a7-4fa9-90a6-295c5e23a2f1",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794216695551,
-      "updatedAt": "2026-11-09T09:31:36.271601+00:00"
+      "updatedAt": "2026-11-12T20:27:22.619523+00:00"
     },
     {
       "id": "mw92a7kwtdwxdr9j2ae",
@@ -421,18 +421,18 @@
       "artist": "Rush",
       "album": "Snakes & Arrows",
       "date": "2007-05-01",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw5v5xjihrdfuvrpthg.jpg?v=1794023323341",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/2b/92/ad/2b92ad61-e9d4-4469-859e-d2d5f12fa8b8/603497923045.jpg/600x600bb.jpg",
       "mbid": "db763a78-83e9-4744-9038-0b402c3d7c1d",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794023320590,
-      "updatedAt": "2026-11-07T03:48:43.796126+00:00"
+      "updatedAt": "2026-11-12T19:48:05.575171+00:00"
     },
     {
       "id": "mw5v5hsus7kv345yfqe",
@@ -34550,7 +34550,7 @@
       "album": "Garlands",
       "date": "1982-09-01",
       "rating": 4,
-      "notes": "",
+      "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mqe1stf28xvst8wba13.jpg",
       "artFallback": null,
       "mbid": "fa26e26a-2aa4-4767-a019-e0163606b3e5",
@@ -34560,7 +34560,7 @@
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1781457501422,
-      "updatedAt": "2026-09-21T07:21:04+00:00"
+      "updatedAt": "2026-11-13T00:50:23.624125+00:00"
     },
     {
       "id": "mqe1stf28zbfooh3y6u",
@@ -49468,10 +49468,11 @@
         "mqe1stf3j8b8th4ctk",
         "mqe1stf3b0vo8aqaj87",
         "mvrtet3thjdl8tnr53u",
-        "mwbhcl1eq2blcp4zww"
+        "mwbhcl1eq2blcp4zww",
+        "mqe1stf28xvst8wba13"
       ],
       "created_at": "2026-10-09T21:38:55.214409+00:00",
-      "updated_at": "2026-11-12T03:26:42.243411+00:00"
+      "updated_at": "2026-11-13T00:50:21.634821+00:00"
     }
   ]
 }
