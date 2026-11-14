@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-11-13T18:17:22.644072Z",
+  "exported_at": "2026-11-14T16:47:07.568146Z",
   "album_count": 2747,
   "albums": [
     {
@@ -223,18 +223,18 @@
       "artist": "The Smashing Pumpkins",
       "album": "ATUM: A Rock Opera in Three Acts",
       "date": "2023-05-05",
-      "rating": null,
+      "rating": 2,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw92ktgitcjc4d92w5.jpg?v=1794217171560",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/ba/91/42/ba9142ca-ec53-2d22-1783-4c1b41131615/196925534048.png/600x600bb.jpg",
       "mbid": "c76dd7d8-43e3-4490-9eba-38ddae4fa15e",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1794217170978,
-      "updatedAt": "2026-11-11T04:35:32.733666+00:00"
+      "updatedAt": "2026-11-14T07:32:01.602566+00:00"
     },
     {
       "id": "mw92kfwq8iqcj1er4gh",
