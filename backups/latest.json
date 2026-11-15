@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-11-14T16:47:07.568146Z",
+  "exported_at": "2026-11-15T17:30:01.035984Z",
   "album_count": 2747,
   "albums": [
     {
@@ -583,18 +583,18 @@
       "artist": "The Staple Singers",
       "album": "City in the Sky",
       "date": "1974",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mw4349ce9eri5rwv3db.jpg?v=1793915749029",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/80/1f/65/801f6539-0f46-ebcd-9aa7-a0551779c85e/19CRGIM16969.rgb.jpg/600x600bb.jpg",
       "mbid": "d945e836-ec9a-4cb7-8882-cedf40f55f69",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1793915747150,
-      "updatedAt": "2026-11-05T21:55:49.446774+00:00"
+      "updatedAt": "2026-11-14T23:15:58.362576+00:00"
     },
     {
       "id": "mw433notz5nqiipoz3q",
@@ -37250,7 +37250,7 @@
       "album": "Fleetwood Mac",
       "date": "1975-07-11",
       "rating": 4,
-      "notes": "",
+      "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mqe1stf2g9sjmy6h4yv.jpg",
       "artFallback": null,
       "mbid": "833cd8ce-3748-4a8f-80f5-5c31d9bcb261",
@@ -37260,7 +37260,7 @@
       "releaseType": "album",
       "inPlexLibrary": true,
       "added": 1781457501422,
-      "updatedAt": "2026-09-21T07:21:42+00:00"
+      "updatedAt": "2026-11-15T06:58:59.298514+00:00"
     },
     {
       "id": "mqe1stf2ga94u9zr3c7",
@@ -42704,7 +42704,7 @@
       "album": "Peter Green's Fleetwood Mac",
       "date": "1968-02-24",
       "rating": 3,
-      "notes": "",
+      "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mqe1stf2w8p8wfhzk6p.jpg",
       "artFallback": null,
       "mbid": "af064ed0-7482-440b-a645-55482337e0c1",
@@ -42712,9 +42712,9 @@
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
-      "inPlexLibrary": false,
+      "inPlexLibrary": true,
       "added": 1781457501422,
-      "updatedAt": "2026-07-10T03:33:13+00:00"
+      "updatedAt": "2026-11-15T06:59:27.147965+00:00"
     },
     {
       "id": "mqe1stf2wdhfrmwxk6",
