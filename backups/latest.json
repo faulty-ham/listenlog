@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-11-20T18:54:44.452473Z",
+  "exported_at": "2026-11-21T17:49:27.448818Z",
   "album_count": 2774,
   "albums": [
     {
@@ -25,18 +25,18 @@
       "artist": "Austin Lounge Lizards",
       "album": "Home and Deranged",
       "date": "2013",
-      "rating": null,
+      "rating": 3,
       "notes": null,
       "artUrl": "https://pub-ca29303979dd403aadb5b4ea458deaaf.r2.dev/c5ca21ab-4a22-4524-ad5c-97eee58c414c/mwn8l3cinnls2fgm21o.jpg?v=1795073788600",
       "artFallback": "https://is1-ssl.mzstatic.com/image/thumb/Music2/v4/16/92/af/1692af5d-4cc6-27ec-4303-499c13db42e5/677967130325.jpg/600x600bb.jpg",
       "mbid": "31aa43fe-d930-47aa-807d-ee6e3763523b",
-      "wantToListen": true,
+      "wantToListen": false,
       "hardToFind": false,
       "unmatched": false,
       "releaseType": "album",
       "inPlexLibrary": false,
       "added": 1795073787954,
-      "updatedAt": "2026-11-19T07:36:28.735823+00:00"
+      "updatedAt": "2026-11-21T04:18:10.572591+00:00"
     },
     {
       "id": "mwn8kkpyf8vdm7fqbhw",
